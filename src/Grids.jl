@@ -1,6 +1,7 @@
 module Grids
 
 export Grid
+export grad,div,curl
 
 import Whirl2d
 import Whirl2d:@get, MappedVector
@@ -21,21 +22,68 @@ struct Grid <: Mesh
 
 end
 
-type XFaceData <: GridData2d end
-type YFaceData <: GridData2d end
-type CellData <: GridData2d end
-type NodeData <: GridData2d end
+XFaceData(g::Grid) = zeros(Float64,g.N[1]+1,g.N[2]);
+YFaceData(g::Grid) = zeros(Float64,g.N[1],g.N[2]+1);
+CellData(g::Grid) = zeros(Float64,g.N[1],g.N[2]);
+NodeData(g::Grid) = zeros(Float64,g.N[1]+1,g.N[2]+1);
 
-function GridData(g::Grid,n::NTuple{2,Int})
-    zeros(Float64,g.N[1]+n[1],g.N[2]+n[2]);
+function curl(qx,qy)
+    Nx = size(qy,1)
+    Ny = size(qx,2)
+    w = zeros(eltype(qx),Nx+1,Ny+1)
+    for i=2:Nx, j=2:Ny
+    	w[i,j] = -qx[i,j]+qx[i,j-1]+qy[i,j]-qy[i-1,j]
+    end
+    w
 end
 
-XFaceData(g::Grid) = GridData(g,(1,0));
-YFaceData(g::Grid) = GridData(g,(0,1));
-CellData(g::Grid) = GridData(g,(0,0));
-NodeData(g::Grid) = GridData(g,(1,1));
+function curl(psi)
+    Nx = size(psi,1)-1
+    Ny = size(psi,2)-1
+    qx = zeros(eltype(psi),Nx+1,Ny)
+    qy = zeros(eltype(psi),Nx,Ny+1)
+    
+    for i=1:Nx, j=1:Ny
+    	qx[i,j] = psi[i,j+1]-psi[i,j]
+	qy[i,j] = psi[i,j]-psi[i+1,j]
+    end
+    for j=1:Ny
+    	qx[Nx+1,j] = psi[Nx+1,j+1]-psi[Nx+1,j]
+    end
+    for i=1:Nx
+    	qy[i,Ny+1] = psi[i,Ny+1]-psi[i+1,Ny+1]
+    end 
+    qx, qy
+end
 
+function div(qx,qy)
+    Nx = size(qy,1)
+    Ny = size(qx,2)
+    w = zeros(eltype(qx),Nx,Ny)
+    for i=1:Nx, j=1:Ny
+    	w[i,j] = qx[i+1,j]-qx[i,j]+qy[i,j+1]-qy[i,j]
+    end
+    w       
+end
 
+function grad(psi)
+    Nx = size(psi,1)
+    Ny = size(psi,2)
+    qx = zeros(eltype(psi),Nx+1,Ny)
+    qy = zeros(eltype(psi),Nx,Ny+1)
+    
+    for i=2:Nx, j=2:Ny
+    	qx[i,j] = psi[i,j]-psi[i-1,j]
+	qy[i,j] = psi[i,j]-psi[i,j-1]
+    end
+    for j=2:Ny
+    	qy[1,j] = psi[1,j]-psi[1,j-1]
+    end
+    for i=2:Nx
+    	qx[i,1] = psi[i,1]-psi[i-1,1]
+    end 
+    qx, qy
+end
 
 function Base.show(io::IO, g::Grid)
     println(io, "Grid: number of cells = ($(g.N[1]),$(g.N[2])), Δx = "*
