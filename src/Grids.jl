@@ -1,3 +1,11 @@
+"""
+The `Grids` module provides a data structure:
+
+[`Grids.DualPatch`](@ref)
+
+and functions that act on this structure.
+
+"""
 module Grids
 
 export DualPatch
@@ -8,11 +16,10 @@ import Whirl2d:@get, MappedVector
 using FastGaussQuadrature
 
 abstract type Grid end
-const ndim = 2
 
 nodes, weights = gausslegendre(100)
 
-struct DualPatch <: Grid
+mutable struct DualPatch <: Grid
     "array of number of dual cells in each direction in patch interior"
     N::Vector{Int}
 
@@ -21,39 +28,48 @@ struct DualPatch <: Grid
 
     "coordinates of lower left-hand corner"
     xmin::Vector{Float64}
+    xmax::Vector{Float64}
 
     "first interior cell indices in each direction"
     ifirst::Vector{Int}
 
-    "range of interior cell indices"
+    "range of interior indices"
     cellint::Array{UnitRange{Int},1}
     nodeint::Array{UnitRange{Int},1}
     xfaceint::Array{UnitRange{Int},1}
     yfaceint::Array{UnitRange{Int},1}
 
+    "mapping from grid index to matrix row/column"
+    cellmap
+    nodemap
+    xfacemap
+    yfacemap
+
     "vorticity field"
-    w::Array{Float64,ndim}
+    w::Array{Float64,Whirl2d.ndim}
 
     "velocity field components"
-    qx::Array{Float64,ndim}
-    qy::Array{Float64,ndim}
+    qx::Array{Float64,Whirl2d.ndim}
+    qy::Array{Float64,Whirl2d.ndim}
 
     "dual velocity field components"
-    dualqx::Array{Float64,ndim}
-    dualqy::Array{Float64,ndim}
+    dualqx::Array{Float64,Whirl2d.ndim}
+    dualqy::Array{Float64,Whirl2d.ndim}
 
     "streamfunction"
-    psi::Array{Float64,ndim}    
+    psi::Array{Float64,Whirl2d.ndim}    
 
     "pressure"
-    p::Array{Float64,ndim}
-    
+    p::Array{Float64,Whirl2d.ndim}
+
     "preplanned DST used to solve Poisson equation"
     dst!::FFTW.r2rFFTWPlan
 
 end
 
 function DualPatch(N,Δx,xmin)
+
+    xmax = xmin + N*Δx	 
 
     # set up grid arrays with ghosts
     w = zeros(Float64,N[1]+2,N[2]+2)
@@ -74,10 +90,29 @@ function DualPatch(N,Δx,xmin)
     xfaceint = ifirst-1+[1:N[1],1:N[2]-1];
     yfaceint = ifirst-1+[1:N[1]-1,1:N[2]];
 
+    """
+        construct maps of grid interior indices to matrix operator
+        row/column indices.
+
+	e.g., cellmap accepts entries from cellint[1].start to
+	cellint[1].stop in the first argument, and cellint[2].start to
+	cellint[2].stop in the second argument, and returns a single
+	integer providing the row index for a data vector that would
+	hold cell data, or the column index for a matrix that would
+	act upon such a data vector
+	
+    """
+    cellmap(i,j) = i-ifirst[1]+1+(j-ifirst[2])*N[1]
+    nodemap(i,j) = i-ifirst[1]+1+(j-ifirst[2])*(N[1]-1)
+    xfacemap(i,j) = i-ifirst[1]+1+(j-ifirst[2])*N[1]
+    yfacemap(i,j) = i-ifirst[1]+1+(j-ifirst[2])*(N[1]-1)
+
+
     dst! = FFTW.plan_r2r!(w, FFTW.RODFT00);
 
-    DualPatch(N,Δx,xmin,ifirst,cellint,nodeint,
-	      xfaceint,yfaceint,w,qx,qy,dualqx,dualqy,psi,p,dst!)
+    DualPatch(N,Δx,xmin,xmax,ifirst,cellint,nodeint,xfaceint,yfaceint,
+	      cellmap,nodemap,xfacemap,yfacemap,
+	      w,qx,qy,dualqx,dualqy,psi,p,dst!)
 
 end
 
@@ -250,7 +285,6 @@ intfact(n,a) = exp(-4a)besseli(n[1],2a)besseli(n[2],2a)
 Set up a table of lgf values in the upper right quadrant, centered at
 the lower left ghost cell in grid 'g'.
 """
-
 lgf(g::Grid) = reshape([lgf([i,j]) for i=0:g.N[1]+1 for j=0:g.N[2]+1],
        g.N[1]+2,g.N[2]+2)
 
@@ -265,18 +299,21 @@ intfact(g::Grid,a::Float64) = reshape([intfact([i,j],a)
 
 
 """
-    s = gridconvolve(w,G)
+    s = gridconvolve(G,w)
 
 Perform a discrete convolution of grid data w with one of the Green's
 function tables (the LGF or the integrating factor). This exploits the
 symmetries in these functions.
 """
-function gridconvolve(w,G)
+function gridconvolve(G,w)
     N = size(w)
 
     s = zeros(w)
-    for itarg=1:N[1], jtarg=1:N[2]
-    	for isrc=1:N[1],jsrc=1:N[2]
+    for isrc=1:N[1],jsrc=1:N[2]
+        if abs(w[isrc,jsrc])<eps(Float64)
+	   continue
+	end   
+    	for itarg=1:N[1], jtarg=1:N[2]
 	    m = max(abs(isrc-itarg),abs(jsrc-jtarg))
 	    n = min(abs(isrc-itarg),abs(jsrc-jtarg))
 	    s[itarg,jtarg] += G[m+1,n+1]w[isrc,jsrc]
@@ -292,8 +329,7 @@ end
 
 function Base.show(io::IO, g::Grid)
     println(io, "Grid: number of cells = ($(g.N[1]),$(g.N[2])), Δx = "*
-    "$(g.Δx), xmin = ($(g.xmin[1]), $(g.xmin[2])), xmax = "*
-    "($(g.N[1]*g.Δx+g.xmin[1]),$(g.N[2]*g.Δx+g.xmin[2]))") 
+    "$(g.Δx), xmin = $(g.xmin), xmax = $(g.xmax)") 
 end
 
 

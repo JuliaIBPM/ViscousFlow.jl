@@ -12,8 +12,19 @@ using .Utils
 
 #== Type Definitions ==#
 
+const ndim = 2
+
 include("Grids.jl")
 using .Grids
+
+include("Bodies.jl")
+using .Bodies
+
+include("Systems.jl")
+using .Systems
+
+include("ddf.jl")
+using .DDF
 
 
 
