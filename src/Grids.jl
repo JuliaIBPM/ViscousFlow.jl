@@ -313,8 +313,10 @@ lgf(g::Grid) = reshape([lgf([i,j]) for i=0:g.N[1]+1 for j=0:g.N[2]+1],
 
 Set up a table of integrating factor values in the upper right
 quadrant, centered at the lower left ghost cell in grid 'g'.
+This zeros out the values lower than machine epsilon.
 """
-intfact(g::Grid,a::Float64) = reshape([intfact([i,j],a)
+intfact(g::Grid,a::Float64) = reshape([intfact([i,j],a) > eps(Float64) ?
+        intfact([i,j],a) : 0.0
         for i=0:g.N[1]+1 for j=0:g.N[2]+1], g.N[1]+2,g.N[2]+2)
 
 
@@ -362,9 +364,8 @@ convolve_fft(g::Grid,Ghat::Array{Complex{T},2},w) where T =
 L⁻¹(g::Grid,w) = convolve_fft(g,g.lgfhat,w)
 Q(g::Grid,w) = convolve_fft(g,g.qhat,w)
 
-
-lgf_slow_times(g::Grid,w) = convolve(g.lgftab,w)
-q_slow_times(g::Grid,w) = convolve(g.qtab,w)
+L⁻¹_slow(g::Grid,w) = convolve(g.lgftab,w)
+Q_slow(g::Grid,w) = convolve(g.qtab,w)
 
 mirror(a::AbstractArray{T,2} where T) = hcat(
   flipdim(vcat(flipdim(a[:,2:end],1),a[2:end,2:end]),2),

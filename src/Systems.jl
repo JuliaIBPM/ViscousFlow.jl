@@ -24,25 +24,23 @@ mutable struct Domain
     E^T operator, acting on body Lagrange points and returning data at
     cell edges
     """
-    #Eᵀ::AbstractArray{SparseMatrixCSC{Float64,Int},Whirl2d.ndim}
-    Eₓᵀ::SparseMatrixCSC{Float64,Int}
-    Eytrans::SparseMatrixCSC{Float64,Int}
-
+    Eᵀ::Array{SparseMatrixCSC{Float64,Int},1}
 
 
     """
     (EC)^T operator, acting on body Lagrange points and returning dual grid cell data
     """
-    ExCtrans::SparseMatrixCSC{Float64,Int}
-    EyCtrans::SparseMatrixCSC{Float64,Int}
+    ECᵀ::Array{SparseMatrixCSC{Float64,Int},1}
 
     """
-    Schur complements
-    S is Schur complement with the integrating factor, ECL^(-1)QC^TE^T
-    S₀ is Schur complement without the integrating factor, ECL^(-1)C^TE^T
+    Schur complements (factorizations)
+    S is Schur complement with the integrating factor, S = -ECL⁻¹QCᵀEᵀ
+    S₀ is Schur complement without the integrating factor, S₀ = -ECL⁻¹CᵀEᵀ
     """
-    S::Array{Float64,2}
-    S₀::Array{Float64,2}
+    #S::Array{Float64,2}
+    #S₀::Array{Float64,2}
+    S
+    S₀
 
 end
 
@@ -52,19 +50,16 @@ function Domain()
     ngrid = nbody = 0
     nbodypts = 0
     firstbpt = []
-    Eₓᵀ = spzeros(0)
-    Eytrans = spzeros(0)
-    ExCtrans = spzeros(0)
-    EyCtrans = spzeros(0)
+    Eᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
+    ECᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
 
-    S = Array{Float64,2}(0,0)
-    S₀ = Array{Float64,2}(0,0)
-
+    S = []
+    S₀ = []
 
     ddf_fcn = Whirl2d.DDF.ddf_roma
 
     Domain(xmin,xmax,[],ngrid,[],nbody,nbodypts,firstbpt,
-           ddf_fcn,Eₓᵀ,Eytrans,ExCtrans,EyCtrans,S,S₀)
+           ddf_fcn,Eᵀ,ECᵀ,S,S₀)
 
 end
 
@@ -131,7 +126,7 @@ function add_body(dom::Domain,b::Bodies.Body)
 end
 
 # Body-to-grid operations
-function Etrans(x::Vector{Float64},g::Grids.DualPatch,ddf_fcn)
+function construct_Eᵀ(x::Vector{Float64},g::Grids.DualPatch,ddf_fcn)
     """
     construct body to grid regularization between point `x` and dual
     grid `g`
@@ -143,8 +138,7 @@ function Etrans(x::Vector{Float64},g::Grids.DualPatch,ddf_fcn)
         rmax += 0.5
     end
 
-    Eₓᵀ = spzeros(length(g.qx))
-    Eytrans = spzeros(length(g.qy))
+    Eᵀ = [spzeros(length(g.qx)) for i = 1:Whirl2d.ndim]
 
     # rescale the given points into local grid indexing
     xscale = (x[1]-g.xmin[1])/g.Δx
@@ -157,7 +151,7 @@ function Etrans(x::Vector{Float64},g::Grids.DualPatch,ddf_fcn)
     tmpx = abs.(gxscale-xscale).<=rmax
     tmpy = abs.(gyscale-yscale).<=rmax
     ind = find(tmpx.&tmpy)
-    Eₓᵀ[ind] = ddf_fcn(gxscale[ind]-xscale).*ddf_fcn(gyscale[ind]-yscale)
+    Eᵀ[1][ind] = ddf_fcn(gxscale[ind]-xscale).*ddf_fcn(gyscale[ind]-yscale)
 
     # y edges
     gxscale = [i for i=1:size(g.qy,1), j=1:size(g.qy,2)]
@@ -166,115 +160,130 @@ function Etrans(x::Vector{Float64},g::Grids.DualPatch,ddf_fcn)
     tmpx = abs.(gxscale-xscale).<=rmax
     tmpy = abs.(gyscale-yscale).<=rmax
     ind = find(tmpx.&tmpy)
-    Eytrans[ind] = ddf_fcn(gxscale[ind]-xscale).*ddf_fcn(gyscale[ind]-yscale)
+    Eᵀ[2][ind] = ddf_fcn(gxscale[ind]-xscale).*ddf_fcn(gyscale[ind]-yscale)
 
-    Eₓᵀ,Eytrans
-
+    return Eᵀ
 
 end
 
-function Etrans(b::Bodies.Body,g::Grids.DualPatch,ddf_fcn)
+function construct_Eᵀ(b::Bodies.Body,g::Grids.DualPatch,ddf_fcn)
     """
     construct body to grid regularization between body `b` and dual
     grid `g`
     """
 
-    Eₓᵀ = spzeros(length(g.qx),b.N)
-    Eytrans = spzeros(length(g.qy),b.N)
+    Eᵀ = [spzeros(length(g.qx),b.N) for i = 1:Whirl2d.ndim]
 
     for i = 1:b.N
-        Etmpx,Etmpy = Etrans(b.x[i],g,ddf_fcn)
-    	  Eₓᵀ[:,i] = Etmpx
-	      Eytrans[:,i] = Etmpy
+        Eᵀtmp = construct_Eᵀ(b.x[i],g,ddf_fcn)
+    	  Eᵀ[1][:,i] = Eᵀtmp[1]
+	      Eᵀ[2][:,i] = Eᵀtmp[2]
     end
 
-    Eₓᵀ,Eytrans
+    return Eᵀ
 
 end
 
-function Etrans!(dom::Domain)
-    dom.Eₓᵀ = spzeros(length(dom.grid[1].qx),dom.nbodypts)
-    dom.Eytrans = spzeros(length(dom.grid[1].qy),dom.nbodypts)
+function construct_Eᵀ!(dom::Domain)
+    dom.Eᵀ[1] = spzeros(length(dom.grid[1].qx),dom.nbodypts)
+    dom.Eᵀ[2] = spzeros(length(dom.grid[1].qy),dom.nbodypts)
 
     for i = 1:dom.nbody
-    	Etmpx, Etmpy = Etrans(dom.body[i],dom.grid[1],dom.ddf_fcn)
-	    dom.Eₓᵀ[:,dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1] = Etmpx
-	    dom.Eytrans[:,dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1] = Etmpy
+    	Eᵀtmp = construct_Eᵀ(dom.body[i],dom.grid[1],dom.ddf_fcn)
+	    dom.Eᵀ[1][:,dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1] = Eᵀtmp[1]
+	    dom.Eᵀ[2][:,dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1] = Eᵀtmp[2]
 
     end
 end
 
-function ECtrans!(dom::Domain)
-    dom.ExCtrans = spzeros(length(dom.grid[1].w),dom.nbodypts)
-    dom.EyCtrans = spzeros(length(dom.grid[1].w),dom.nbodypts)
+function construct_ECᵀ!(dom::Domain)
 
-    Etrans!(dom)
-    qy = zeros(dom.grid[1].qy)
-    for i = 1:dom.nbodypts
-        qx = reshape(dom.Eₓᵀ[:,i],size(dom.grid[1].qx))
-    	  wtmp = sparse(reshape(Grids.curl(dom.grid[1],qx,qy),length(dom.grid[1].w),1))
-	      dom.ExCtrans[:,i] = wtmp
+    construct_Eᵀ!(dom)
+    @get dom (grid,Eᵀ)
+
+    m = dom.nbodypts
+
+    dom.ECᵀ = [spzeros(length(dom.grid[1].w),m) for i = 1:Whirl2d.ndim]
+
+
+    qy = zeros(grid[1].qy)
+    for i = 1:m
+        qx = reshape(Eᵀ[1][:,i],size(grid[1].qx))
+	      dom.ECᵀ[1][:,i] = sparse(reshape(Grids.curl(grid[1],qx,qy),length(grid[1].w),1))
     end
-    qx = zeros(dom.grid[1].qx)
-    for i = 1:dom.nbodypts
-        qy = reshape(dom.Eytrans[:,i],size(dom.grid[1].qy))
-    	  wtmp = sparse(reshape(Grids.curl(dom.grid[1],qx,qy),length(dom.grid[1].w),1))
-	      dom.EyCtrans[:,i] = wtmp
+    qx = zeros(grid[1].qx)
+    for i = 1:m
+        qy = reshape(Eᵀ[2][:,i],size(grid[1].qy))
+	      dom.ECᵀ[2][:,i] = sparse(reshape(Grids.curl(grid[1],qx,qy),length(grid[1].w),1))
     end
+
 
 end
+
 
 function construct_schur!(dom)
   # There is no need to call the ECtrans! routine prior to calling this
   # It is assumed, however, that the grid already has the LGF and integrating
   # factor tables set up
 
-  @get Grids (L⁻¹, Q)
+  #=
+   Can switch L⁻¹ to L⁻¹_slow and Q to Q_slow below in first set of
+  parentheses to evaluate using non-FFT convolution.
+  =#
+  @get Grids (L⁻¹, Q) (L⁻¹, Q)
 
-  dom.S = zeros(2*dom.nbodypts,2*dom.nbodypts)
-  dom.S₀ = zeros(2*dom.nbodypts,2*dom.nbodypts)
+  m = dom.nbodypts
+
+  S = zeros(2*m,2*m)
+  S₀ = zeros(2*m,2*m)
 
   # Construct the (EC)^T operator
-  ECtrans!(dom)
+  construct_ECᵀ!(dom)
 
-  # Construct the Schur complements
-  for i = 1:dom.nbodypts
-    stmpx = Q(dom.grid[1],reshape(dom.ExCtrans[:,i],size(dom.grid[1].w)))
-    stmpy = Q(dom.grid[1],reshape(dom.EyCtrans[:,i],size(dom.grid[1].w)))
+  @get dom (grid, ECᵀ)
 
-    stmpx = L⁻¹(dom.grid[1],stmpx)
-    stmpy = L⁻¹(dom.grid[1],stmpy)
+  # Construct the Schur complement with integrating factor
+  #    S = -ECL⁻¹QCᵀEᵀ
 
-    dom.S[1:dom.nbodypts,i] =
-            dom.ExCtrans'*reshape(stmpx,length(dom.grid[1].w),1)
-    dom.S[1:dom.nbodypts,i+dom.nbodypts] =
-            dom.ExCtrans'*reshape(stmpy,length(dom.grid[1].w),1)
-    dom.S[dom.nbodypts+1:2*dom.nbodypts,i] =
-            dom.EyCtrans'*reshape(stmpx,length(dom.grid[1].w),1)
-    dom.S[dom.nbodypts+1:2*dom.nbodypts,i+dom.nbodypts] =
-            dom.EyCtrans'*reshape(stmpy,length(dom.grid[1].w),1)
+  for i = 1:m
+    stmpx = Q(grid[1],reshape(ECᵀ[1][:,i],size(grid[1].w)))
+    stmpy = Q(grid[1],reshape(ECᵀ[2][:,i],size(grid[1].w)))
+
+    stmpx = reshape(L⁻¹(grid[1],stmpx),length(grid[1].w),1)
+    stmpy = reshape(L⁻¹(grid[1],stmpy),length(grid[1].w),1)
+
+    S[1:m,i] = -ECᵀ[1]'*stmpx
+    S[1:m,i+m] = -ECᵀ[1]'*stmpy
+    S[m+1:2*m,i] = -ECᵀ[2]'*stmpx
+    S[m+1:2*m,i+m] = -ECᵀ[2]'*stmpy
 
 
   end
+
+  # Factorize the Schur complement
+  dom.S = factorize(S);
 
   # Construct the Schur complement without the integration factor
-  for i = 1:dom.nbodypts
-    stmpx = L⁻¹(dom.grid[1],reshape(dom.ExCtrans[:,i],size(dom.grid[1].w)))
-    stmpy = L⁻¹(dom.grid[1],reshape(dom.EyCtrans[:,i],size(dom.grid[1].w)))
+  #    S₀ = -ECL⁻¹CᵀEᵀ
+  for i = 1:m
+    stmpx = reshape(
+              L⁻¹(grid[1],reshape(ECᵀ[1][:,i],size(grid[1].w))),
+              length(grid[1].w),1)
+    stmpy = reshape(
+              L⁻¹(grid[1],reshape(ECᵀ[2][:,i],size(grid[1].w))),
+              length(grid[1].w),1)
 
-    dom.S₀[1:dom.nbodypts,i] =
-            dom.ExCtrans'*reshape(stmpx,length(dom.grid[1].w),1)
-    dom.S₀[1:dom.nbodypts,i+dom.nbodypts] =
-            dom.ExCtrans'*reshape(stmpy,length(dom.grid[1].w),1)
-    dom.S₀[dom.nbodypts+1:2*dom.nbodypts,i] =
-            dom.EyCtrans'*reshape(stmpx,length(dom.grid[1].w),1)
-    dom.S₀[dom.nbodypts+1:2*dom.nbodypts,i+dom.nbodypts] =
-            dom.EyCtrans'*reshape(stmpy,length(dom.grid[1].w),1)
+    S₀[1:m,i] = -ECᵀ[1]'*stmpx
+    S₀[1:m,i+m] = -ECᵀ[1]'*stmpy
+    S₀[m+1:2*m,i] = -ECᵀ[2]'*stmpx
+    S₀[m+1:2*m,i+m] = -ECᵀ[2]'*stmpy
 
   end
 
-end
+  # Factorize the Schur complement
+  dom.S₀ = factorize(S₀);
 
+end
 
 function Base.show(io::IO, dom::Domain)
     println(io, "Domain: xmin = $(dom.xmin), xmax = $(dom.xmax), "*
