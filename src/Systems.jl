@@ -6,12 +6,13 @@ import Whirl2d.Grids
 import Whirl2d.Bodies
 import Whirl2d.DDF
 
-mutable struct Domain
+abstract type Domain end
+
+mutable struct DualDomain <: Domain
     xmin::Vector{Float64}
     xmax::Vector{Float64}
 
-    grid::AbstractArray{Grids.DualPatch}
-    ngrid::Int
+    grid::Grids.DualPatch
 
     body::AbstractArray{Bodies.Body}
     nbody::Int
@@ -44,10 +45,11 @@ mutable struct Domain
 
 end
 
-function Domain()
+function DualDomain()
     xmin = zeros(Whirl2d.ndim)
     xmax = ones(Whirl2d.ndim)
-    ngrid = nbody = 0
+    grid = Grids.DualPatch(zeros(Int,Whirl2d.ndim),0.0,xmin)
+    nbody = 0
     nbodypts = 0
     firstbpt = []
     Eᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
@@ -58,31 +60,30 @@ function Domain()
 
     ddf_fcn = Whirl2d.DDF.ddf_roma
 
-    Domain(xmin,xmax,[],ngrid,[],nbody,nbodypts,firstbpt,
+    DualDomain(xmin,xmax,grid,[],nbody,nbodypts,firstbpt,
            ddf_fcn,Eᵀ,ECᵀ,S,S₀)
 
 end
 
-Domain(g::Grids.DualPatch) = add_grid(Domain(),g)
-Domain(b::Bodies.Body) = add_body(Domain(),b)
-Domain(xmin,xmax) = set_dims(Domain(),xmin,xmax)
+DualDomain(g::Grids.DualPatch) = add_grid(DualDomain(),g)
+DualDomain(b::Bodies.Body) = add_body(DualDomain(),b)
+DualDomain(xmin,xmax) = set_dims(DualDomain(),xmin,xmax)
 
 
-function set_dims!(dom::Domain,
-		               xmin::Vector{Float64},xmax::Vector{Float64})
+function set_dims!(dom::T,
+		               xmin::Vector{Float64},xmax::Vector{Float64}) where T<:Domain
     dom.xmin = xmin
     dom.xmax = xmax
 end
 
-function set_dims(dom::Domain,
-		              xmin::Vector{Float64},xmax::Vector{Float64})
+function set_dims(dom::T,
+		              xmin::Vector{Float64},xmax::Vector{Float64}) where T<:Domain
     set_dims!(dom,xmin,xmax)
     dom
 end
 
-function add_grid!(dom::Domain,g::Grids.DualPatch)
-    dom.ngrid += 1
-    push!(dom.grid,g)
+function add_grid!(dom::T,g::K) where {T<:Domain,K<:Grids.Grid}
+    dom.grid = g
 
     # resize the domain dimensions to allow the grid to fit
     xmin = [min(dom.xmin[j],g.xmin[j]) for j = 1:Whirl2d.ndim]
@@ -91,12 +92,12 @@ function add_grid!(dom::Domain,g::Grids.DualPatch)
 
 end
 
-function add_grid(dom::Domain,g::Grids.DualPatch)
+function add_grid(dom::T,g::K) where {T<:Domain,K<:Grids.Grid}
     add_grid!(dom,g)
     dom
 end
 
-function add_grid(dom::Domain,Δx::Float64)
+function add_grid(dom::T,Δx::Float64) where T<:Domain
     # create a domain-filling patch
     N = ceil.(Int,(dom.xmax-dom.xmin)/Δx)
     g = Grids.DualPatch(N,Δx,dom.xmin)
@@ -184,44 +185,44 @@ function construct_Eᵀ(b::Bodies.Body,g::Grids.DualPatch,ddf_fcn)
 
 end
 
-function construct_Eᵀ!(dom::Domain)
-    dom.Eᵀ[1] = spzeros(length(dom.grid[1].facex),dom.nbodypts)
-    dom.Eᵀ[2] = spzeros(length(dom.grid[1].facey),dom.nbodypts)
+function construct_Eᵀ!(dom::DualDomain)
+    dom.Eᵀ[1] = spzeros(length(dom.grid.facex),dom.nbodypts)
+    dom.Eᵀ[2] = spzeros(length(dom.grid.facey),dom.nbodypts)
 
     for i = 1:dom.nbody
-    	Eᵀtmp = construct_Eᵀ(dom.body[i],dom.grid[1],dom.ddf_fcn)
+    	Eᵀtmp = construct_Eᵀ(dom.body[i],dom.grid,dom.ddf_fcn)
 	    dom.Eᵀ[1][:,dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1] = Eᵀtmp[1]
 	    dom.Eᵀ[2][:,dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1] = Eᵀtmp[2]
 
     end
 end
 
-function construct_ECᵀ!(dom::Domain)
+function construct_ECᵀ!(dom::DualDomain)
 
     construct_Eᵀ!(dom)
     @get dom (grid,Eᵀ)
 
     m = dom.nbodypts
 
-    dom.ECᵀ = [spzeros(length(dom.grid[1].cell),m) for i = 1:Whirl2d.ndim]
+    dom.ECᵀ = [spzeros(length(dom.grid.cell),m) for i = 1:Whirl2d.ndim]
 
 
-    qy = zeros(grid[1].facey)
+    qy = zeros(grid.facey)
     for i = 1:m
-        qx = reshape(Eᵀ[1][:,i],size(grid[1].facex))
-	      dom.ECᵀ[1][:,i] = sparse(reshape(Grids.curl(grid[1],qx,qy),length(grid[1].cell),1))
+        qx = reshape(Eᵀ[1][:,i],size(grid.facex))
+	      dom.ECᵀ[1][:,i] = sparse(reshape(Grids.curl(grid,qx,qy),length(grid.cell),1))
     end
-    qx = zeros(grid[1].facex)
+    qx = zeros(grid.facex)
     for i = 1:m
-        qy = reshape(Eᵀ[2][:,i],size(grid[1].facey))
-	      dom.ECᵀ[2][:,i] = sparse(reshape(Grids.curl(grid[1],qx,qy),length(grid[1].cell),1))
+        qy = reshape(Eᵀ[2][:,i],size(grid.facey))
+	      dom.ECᵀ[2][:,i] = sparse(reshape(Grids.curl(grid,qx,qy),length(grid.cell),1))
     end
 
 
 end
 
 
-function construct_schur!(dom)
+function construct_schur!(dom::DualDomain)
   # There is no need to call the ECtrans! routine prior to calling this
   # It is assumed, however, that the grid already has the LGF and integrating
   # factor tables set up
@@ -246,11 +247,11 @@ function construct_schur!(dom)
   #    S = -ECL⁻¹QCᵀEᵀ
 
   for i = 1:m
-    stmpx = Q(grid[1],reshape(ECᵀ[1][:,i],size(grid[1].cell)))
-    stmpy = Q(grid[1],reshape(ECᵀ[2][:,i],size(grid[1].cell)))
+    stmpx = Q(grid,reshape(ECᵀ[1][:,i],size(grid.cell)))
+    stmpy = Q(grid,reshape(ECᵀ[2][:,i],size(grid.cell)))
 
-    stmpx = reshape(L⁻¹(grid[1],stmpx),length(grid[1].cell),1)
-    stmpy = reshape(L⁻¹(grid[1],stmpy),length(grid[1].cell),1)
+    stmpx = reshape(L⁻¹(grid,stmpx),length(grid.cell),1)
+    stmpy = reshape(L⁻¹(grid,stmpy),length(grid.cell),1)
 
     S[1:m,i] = -ECᵀ[1]'*stmpx
     S[1:m,i+m] = -ECᵀ[1]'*stmpy
@@ -267,11 +268,11 @@ function construct_schur!(dom)
   #    S₀ = -ECL⁻¹CᵀEᵀ
   for i = 1:m
     stmpx = reshape(
-              L⁻¹(grid[1],reshape(ECᵀ[1][:,i],size(grid[1].cell))),
-              length(grid[1].cell),1)
+              L⁻¹(grid,reshape(ECᵀ[1][:,i],size(grid.cell))),
+              length(grid.cell),1)
     stmpy = reshape(
-              L⁻¹(grid[1],reshape(ECᵀ[2][:,i],size(grid[1].cell))),
-              length(grid[1].cell),1)
+              L⁻¹(grid,reshape(ECᵀ[2][:,i],size(grid.cell))),
+              length(grid.cell),1)
 
     S₀[1:m,i] = -ECᵀ[1]'*stmpx
     S₀[1:m,i+m] = -ECᵀ[1]'*stmpy
@@ -292,10 +293,14 @@ function herk!(dom)
 end
 
 
-function Base.show(io::IO, dom::Domain)
-    println(io, "Domain: xmin = $(dom.xmin), xmax = $(dom.xmax), "*
-    		"number of grids = $(dom.ngrid), "*
-    		"number of bodies = $(dom.nbody)")
+function Base.show(io::IO, dom::DualDomain)
+    println(io, "Domain: xmin = $(dom.xmin), xmax = $(dom.xmax)\n"*
+        "number of bodies = $(dom.nbody)")
+    for i = 1:dom.nbody
+        println(io,"$(dom.body[i])")
+    end
+    println(io,"$(dom.grid)")
+
 end
 
 

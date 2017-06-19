@@ -45,7 +45,7 @@ end
 function Soln(dom)
 
   t = 0.0
-  w = zeros(dom.grid[1].cell)
+  w = zeros(dom.grid.cell)
   f = zeros(dom.nbodypts,Whirl2d.ndim)
 
   Soln(t,dom,w,f)
