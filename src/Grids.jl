@@ -57,19 +57,31 @@ mutable struct DualPatch <: Grid
     dualqy::Array{Float64,Whirl2d.ndim}
 
     "streamfunction"
-    psi::Array{Float64,Whirl2d.ndim}    
+    psi::Array{Float64,Whirl2d.ndim}
 
     "pressure"
     p::Array{Float64,Whirl2d.ndim}
 
-    "preplanned DST used to solve Poisson equation"
-    dst!::FFTW.r2rFFTWPlan
+    "LGF table"
+    lgftab::Array{Float64,Whirl2d.ndim}
+    lgfhat::Array{Complex{Float64},Whirl2d.ndim}
+
+    "integrating factor table"
+    qtab::Array{Float64,Whirl2d.ndim}
+    qhat::Array{Complex{Float64},Whirl2d.ndim}
+
+    "LGF*Q"
+    gqhat::Array{Complex{Float64},Whirl2d.ndim}
+    α::Float64
+
+    "preplanned fft"
+    fftop::FFTW.rFFTWPlan
 
 end
 
 function DualPatch(N,Δx,xmin)
 
-    xmax = xmin + N*Δx	 
+    xmax = xmin + N*Δx
 
     # set up grid arrays with ghosts
     w = zeros(Float64,N[1]+2,N[2]+2)
@@ -100,19 +112,26 @@ function DualPatch(N,Δx,xmin)
 	integer providing the row index for a data vector that would
 	hold cell data, or the column index for a matrix that would
 	act upon such a data vector
-	
+
     """
     cellmap(i,j) = i-ifirst[1]+1+(j-ifirst[2])*N[1]
     nodemap(i,j) = i-ifirst[1]+1+(j-ifirst[2])*(N[1]-1)
     xfacemap(i,j) = i-ifirst[1]+1+(j-ifirst[2])*N[1]
     yfacemap(i,j) = i-ifirst[1]+1+(j-ifirst[2])*(N[1]-1)
 
+    lgftab = Array{Float64}(0,0)
+    lgfhat = Array{Complex{Float64}}(0,0)
+    qtab = Array{Float64}(0,0)
+    qhat = Array{Complex{Float64}}(0,0)
+    gqhat = Array{Complex{Float64}}(0,0)
+    α = 0.0
 
-    dst! = FFTW.plan_r2r!(w, FFTW.RODFT00);
+    fftop = FFTW.plan_rfft(zeros(2*N[1]+3,2*N[2]+3))
 
     DualPatch(N,Δx,xmin,xmax,ifirst,cellint,nodeint,xfaceint,yfaceint,
 	      cellmap,nodemap,xfacemap,yfacemap,
-	      w,qx,qy,dualqx,dualqy,psi,p,dst!)
+	      w,qx,qy,dualqx,dualqy,psi,p,
+        lgftab,lgfhat,qtab,qhat,gqhat,α,fftop)
 
 end
 
@@ -139,7 +158,7 @@ end
 function diverg!(p,ir::UnitRange{Int},jr::UnitRange{Int},qx,qy)
     for i=ir, j=jr
     	p[i,j] = qx[i+1,j]-qx[i,j]+qy[i,j+1]-qy[i,j]
-    end      
+    end
 end
 
 function grad!(qx,qy,ir::UnitRange{Int},jr::UnitRange{Int},p)
@@ -152,7 +171,7 @@ function grad!(qx,qy,ir::UnitRange{Int},jr::UnitRange{Int},p)
     end
     for i=ir
     	qx[i,jr.start-1] = p[i,jr.start-1]-p[i-1,jr.start-1]
-    end 
+    end
 end
 
 function lap!(lapf,ir::UnitRange{Int},jr::UnitRange{Int},f)
@@ -168,8 +187,8 @@ function shift!(vx,vy,ir::UnitRange{Int},jr::UnitRange{Int},qx,qy)
     end
     for i=ir
 	vy[i,jr.start-1] = 0.25(qy[i-1,jr.start-1]+qy[i-1,jr.start]+
-			        qy[i,jr.start-1]+qy[i,jr.start])    
-    end 
+			        qy[i,jr.start-1]+qy[i,jr.start])
+    end
     for i=ir, j=jr
     	vx[i,j] = 0.25(qx[i,j]+qx[i+1,j]+qx[i,j-1]+qx[i+1,j-1])
 	vy[i,j] = 0.25(qy[i-1,j]+qy[i-1,j+1]+qy[i,j]+qy[i,j+1])
@@ -260,19 +279,20 @@ function lgf(n)
        return 0.0
     elseif n[1]>=n[2]
        v = quadgauss() do x
-        if x == -1
-	   return sqrt(2)abs(n[1])
-        else
-           t = (x+1)/2
-	   return 0.5real((1 - ( (t-sqrt(1im))./(t+sqrt(1im)) ).^(n[2]+abs(n[1])) .* 
-     	     ( (t+sqrt(-1im))./(t-sqrt(-1im)) ).^(n[2]-abs(n[1])) )) ./t
-	end
-	
-       end
-       return 0.5v/pi
+         if x == -1
+	          return sqrt(2)abs(n[1])
+         else
+            t = (x+1)/2
+	          return 0.5real((1 -
+              ( (t-sqrt(1im))./(t+sqrt(1im)) ).^(n[2]+abs(n[1])).*
+     	        ( (t+sqrt(-1im))./(t-sqrt(-1im)) ).^(n[2]-abs(n[1])) ))./t
+	        end
+
+        end
+        return 0.5v/pi
     else
        return lgf([n[2],n[1]])
-    end     
+    end
 
 end
 
@@ -294,32 +314,83 @@ lgf(g::Grid) = reshape([lgf([i,j]) for i=0:g.N[1]+1 for j=0:g.N[2]+1],
 Set up a table of integrating factor values in the upper right
 quadrant, centered at the lower left ghost cell in grid 'g'.
 """
-intfact(g::Grid,a::Float64) = reshape([intfact([i,j],a) 
+intfact(g::Grid,a::Float64) = reshape([intfact([i,j],a)
         for i=0:g.N[1]+1 for j=0:g.N[2]+1], g.N[1]+2,g.N[2]+2)
 
 
 """
-    s = gridconvolve(G,w)
+    s = convolve(G,w)
 
 Perform a discrete convolution of grid data w with one of the Green's
 function tables (the LGF or the integrating factor). This exploits the
 symmetries in these functions.
 """
-function gridconvolve(G,w)
+function convolve(G::Array{T,2},w::AbstractArray{T,2}) where T
     N = size(w)
 
-    s = zeros(w)
+    Gw = zeros(w)
     for isrc=1:N[1],jsrc=1:N[2]
-        if abs(w[isrc,jsrc])<eps(Float64)
-	   continue
-	end   
+      if abs(w[isrc,jsrc])<eps(Float64)
+	         continue
+	    end
     	for itarg=1:N[1], jtarg=1:N[2]
 	    m = max(abs(isrc-itarg),abs(jsrc-jtarg))
 	    n = min(abs(isrc-itarg),abs(jsrc-jtarg))
-	    s[itarg,jtarg] += G[m+1,n+1]w[isrc,jsrc]
+	    Gw[itarg,jtarg] += G[m+1,n+1]w[isrc,jsrc]
 	end
     end
-    s
+    Gw
+end
+
+function convolve_fft(fftop::FFTW.FFTWPlan{T,K,false},
+        Ghat::Array{Complex{T},2},w::AbstractArray{T,2}) where {T<:AbstractFloat,K}
+
+  wbig = mirror(zeros(w))
+  n = size(w)
+  wbig[1:n[1],1:n[2]] = w
+  what = fftop * wbig
+
+  Gwbig = fftop \ (Ghat .* what)
+  Gwbig[n[1]:end,n[2]:end]
+
+end
+
+convolve_fft(g::Grid,Ghat::Array{Complex{T},2},w) where T =
+        convolve_fft(g.fftop,Ghat,w)
+
+
+L⁻¹(g::Grid,w) = convolve_fft(g,g.lgfhat,w)
+Q(g::Grid,w) = convolve_fft(g,g.qhat,w)
+
+
+lgf_slow_times(g::Grid,w) = convolve(g.lgftab,w)
+q_slow_times(g::Grid,w) = convolve(g.qtab,w)
+
+mirror(a::AbstractArray{T,2} where T) = hcat(
+  flipdim(vcat(flipdim(a[:,2:end],1),a[2:end,2:end]),2),
+  vcat(flipdim(a,1),a[2:end,:])
+  )
+
+function lgf_table!(g::Grid)
+  g.lgftab = lgf(g)
+
+  # Construct DFT of the table for use in fast application
+  g.lgfhat = g.fftop * mirror(g.lgftab)
+
+end
+
+function q_table!(g::Grid,α::Float64)
+  g.qtab = intfact(g,0.5α)
+  g.α = α
+
+  g.qhat = g.fftop * mirror(g.qtab)
+end
+
+function q_table!(g::Grid,α::Float64,c::Float64)
+  g.qtab = intfact(g,c*α)
+  g.α = α
+
+  g.qhat = g.fftop * mirror(g.qtab)
 end
 
 function quadgauss(f::Function)
@@ -329,7 +400,7 @@ end
 
 function Base.show(io::IO, g::Grid)
     println(io, "Grid: number of cells = ($(g.N[1]),$(g.N[2])), Δx = "*
-    "$(g.Δx), xmin = $(g.xmin), xmax = $(g.xmax)") 
+    "$(g.Δx), xmin = $(g.xmin), xmax = $(g.xmax)")
 end
 
 

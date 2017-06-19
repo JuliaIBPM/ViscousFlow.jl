@@ -42,9 +42,9 @@ mutable struct Body
 
     "Lagrange forcing field components"
     f::Array{Array{Float64,1},1}
-    
+
     "body velocity components at Lagrange points"
-    vel::Array{Array{Float64,1},1}   
+    vel::Array{Array{Float64,1},1}
 
     "body configuration"
     config::BodyConfig
@@ -73,7 +73,7 @@ function Body(N,xtilde)
 end
 
 function Body(N,xtilde,config)
-    
+
     b = Body(N,xtilde)
     update_body!(b,config)
     b
@@ -101,28 +101,47 @@ function set_body_velocities!(body::Body,vel::Array{Array{Float64,1},1})
     body.vel = vel
 end
 
-function Circle(N::Int,rad,xcent::Vector{<:Real},angle)::Body
-    
+function Circle(N::Int,rad)::Body
+
     # set up the points on the circle with radius `rad`
     x = [[rad*cos(2*pi*(i-1)/N),rad*sin(2*pi*(i-1)/N)] for i=1:N]
 
-    Body(N,x,xcent,angle)
+    # put it at the origin, with zero angle
+    Body(N,x,[0.0,0.0],0.0)
 
 end
 
-function Plate(N::Int,len,xcent::Vector{<:Real},angle)::Body
+function Circle(N::Int,rad,xcent::Vector{<:Real},angle)::Body
+
+    b = Circle(N,rad)
+    update_body!(b,BodyConfig(xcent,angle))
+    b
+
+end
+
+function Plate(N::Int,len)::Body
 
     # set up points on plate
     x = [[len*(-0.5 + 0.5*(i-1)/(N-1)),0.0] for i=1:N]
 
-    Body(N,x,xcent,angle)
+    # put it at the origin, with zero angle
+    Body(N,x,[0.0,0.0],0.0)
 
 end
+
+function Plate(N::Int,rad,xcent::Vector{<:Real},angle)::Body
+
+    b = Plate(N,rad)
+    update_body!(b,BodyConfig(xcent,angle))
+    b
+
+end
+
 
 function Base.show(io::IO, b::Body)
     println(io, "Body: number of points = $(b.N), "*
     		"reference point = ($(b.config.xref[1]),$(b.config.xref[2])), "*
-		"rotation matrix = $(b.config.rot)") 
+		"rotation matrix = $(b.config.rot)")
 end
 
 
