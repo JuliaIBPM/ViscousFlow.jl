@@ -36,31 +36,28 @@ mutable struct DualPatch <: Grid
     "range of interior indices"
     cellint::Array{UnitRange{Int},1}
     nodeint::Array{UnitRange{Int},1}
-    xfaceint::Array{UnitRange{Int},1}
-    yfaceint::Array{UnitRange{Int},1}
+    facexint::Array{UnitRange{Int},1}
+    faceyint::Array{UnitRange{Int},1}
 
     "mapping from grid index to matrix row/column"
     cellmap
     nodemap
-    xfacemap
-    yfacemap
+    facexmap
+    faceymap
 
-    "vorticity field"
-    w::Array{Float64,Whirl2d.ndim}
+    "cell center variable"
+    cell::Array{Float64,Whirl2d.ndim}
 
-    "velocity field components"
-    qx::Array{Float64,Whirl2d.ndim}
-    qy::Array{Float64,Whirl2d.ndim}
+    "face variable components"
+    facex::Array{Float64,Whirl2d.ndim}
+    facey::Array{Float64,Whirl2d.ndim}
 
     "dual velocity field components"
-    dualqx::Array{Float64,Whirl2d.ndim}
-    dualqy::Array{Float64,Whirl2d.ndim}
+    dualfacex::Array{Float64,Whirl2d.ndim}
+    dualfacey::Array{Float64,Whirl2d.ndim}
 
-    "streamfunction"
-    psi::Array{Float64,Whirl2d.ndim}
-
-    "pressure"
-    p::Array{Float64,Whirl2d.ndim}
+    "cell node variable"
+    node::Array{Float64,Whirl2d.ndim}
 
     "LGF table"
     lgftab::Array{Float64,Whirl2d.ndim}
@@ -84,13 +81,12 @@ function DualPatch(N,Δx,xmin)
     xmax = xmin + N*Δx
 
     # set up grid arrays with ghosts
-    w = zeros(Float64,N[1]+2,N[2]+2)
-    psi = zeros(Float64,N[1]+2,N[2]+2)
-    p = zeros(Float64,N[1]+1,N[1]+1)
-    qx = zeros(Float64,N[1]+2,N[2]+1)
-    qy = zeros(Float64,N[1]+1,N[2]+2)
-    dualqx = zeros(Float64,N[1]+1,N[2]+2)
-    dualqy = zeros(Float64,N[1]+2,N[2]+1)
+    cell = zeros(Float64,N[1]+2,N[2]+2)
+    node = zeros(Float64,N[1]+1,N[1]+1)
+    facex = zeros(Float64,N[1]+2,N[2]+1)
+    facey = zeros(Float64,N[1]+1,N[2]+2)
+    dualfacex = zeros(Float64,N[1]+1,N[2]+2)
+    dualfacey = zeros(Float64,N[1]+2,N[2]+1)
 
     # set the first interior indices in each direction
     # (this implicitly sets the number of ghost cell layers)
@@ -99,8 +95,8 @@ function DualPatch(N,Δx,xmin)
     # set the index ranges of interior data for each type of grid data array
     cellint =  ifirst-1+[1:N[1],1:N[2]];
     nodeint =  ifirst-1+[1:N[1]-1,1:N[2]-1];
-    xfaceint = ifirst-1+[1:N[1],1:N[2]-1];
-    yfaceint = ifirst-1+[1:N[1]-1,1:N[2]];
+    facexint = ifirst-1+[1:N[1],1:N[2]-1];
+    faceyint = ifirst-1+[1:N[1]-1,1:N[2]];
 
     """
         construct maps of grid interior indices to matrix operator
@@ -116,8 +112,8 @@ function DualPatch(N,Δx,xmin)
     """
     cellmap(i,j) = i-ifirst[1]+1+(j-ifirst[2])*N[1]
     nodemap(i,j) = i-ifirst[1]+1+(j-ifirst[2])*(N[1]-1)
-    xfacemap(i,j) = i-ifirst[1]+1+(j-ifirst[2])*N[1]
-    yfacemap(i,j) = i-ifirst[1]+1+(j-ifirst[2])*(N[1]-1)
+    facexmap(i,j) = i-ifirst[1]+1+(j-ifirst[2])*N[1]
+    faceymap(i,j) = i-ifirst[1]+1+(j-ifirst[2])*(N[1]-1)
 
     lgftab = Array{Float64}(0,0)
     lgfhat = Array{Complex{Float64}}(0,0)
@@ -128,49 +124,49 @@ function DualPatch(N,Δx,xmin)
 
     fftop = FFTW.plan_rfft(zeros(2*N[1]+3,2*N[2]+3))
 
-    DualPatch(N,Δx,xmin,xmax,ifirst,cellint,nodeint,xfaceint,yfaceint,
-	      cellmap,nodemap,xfacemap,yfacemap,
-	      w,qx,qy,dualqx,dualqy,psi,p,
+    DualPatch(N,Δx,xmin,xmax,ifirst,cellint,nodeint,facexint,faceyint,
+	      cellmap,nodemap,facexmap,faceymap,
+	      cell,facex,facey,dualfacex,dualfacey,node,
         lgftab,lgfhat,qtab,qhat,gqhat,α,fftop)
 
 end
 
 # Differential operations
-function curl!(w,ir::UnitRange{Int},jr::UnitRange{Int},qx,qy)
+function curl!(cell,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
     for i=ir, j=jr
-    	w[i,j] = -qx[i,j]+qx[i,j-1]+qy[i,j]-qy[i-1,j]
+    	cell[i,j] = -facex[i,j]+facex[i,j-1]+facey[i,j]-facey[i-1,j]
     end
 end
 
-function curl!(qx,qy,ir::UnitRange{Int},jr::UnitRange{Int},psi)
+function curl!(facex,facey,ir::UnitRange{Int},jr::UnitRange{Int},cell)
     for j=jr
-    	qx[ir.stop+1,j] = psi[ir.stop+1,j+1]-psi[ir.stop+1,j]
+    	facex[ir.stop+1,j] = cell[ir.stop+1,j+1]-cell[ir.stop+1,j]
     end
     for i=ir
-    	qy[i,jr.stop+1] = psi[i,jr.stop+1]-psi[i+1,jr.stop+1]
+    	facey[i,jr.stop+1] = cell[i,jr.stop+1]-cell[i+1,jr.stop+1]
     end
     for i=ir, j=jr
-    	qx[i,j] = psi[i,j+1]-psi[i,j]
-	qy[i,j] = psi[i,j]-psi[i+1,j]
-    end
-end
-
-function diverg!(p,ir::UnitRange{Int},jr::UnitRange{Int},qx,qy)
-    for i=ir, j=jr
-    	p[i,j] = qx[i+1,j]-qx[i,j]+qy[i,j+1]-qy[i,j]
+    	facex[i,j] = cell[i,j+1]-cell[i,j]
+	    facey[i,j] = cell[i,j]-cell[i+1,j]
     end
 end
 
-function grad!(qx,qy,ir::UnitRange{Int},jr::UnitRange{Int},p)
+function diverg!(node,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
     for i=ir, j=jr
-    	qx[i,j] = p[i,j]-p[i-1,j]
-	qy[i,j] = p[i,j]-p[i,j-1]
+    	node[i,j] = facex[i+1,j]-facex[i,j]+facey[i,j+1]-facey[i,j]
+    end
+end
+
+function grad!(facex,facey,ir::UnitRange{Int},jr::UnitRange{Int},node)
+    for i=ir, j=jr
+    	facex[i,j] = node[i,j]-node[i-1,j]
+	    facey[i,j] = node[i,j]-node[i,j-1]
     end
     for j=jr
-    	qy[ir.start-1,j] = p[ir.start-1,j]-p[ir.start-1,j-1]
+    	facey[ir.start-1,j] = node[ir.start-1,j]-node[ir.start-1,j-1]
     end
     for i=ir
-    	qx[i,jr.start-1] = p[i,jr.start-1]-p[i-1,jr.start-1]
+    	facex[i,jr.start-1] = node[i,jr.start-1]-node[i-1,jr.start-1]
     end
 end
 
@@ -180,95 +176,95 @@ function lap!(lapf,ir::UnitRange{Int},jr::UnitRange{Int},f)
     end
 end
 
-function shift!(vx,vy,ir::UnitRange{Int},jr::UnitRange{Int},qx,qy)
+function shift!(vx,vy,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
     for j=jr
-    	vx[ir.start-1,j] = 0.25(qx[ir.start-1,j]+qx[ir.start,j]+
-			        qx[ir.start-1,j-1]+qx[ir.start,j-1])
+    	vx[ir.start-1,j] = 0.25(facex[ir.start-1,j]+facex[ir.start,j]+
+			        facex[ir.start-1,j-1]+facex[ir.start,j-1])
     end
     for i=ir
-	vy[i,jr.start-1] = 0.25(qy[i-1,jr.start-1]+qy[i-1,jr.start]+
-			        qy[i,jr.start-1]+qy[i,jr.start])
+	    vy[i,jr.start-1] = 0.25(facey[i-1,jr.start-1]+facey[i-1,jr.start]+
+			        facey[i,jr.start-1]+facey[i,jr.start])
     end
     for i=ir, j=jr
-    	vx[i,j] = 0.25(qx[i,j]+qx[i+1,j]+qx[i,j-1]+qx[i+1,j-1])
-	vy[i,j] = 0.25(qy[i-1,j]+qy[i-1,j+1]+qy[i,j]+qy[i,j+1])
+    	vx[i,j] = 0.25(facex[i,j]+facex[i+1,j]+facex[i,j-1]+facex[i+1,j-1])
+	    vy[i,j] = 0.25(facey[i-1,j]+facey[i-1,j+1]+facey[i,j]+facey[i,j+1])
     end
 end
 
-function shift!(vx,vy,ir::UnitRange{Int},jr::UnitRange{Int},w)
+function shift!(vx,vy,ir::UnitRange{Int},jr::UnitRange{Int},cell)
     for j=jr
-    	vx[ir.start-1,j]=0.5(w[ir.start-1,j]+w[ir.start,j])
+    	vx[ir.start-1,j]=0.5(cell[ir.start-1,j]+cell[ir.start,j])
     end
     for i=ir
-    	vy[i,jr.start-1]=0.5(w[i,jr.start-1]+w[i,jr.start])
+    	vy[i,jr.start-1]=0.5(cell[i,jr.start-1]+cell[i,jr.start])
     end
     for i=ir,j=jr
-    	vx[i,j] = 0.5(w[i,j]+w[i+1,j])
-    	vy[i,j] = 0.5(w[i,j]+w[i,j+1])
+    	vx[i,j] = 0.5(cell[i,j]+cell[i+1,j])
+    	vy[i,j] = 0.5(cell[i,j]+cell[i,j+1])
     end
 end
 
 # Differential operations with grid interface
-function curl(g::DualPatch,qx,qy)
-    w = zeros(g.w)
-    curl!(w,g.cellint[1],g.cellint[2],qx,qy)
-    w
+function curl(g::DualPatch,facex,facey)
+    cell = zeros(g.cell)
+    curl!(cell,g.cellint[1],g.cellint[2],facex,facey)
+    cell
 end
 
-function curl(g::DualPatch,psi)
-    qx = zeros(g.qx)
-    qy = zeros(g.qy)
+function curl(g::DualPatch,cell)
+    facex = zeros(g.facex)
+    facey = zeros(g.facey)
     # also calculate curl in ghost cells
-    curl!(qx,qy,g.cellint[1].start-1:g.cellint[1].stop,
-	        g.cellint[2].start-1:g.cellint[2].stop,psi)
-    qx, qy
+    curl!(facex,facey,g.cellint[1].start-1:g.cellint[1].stop,
+	        g.cellint[2].start-1:g.cellint[2].stop,cell)
+    facex, facey
 end
 
-function diverg(g::DualPatch,qx,qy)
-    p = zeros(g.p)
-    diverg!(p,g.cellint[1].start-1:g.cellint[1].stop,
-	      g.cellint[2].start-1:g.cellint[2].stop,qx,qy)
-    p
+function diverg(g::DualPatch,facex,facey)
+    node = zeros(g.node)
+    diverg!(node,g.cellint[1].start-1:g.cellint[1].stop,
+	      g.cellint[2].start-1:g.cellint[2].stop,facex,facey)
+    node
 end
 
-function grad(g::DualPatch,p)
-    qx = zeros(g.qx)
-    qy = zeros(g.qy)
-    grad!(qx,qy,g.cellint[1],g.cellint[2],p)
-    qx,qy
+function grad(g::DualPatch,node)
+    facex = zeros(g.facex)
+    facey = zeros(g.facey)
+    grad!(facex,facey,g.cellint[1],g.cellint[2],node)
+    facex,facey
 end
 
-function lap(g::DualPatch,psi)
-    lappsi = zeros(g.psi)
-    lap!(lappsi,g.cellint[1],g.cellint[2],psi)
-    lappsi
+function lap(g::DualPatch,cell)
+    lapcell = zeros(g.cell)
+    lap!(lappsi,g.cellint[1],g.cellint[2],cell)
+    lapcell
 end
 
-function lap(g::DualPatch,qx,qy)
-    lapqx = zeros(g.qx)
-    lapqy = zeros(g.qy)
-    lap!(lapqx,g.xfaceint[1],g.xfaceint[2],qx)
-    lap!(lapqy,g.yfaceint[1],g.yfaceint[2],qy)
-    lapqx,lapqy
+function lap(g::DualPatch,facex,facey)
+    lapfacex = zeros(g.facex)
+    lapfacey = zeros(g.facey)
+    lap!(lapfacex,g.facexint[1],g.facexint[2],facex)
+    lap!(lapfacey,g.faceyint[1],g.faceyint[2],facey)
+    lapfacex,lapfacey
 end
 
-function shift(g::DualPatch,qx,qy)
-    vx = zeros(g.dualqx)
-    vy = zeros(g.dualqy)
-    shift!(vx,vy,g.cellint[1],g.cellint[2],qx,qy)
+function shift(g::DualPatch,facex,facey)
+    vx = zeros(g.dualfacex)
+    vy = zeros(g.dualfacey)
+    shift!(vx,vy,g.cellint[1],g.cellint[2],facex,facey)
     vx, vy
 end
 
-function shift(g::DualPatch,w)
-    vx = zeros(g.dualqx)
-    vy = zeros(g.dualqy)
-    shift!(vx,vy,g.cellint[1],g.cellint[2],w)
+function shift(g::DualPatch,cell)
+    vx = zeros(g.dualfacex)
+    vy = zeros(g.dualfacey)
+    shift!(vx,vy,g.cellint[1],g.cellint[2],cell)
     vx, vy
 end
 
-function cross(g::DualPatch,w,qx,qy)
-    vx,vy = shift(g,qx,qy)
-    ux,uy = shift(g,w)
+function cross(g::DualPatch,cell,facex,facey)
+    vx,vy = shift(g,facex,facey)
+    ux,uy = shift(g,cell)
     -uy.*vy, ux.*vx
 end
 
@@ -321,51 +317,51 @@ intfact(g::Grid,a::Float64) = reshape([intfact([i,j],a) > eps(Float64) ?
 
 
 """
-    s = convolve(G,w)
+    s = convolve(G,cell)
 
-Perform a discrete convolution of grid data w with one of the Green's
+Perform a discrete convolution of grid data `cell` with one of the Green's
 function tables (the LGF or the integrating factor). This exploits the
 symmetries in these functions.
 """
-function convolve(G::Array{T,2},w::AbstractArray{T,2}) where T
-    N = size(w)
+function convolve(G::Array{T,2},cell::AbstractArray{T,2}) where T
+    N = size(cell)
 
-    Gw = zeros(w)
+    Gw = zeros(cell)
     for isrc=1:N[1],jsrc=1:N[2]
-      if abs(w[isrc,jsrc])<eps(Float64)
+      if abs(cell[isrc,jsrc])<eps(Float64)
 	         continue
 	    end
     	for itarg=1:N[1], jtarg=1:N[2]
 	    m = max(abs(isrc-itarg),abs(jsrc-jtarg))
 	    n = min(abs(isrc-itarg),abs(jsrc-jtarg))
-	    Gw[itarg,jtarg] += G[m+1,n+1]w[isrc,jsrc]
+	    Gw[itarg,jtarg] += G[m+1,n+1]cell[isrc,jsrc]
 	end
     end
     Gw
 end
 
 function convolve_fft(fftop::FFTW.FFTWPlan{T,K,false},
-        Ghat::Array{Complex{T},2},w::AbstractArray{T,2}) where {T<:AbstractFloat,K}
+        Ghat::Array{Complex{T},2},cell::AbstractArray{T,2}) where {T<:AbstractFloat,K}
 
-  wbig = mirror(zeros(w))
-  n = size(w)
-  wbig[1:n[1],1:n[2]] = w
-  what = fftop * wbig
+  cellbig = mirror(zeros(cell))
+  n = size(cell)
+  cellbig[1:n[1],1:n[2]] = cell
+  cellhat = fftop * cellbig
 
-  Gwbig = fftop \ (Ghat .* what)
+  Gwbig = fftop \ (Ghat .* cellhat)
   Gwbig[n[1]:end,n[2]:end]
 
 end
 
-convolve_fft(g::Grid,Ghat::Array{Complex{T},2},w) where T =
-        convolve_fft(g.fftop,Ghat,w)
+convolve_fft(g::Grid,Ghat::Array{Complex{T},2},cell) where T =
+        convolve_fft(g.fftop,Ghat,cell)
 
 
-L⁻¹(g::Grid,w) = convolve_fft(g,g.lgfhat,w)
-Q(g::Grid,w) = convolve_fft(g,g.qhat,w)
+L⁻¹(g::Grid,cell) = convolve_fft(g,g.lgfhat,cell)
+Q(g::Grid,cell) = convolve_fft(g,g.qhat,cell)
 
-L⁻¹_slow(g::Grid,w) = convolve(g.lgftab,w)
-Q_slow(g::Grid,w) = convolve(g.qtab,w)
+L⁻¹_slow(g::Grid,cell) = convolve(g.lgftab,cell)
+Q_slow(g::Grid,cell) = convolve(g.qtab,cell)
 
 mirror(a::AbstractArray{T,2} where T) = hcat(
   flipdim(vcat(flipdim(a[:,2:end],1),a[2:end,2:end]),2),

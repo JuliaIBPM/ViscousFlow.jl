@@ -22,7 +22,7 @@ mutable struct Domain
 
     """
     E^T operator, acting on body Lagrange points and returning data at
-    cell edges
+    cell faces
     """
     Eᵀ::Array{SparseMatrixCSC{Float64,Int},1}
 
@@ -138,24 +138,24 @@ function construct_Eᵀ(x::Vector{Float64},g::Grids.DualPatch,ddf_fcn)
         rmax += 0.5
     end
 
-    Eᵀ = [spzeros(length(g.qx)) for i = 1:Whirl2d.ndim]
+    Eᵀ = [spzeros(length(g.facex)) for i = 1:Whirl2d.ndim]
 
     # rescale the given points into local grid indexing
     xscale = (x[1]-g.xmin[1])/g.Δx
     yscale = (x[2]-g.xmin[2])/g.Δx
 
-    # x edges
-    gxscale = [i-0.5 for i=1:size(g.qx,1), j=1:size(g.qx,2)]
-    gyscale = [j for i=1:size(g.qx,1), j=1:size(g.qx,2)]
+    # x faces
+    gxscale = [i-0.5 for i=1:size(g.facex,1), j=1:size(g.facex,2)]
+    gyscale = [j for i=1:size(g.facex,1), j=1:size(g.facex,2)]
 
     tmpx = abs.(gxscale-xscale).<=rmax
     tmpy = abs.(gyscale-yscale).<=rmax
     ind = find(tmpx.&tmpy)
     Eᵀ[1][ind] = ddf_fcn(gxscale[ind]-xscale).*ddf_fcn(gyscale[ind]-yscale)
 
-    # y edges
-    gxscale = [i for i=1:size(g.qy,1), j=1:size(g.qy,2)]
-    gyscale = [j-0.5 for i=1:size(g.qy,1), j=1:size(g.qy,2)]
+    # y faces
+    gxscale = [i for i=1:size(g.facey,1), j=1:size(g.facey,2)]
+    gyscale = [j-0.5 for i=1:size(g.facey,1), j=1:size(g.facey,2)]
 
     tmpx = abs.(gxscale-xscale).<=rmax
     tmpy = abs.(gyscale-yscale).<=rmax
@@ -172,7 +172,7 @@ function construct_Eᵀ(b::Bodies.Body,g::Grids.DualPatch,ddf_fcn)
     grid `g`
     """
 
-    Eᵀ = [spzeros(length(g.qx),b.N) for i = 1:Whirl2d.ndim]
+    Eᵀ = [spzeros(length(g.facex),b.N) for i = 1:Whirl2d.ndim]
 
     for i = 1:b.N
         Eᵀtmp = construct_Eᵀ(b.x[i],g,ddf_fcn)
@@ -185,8 +185,8 @@ function construct_Eᵀ(b::Bodies.Body,g::Grids.DualPatch,ddf_fcn)
 end
 
 function construct_Eᵀ!(dom::Domain)
-    dom.Eᵀ[1] = spzeros(length(dom.grid[1].qx),dom.nbodypts)
-    dom.Eᵀ[2] = spzeros(length(dom.grid[1].qy),dom.nbodypts)
+    dom.Eᵀ[1] = spzeros(length(dom.grid[1].facex),dom.nbodypts)
+    dom.Eᵀ[2] = spzeros(length(dom.grid[1].facey),dom.nbodypts)
 
     for i = 1:dom.nbody
     	Eᵀtmp = construct_Eᵀ(dom.body[i],dom.grid[1],dom.ddf_fcn)
@@ -203,18 +203,18 @@ function construct_ECᵀ!(dom::Domain)
 
     m = dom.nbodypts
 
-    dom.ECᵀ = [spzeros(length(dom.grid[1].w),m) for i = 1:Whirl2d.ndim]
+    dom.ECᵀ = [spzeros(length(dom.grid[1].cell),m) for i = 1:Whirl2d.ndim]
 
 
-    qy = zeros(grid[1].qy)
+    qy = zeros(grid[1].facey)
     for i = 1:m
-        qx = reshape(Eᵀ[1][:,i],size(grid[1].qx))
-	      dom.ECᵀ[1][:,i] = sparse(reshape(Grids.curl(grid[1],qx,qy),length(grid[1].w),1))
+        qx = reshape(Eᵀ[1][:,i],size(grid[1].facex))
+	      dom.ECᵀ[1][:,i] = sparse(reshape(Grids.curl(grid[1],qx,qy),length(grid[1].cell),1))
     end
-    qx = zeros(grid[1].qx)
+    qx = zeros(grid[1].facex)
     for i = 1:m
-        qy = reshape(Eᵀ[2][:,i],size(grid[1].qy))
-	      dom.ECᵀ[2][:,i] = sparse(reshape(Grids.curl(grid[1],qx,qy),length(grid[1].w),1))
+        qy = reshape(Eᵀ[2][:,i],size(grid[1].facey))
+	      dom.ECᵀ[2][:,i] = sparse(reshape(Grids.curl(grid[1],qx,qy),length(grid[1].cell),1))
     end
 
 
@@ -246,11 +246,11 @@ function construct_schur!(dom)
   #    S = -ECL⁻¹QCᵀEᵀ
 
   for i = 1:m
-    stmpx = Q(grid[1],reshape(ECᵀ[1][:,i],size(grid[1].w)))
-    stmpy = Q(grid[1],reshape(ECᵀ[2][:,i],size(grid[1].w)))
+    stmpx = Q(grid[1],reshape(ECᵀ[1][:,i],size(grid[1].cell)))
+    stmpy = Q(grid[1],reshape(ECᵀ[2][:,i],size(grid[1].cell)))
 
-    stmpx = reshape(L⁻¹(grid[1],stmpx),length(grid[1].w),1)
-    stmpy = reshape(L⁻¹(grid[1],stmpy),length(grid[1].w),1)
+    stmpx = reshape(L⁻¹(grid[1],stmpx),length(grid[1].cell),1)
+    stmpy = reshape(L⁻¹(grid[1],stmpy),length(grid[1].cell),1)
 
     S[1:m,i] = -ECᵀ[1]'*stmpx
     S[1:m,i+m] = -ECᵀ[1]'*stmpy
@@ -267,11 +267,11 @@ function construct_schur!(dom)
   #    S₀ = -ECL⁻¹CᵀEᵀ
   for i = 1:m
     stmpx = reshape(
-              L⁻¹(grid[1],reshape(ECᵀ[1][:,i],size(grid[1].w))),
-              length(grid[1].w),1)
+              L⁻¹(grid[1],reshape(ECᵀ[1][:,i],size(grid[1].cell))),
+              length(grid[1].cell),1)
     stmpy = reshape(
-              L⁻¹(grid[1],reshape(ECᵀ[2][:,i],size(grid[1].w))),
-              length(grid[1].w),1)
+              L⁻¹(grid[1],reshape(ECᵀ[2][:,i],size(grid[1].cell))),
+              length(grid[1].cell),1)
 
     S₀[1:m,i] = -ECᵀ[1]'*stmpx
     S₀[1:m,i+m] = -ECᵀ[1]'*stmpy
@@ -284,6 +284,13 @@ function construct_schur!(dom)
   dom.S₀ = factorize(S₀);
 
 end
+
+function herk!(dom)
+
+
+
+end
+
 
 function Base.show(io::IO, dom::Domain)
     println(io, "Domain: xmin = $(dom.xmin), xmax = $(dom.xmax), "*

@@ -26,6 +26,34 @@ using .DDF
 include("Systems.jl")
 using .Systems
 
+mutable struct Soln
+
+  # Current time of solution
+  t::Float64
+
+  # Domain structure
+  dom::Systems.Domain
+
+  # Grid vorticity vector
+  w::Array{Float64,Whirl2d.ndim}
+
+  # Body force vector
+  f::Array{Float64,2}
+
+end
+
+function Soln(dom)
+
+  t = 0.0
+  w = zeros(dom.grid[1].cell)
+  f = zeros(dom.nbodypts,Whirl2d.ndim)
+
+  Soln(t,dom,w,f)
+end
+
+function Base.show(io::IO, s::Soln)
+    println(io, "Solution: t = $(s.t)")
+end
 
 
 
