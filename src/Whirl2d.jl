@@ -14,6 +14,23 @@ using .Utils
 
 const ndim = 2
 
+abstract type Soln end
+
+mutable struct ConstrainedSoln<:Soln
+  # Current time of solution
+  t::Float64
+
+  # Solution data
+  u
+
+  # Constraint data
+  f
+
+end
+
+include("TimeMarching.jl")
+using .TimeMarching
+
 include("Grids.jl")
 using .Grids
 
@@ -26,32 +43,11 @@ using .DDF
 include("Systems.jl")
 using .Systems
 
-mutable struct Soln
+include("NavierStokes.jl")
+using .NavierStokes
 
-  # Current time of solution
-  t::Float64
 
-  # Domain structure
-  dom::Systems.Domain
-
-  # Grid vorticity vector
-  w::Array{Float64,Whirl2d.ndim}
-
-  # Body force vector
-  f::Array{Float64,2}
-
-end
-
-function Soln(dom)
-
-  t = 0.0
-  w = zeros(dom.grid.cell)
-  f = zeros(dom.nbodypts,Whirl2d.ndim)
-
-  Soln(t,dom,w,f)
-end
-
-function Base.show(io::IO, s::Soln)
+function Base.show(io::IO, s::ConstrainedSoln)
     println(io, "Solution: t = $(s.t)")
 end
 

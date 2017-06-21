@@ -221,7 +221,6 @@ function construct_ECᵀ!(dom::DualDomain)
 
 end
 
-
 function construct_schur!(dom::DualDomain)
   # There is no need to call the ECtrans! routine prior to calling this
   # It is assumed, however, that the grid already has the LGF and integrating
@@ -286,11 +285,6 @@ function construct_schur!(dom::DualDomain)
 
 end
 
-function herk!(dom)
-
-
-
-end
 
 
 function Base.show(io::IO, dom::DualDomain)
