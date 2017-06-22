@@ -133,75 +133,45 @@ end
 
 # Differential operations
 function curl!(cell,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
-    for i=ir, j=jr
-    	cell[i,j] = -facex[i,j]+facex[i,j-1]+facey[i,j]-facey[i-1,j]
-    end
+    cell[ir,jr] = -facex[ir,jr]+facex[ir,jr-1]+facey[ir,jr]-facey[ir-1,jr]
 end
 
 function curl!(facex,facey,ir::UnitRange{Int},jr::UnitRange{Int},cell)
-    for j=jr
-    	facex[ir.stop+1,j] = cell[ir.stop+1,j+1]-cell[ir.stop+1,j]
-    end
-    for i=ir
-    	facey[i,jr.stop+1] = cell[i,jr.stop+1]-cell[i+1,jr.stop+1]
-    end
-    for i=ir, j=jr
-    	facex[i,j] = cell[i,j+1]-cell[i,j]
-	    facey[i,j] = cell[i,j]-cell[i+1,j]
-    end
+    facex[ir,jr] = cell[ir,jr+1]-cell[ir,jr]
+	  facey[ir,jr] = cell[ir,jr]-cell[ir+1,jr]
+    facex[ir.stop+1,jr] = cell[ir.stop+1,jr+1]-cell[ir.stop+1,jr]
+    facey[ir,jr.stop+1] = cell[ir,jr.stop+1]-cell[ir+1,jr.stop+1]
 end
 
 function diverg!(node,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
-    for i=ir, j=jr
-    	node[i,j] = facex[i+1,j]-facex[i,j]+facey[i,j+1]-facey[i,j]
-    end
+    node[ir,jr] = facex[ir+1,jr]-facex[ir,jr]+facey[ir,jr+1]-facey[ir,jr]
 end
 
 function grad!(facex,facey,ir::UnitRange{Int},jr::UnitRange{Int},node)
-    for i=ir, j=jr
-    	facex[i,j] = node[i,j]-node[i-1,j]
-	    facey[i,j] = node[i,j]-node[i,j-1]
-    end
-    for j=jr
-    	facey[ir.start-1,j] = node[ir.start-1,j]-node[ir.start-1,j-1]
-    end
-    for i=ir
-    	facex[i,jr.start-1] = node[i,jr.start-1]-node[i-1,jr.start-1]
-    end
+    facex[ir,jr] = node[ir,jr]-node[ir-1,jr]
+	  facey[ir,jr] = node[ir,jr]-node[ir,jr-1]
+    facey[ir.start-1,jr] = node[ir.start-1,jr]-node[ir.start-1,jr-1]
+    facex[ir,jr.start-1] = node[ir,jr.start-1]-node[ir-1,jr.start-1]
 end
 
 function lap!(lapf,ir::UnitRange{Int},jr::UnitRange{Int},f)
-    for i=ir, j=jr
-    	lapf[i,j] = f[i+1,j]+f[i-1,j]+f[i,j+1]+f[i,j-1]-4f[i,j]
-    end
+    lapf[ir,jr] = f[ir+1,jr]+f[ir-1,jr]+f[ir,jr+1]+f[ir,jr-1]-4f[ir,jr]
 end
 
 function shift!(vx,vy,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
-    for j=jr
-    	vx[ir.start-1,j] = 0.25(facex[ir.start-1,j]+facex[ir.start,j]+
-			        facex[ir.start-1,j-1]+facex[ir.start,j-1])
-    end
-    for i=ir
-	    vy[i,jr.start-1] = 0.25(facey[i-1,jr.start-1]+facey[i-1,jr.start]+
-			        facey[i,jr.start-1]+facey[i,jr.start])
-    end
-    for i=ir, j=jr
-    	vx[i,j] = 0.25(facex[i,j]+facex[i+1,j]+facex[i,j-1]+facex[i+1,j-1])
-	    vy[i,j] = 0.25(facey[i-1,j]+facey[i-1,j+1]+facey[i,j]+facey[i,j+1])
-    end
+    vx[ir.start-1,jr] = 0.25(facex[ir.start-1,jr]+facex[ir.start,jr]+
+			        facex[ir.start-1,jr-1]+facex[ir.start,jr-1])
+	  vy[ir,jr.start-1] = 0.25(facey[ir-1,jr.start-1]+facey[ir-1,jr.start]+
+			        facey[ir,jr.start-1]+facey[ir,jr.start])
+    vx[ir,jr] = 0.25(facex[ir,jr]+facex[ir+1,jr]+facex[ir,jr-1]+facex[ir+1,jr-1])
+	  vy[ir,jr] = 0.25(facey[ir-1,jr]+facey[ir-1,jr+1]+facey[ir,jr]+facey[ir,jr+1])
 end
 
 function shift!(vx,vy,ir::UnitRange{Int},jr::UnitRange{Int},cell)
-    for j=jr
-    	vx[ir.start-1,j]=0.5(cell[ir.start-1,j]+cell[ir.start,j])
-    end
-    for i=ir
-    	vy[i,jr.start-1]=0.5(cell[i,jr.start-1]+cell[i,jr.start])
-    end
-    for i=ir,j=jr
-    	vx[i,j] = 0.5(cell[i,j]+cell[i+1,j])
-    	vy[i,j] = 0.5(cell[i,j]+cell[i,j+1])
-    end
+    vx[ir.start-1,jr]=0.5(cell[ir.start-1,jr]+cell[ir.start,jr])
+    vy[ir,jr.start-1]=0.5(cell[ir,jr.start-1]+cell[ir,jr.start])
+    vx[ir,jr] = 0.5(cell[ir,jr]+cell[ir+1,jr])
+    vy[ir,jr] = 0.5(cell[ir,jr]+cell[ir,jr+1])
 end
 
 # Differential operations with grid interface
@@ -226,6 +196,8 @@ function diverg(g::DualPatch,facex,facey)
 	      g.cellint[2].start-1:g.cellint[2].stop,facex,facey)
     node
 end
+
+
 
 function grad(g::DualPatch,node)
     facex = zeros(g.facex)

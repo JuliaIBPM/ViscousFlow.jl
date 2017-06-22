@@ -36,7 +36,8 @@ function set_operators!(dom,α)
   Grids.q_table!(dom.grid,α);
 
   # Compute the body-to-grid operators
-  Systems.construct_schur!(dom)
+  #Systems.construct_schur!(dom)
+  Systems.construct_ECᵀ!(dom)
 
   # B₁ᵀ is function that acts upon data of size s.f and returns data of size s.u
   B₁ᵀ(f) = reshape(dom.ECᵀ[1]*f[:,1]+dom.ECᵀ[2]*f[:,2],size(dom.grid.cell))
@@ -47,6 +48,26 @@ function set_operators!(dom,α)
   end
   # A⁻¹ is function that acts upon data of size s.u and returns data of same size
   A⁻¹(u) = Grids.Q(dom.grid,u)
+
+  m = dom.nbodypts
+  S = zeros(2*m,2*m)
+  S₀ = zeros(2*m,2*m)
+  for i = 1:m
+    f = zeros(m,2)
+    f[i,1] = 1
+    S[:,i] = -reshape(B₂(A⁻¹(B₁ᵀ(f))),length(f),1)
+    S₀[:,i] = -reshape(B₂(B₁ᵀ(f)),length(f),1)
+  end
+  for i = 1:m
+    f = zeros(m,2)
+    f[i,2] = 1
+    S[:,i+m] = -reshape(B₂(A⁻¹(B₁ᵀ(f))),length(f),1)
+    S₀[:,i+m] = -reshape(B₂(B₁ᵀ(f)),length(f),1)
+  end
+  dom.S = factorize(S)
+  dom.S₀ = factorize(S₀)
+
+
   # S and S₀ are factorized Schur complement matrices
   S⁻¹(f) = dom.S\reshape(f,length(f),1)
   S₀⁻¹(f) = dom.S₀\reshape(f,length(f),1)

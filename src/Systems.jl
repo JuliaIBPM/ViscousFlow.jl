@@ -221,71 +221,6 @@ function construct_ECᵀ!(dom::DualDomain)
 
 end
 
-function construct_schur!(dom::DualDomain)
-  # There is no need to call the ECtrans! routine prior to calling this
-  # It is assumed, however, that the grid already has the LGF and integrating
-  # factor tables set up
-
-  #=
-   Can switch L⁻¹ to L⁻¹_slow and Q to Q_slow below in first set of
-  parentheses to evaluate using non-FFT convolution.
-  =#
-  @get Grids (L⁻¹, Q) (L⁻¹, Q)
-
-  m = dom.nbodypts
-
-  S = zeros(2*m,2*m)
-  S₀ = zeros(2*m,2*m)
-
-  # Construct the (EC)^T operator
-  construct_ECᵀ!(dom)
-
-  @get dom (grid, ECᵀ)
-
-  # Construct the Schur complement with integrating factor
-  #    S = -ECL⁻¹QCᵀEᵀ
-
-  for i = 1:m
-    stmpx = Q(grid,reshape(ECᵀ[1][:,i],size(grid.cell)))
-    stmpy = Q(grid,reshape(ECᵀ[2][:,i],size(grid.cell)))
-
-    stmpx = reshape(L⁻¹(grid,stmpx),length(grid.cell),1)
-    stmpy = reshape(L⁻¹(grid,stmpy),length(grid.cell),1)
-
-    S[1:m,i] = -ECᵀ[1]'*stmpx
-    S[1:m,i+m] = -ECᵀ[1]'*stmpy
-    S[m+1:2*m,i] = -ECᵀ[2]'*stmpx
-    S[m+1:2*m,i+m] = -ECᵀ[2]'*stmpy
-
-
-  end
-
-  # Factorize the Schur complement
-  dom.S = factorize(S);
-
-  # Construct the Schur complement without the integration factor
-  #    S₀ = -ECL⁻¹CᵀEᵀ
-  for i = 1:m
-    stmpx = reshape(
-              L⁻¹(grid,reshape(ECᵀ[1][:,i],size(grid.cell))),
-              length(grid.cell),1)
-    stmpy = reshape(
-              L⁻¹(grid,reshape(ECᵀ[2][:,i],size(grid.cell))),
-              length(grid.cell),1)
-
-    S₀[1:m,i] = -ECᵀ[1]'*stmpx
-    S₀[1:m,i+m] = -ECᵀ[1]'*stmpy
-    S₀[m+1:2*m,i] = -ECᵀ[2]'*stmpx
-    S₀[m+1:2*m,i+m] = -ECᵀ[2]'*stmpy
-
-  end
-
-  # Factorize the Schur complement
-  dom.S₀ = factorize(S₀);
-
-end
-
-
 
 function Base.show(io::IO, dom::DualDomain)
     println(io, "Domain: xmin = $(dom.xmin), xmax = $(dom.xmax)\n"*
@@ -293,7 +228,9 @@ function Base.show(io::IO, dom::DualDomain)
     for i = 1:dom.nbody
         println(io,"$(dom.body[i])")
     end
-    println(io,"$(dom.grid)")
+    if dom.grid.N[1] > 0
+      println(io,"$(dom.grid)")
+    end
 
 end
 
