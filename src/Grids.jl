@@ -147,6 +147,10 @@ function diverg!(node,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
     node[ir,jr] = facex[ir+1,jr]-facex[ir,jr]+facey[ir,jr+1]-facey[ir,jr]
 end
 
+function dualdiverg!(cell,ir::UnitRange{Int},jr::UnitRange{Int},dualfacex,dualfacey)
+    cell[ir,jr] = dualfacex[ir,jr]-dualfacex[ir-1,jr]+dualfacey[ir,jr]-dualfacey[ir,jr-1]
+end
+
 function grad!(facex,facey,ir::UnitRange{Int},jr::UnitRange{Int},node)
     facex[ir,jr] = node[ir,jr]-node[ir-1,jr]
 	  facey[ir,jr] = node[ir,jr]-node[ir,jr-1]
@@ -167,11 +171,11 @@ function shift!(vx,vy,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
 	  vy[ir,jr] = 0.25(facey[ir-1,jr]+facey[ir-1,jr+1]+facey[ir,jr]+facey[ir,jr+1])
 end
 
-function shift!(vx,vy,ir::UnitRange{Int},jr::UnitRange{Int},cell)
-    vx[ir.start-1,jr]=0.5(cell[ir.start-1,jr]+cell[ir.start,jr])
-    vy[ir,jr.start-1]=0.5(cell[ir,jr.start-1]+cell[ir,jr.start])
-    vx[ir,jr] = 0.5(cell[ir,jr]+cell[ir+1,jr])
-    vy[ir,jr] = 0.5(cell[ir,jr]+cell[ir,jr+1])
+function shift!(vx,vy,ir::UnitRange{Int},jr::UnitRange{Int},v)
+    vx[ir.start-1,jr]=0.5(v[ir.start-1,jr]+v[ir.start,jr])
+    vy[ir,jr.start-1]=0.5(v[ir,jr.start-1]+v[ir,jr.start])
+    vx[ir,jr] = 0.5(v[ir,jr]+v[ir+1,jr])
+    vy[ir,jr] = 0.5(v[ir,jr]+v[ir,jr+1])
 end
 
 # Differential operations with grid interface
@@ -180,6 +184,8 @@ function curl(g::DualPatch,facex,facey)
     curl!(cell,g.cellint[1],g.cellint[2],facex,facey)
     cell
 end
+
+curl(g::DualPatch,q::Tuple{Array{Float64,2},Array{Float64,2}}) = curl(g,q[1],q[2])
 
 function curl(g::DualPatch,cell)
     facex = zeros(g.facex)
@@ -196,6 +202,16 @@ function diverg(g::DualPatch,facex,facey)
 	      g.cellint[2].start-1:g.cellint[2].stop,facex,facey)
     node
 end
+
+diverg(g::DualPatch,q::Tuple{Array{Float64,2},Array{Float64,2}}) = diverg(g,q[1],q[2])
+
+function dualdiverg(g::DualPatch,dualfacex,dualfacey)
+    cell = zeros(g.cell)
+    dualdiverg!(cell,g.cellint[1],g.cellint[2],dualfacex,dualfacey)
+    cell
+end
+
+dualdiverg(g::DualPatch,q::Tuple{Array{Float64,2},Array{Float64,2}}) = dualdiverg(g,q[1],q[2])
 
 
 
@@ -220,6 +236,8 @@ function lap(g::DualPatch,facex,facey)
     lapfacex,lapfacey
 end
 
+lap(g::DualPatch,q::Tuple{Array{Float64,2},Array{Float64,2}}) = lap(g,q[1],q[2])
+
 function shift(g::DualPatch,facex,facey)
     vx = zeros(g.dualfacex)
     vy = zeros(g.dualfacey)
@@ -227,11 +245,13 @@ function shift(g::DualPatch,facex,facey)
     vx, vy
 end
 
+shift(g::DualPatch,q::Tuple{Array{Float64,2},Array{Float64,2}}) = shift(g,q[1],q[2])
+
 function shift(g::DualPatch,cell)
-    vx = zeros(g.dualfacex)
-    vy = zeros(g.dualfacey)
-    shift!(vx,vy,g.cellint[1],g.cellint[2],cell)
-    vx, vy
+    cellx = zeros(g.dualfacex)
+    celly = zeros(g.dualfacey)
+    shift!(cellx,celly,g.cellint[1],g.cellint[2],cell)
+    cellx, celly
 end
 
 function cross(g::DualPatch,cell,facex,facey)
@@ -273,7 +293,7 @@ intfact(n,a) = exp(-4a)besseli(n[1],2a)besseli(n[2],2a)
 Set up a table of lgf values in the upper right quadrant, centered at
 the lower left ghost cell in grid 'g'.
 """
-lgf(g::Grid) = reshape([lgf([i,j]) for i=0:g.N[1]+1 for j=0:g.N[2]+1],
+lgf(g::Grid) = reshape([lgf([i,j]) for i=0:g.N[1]+1,j=0:g.N[2]+1],
        g.N[1]+2,g.N[2]+2)
 
 """
@@ -285,7 +305,7 @@ This zeros out the values lower than machine epsilon.
 """
 intfact(g::Grid,a::Float64) = reshape([intfact([i,j],a) > eps(Float64) ?
         intfact([i,j],a) : 0.0
-        for i=0:g.N[1]+1 for j=0:g.N[2]+1], g.N[1]+2,g.N[2]+2)
+        for i=0:g.N[1]+1,j=0:g.N[2]+1], g.N[1]+2,g.N[2]+2)
 
 
 """

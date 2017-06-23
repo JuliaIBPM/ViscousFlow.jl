@@ -26,6 +26,9 @@ mutable struct ConstrainedSoln<:Soln
   # Constraint data
   f
 
+  # Auxiliary solution data
+  ψ
+
 end
 
 include("TimeMarching.jl")

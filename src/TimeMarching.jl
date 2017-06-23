@@ -21,14 +21,38 @@ struct TimeParams
 end
 
 #=
+  We seek to advance, from tⁿ to tⁿ+Δt, the solution of equations of the form
+
+  d/dt (Hu) + HB₁ᵀf =  Hr₁(u,t)
+
+  subject to the constraint
+
+  B₂u = r₂(t)
+
+  where H is the integrating factor H(tⁿ+Δt-t). Each stage of the IF-HERK algorithm
+  requires the solution of the saddle point problem
+
+   [Aⁱ  B₁ᵀ](u) = (R₁)
+   [B₂ 0  ](f̃) = (R₂)
+
+  where Aⁱ = H(t(i)-t(i+1)). Ultimately, this is solved by use of the Schur complement
+  Sⁱ = -B₂(Aⁱ)⁻¹B₁ᵀ. Note that only (Aⁱ)⁻¹ is required, not Aⁱ itself.
+
+  We assume that the algorithm here only has two different forms of (Aⁱ)⁻¹ in the
+  various stages: H(Δt/2) and H(0) = I (identity). The former is referred to as
+  A⁻¹ in the code. The solution at tⁿ is delivered in the structure `s`, and
+  returned as an updated version of itself at tⁿ+Δt. The time parameters are
+  provided in `p`. The inverses of the Schur complements corresponding to
+  H(Δt/2) and to H(0) are provided as operators S⁻¹ and S₀⁻¹, respectively.
+
   A⁻¹ is function that acts upon data of size s.u and returns data of same size
   B₁ᵀ is function that acts upon data of size s.f and returns data of size s.u
-  B₂ is function that acts upon data of size s.u and returns data of size s.f
+  B₂ is a function that acts upon data of size s and returns data of size s.f
   S and S₀ are factorized Schur complement matrices
   r₁ is function that acts upon solution structure s and returns data of size s.u
   r₂ is function that acts upon time value and returns data of size s.f
 =#
-function herk!(s::Whirl2d.Soln,p::TimeParams,A⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂)
+function ifherk!(s::Whirl2d.Soln,p::TimeParams,A⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂)
 # Advance the solution by one time step
 @get p (Δt,rk)
 
@@ -37,10 +61,10 @@ sᵢ₊₁ = deepcopy(sᵢ)
 sᵢ₊₁.t = s.t + Δt*rk.c[1]
 A⁻¹gᵢ = Δt*rk.a[1][1]*A⁻¹(r₁(sᵢ))
 qᵢ₊₁ = A⁻¹(s.u)
-sᵢ₊₁.u = qᵢ₊₁ + Qgᵢ
-sᵢ₊₁.f = -S⁻¹(B₂(sᵢ₊₁.u) - r₂(sᵢ₊₁.t))
+sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
+sᵢ₊₁.f = -S⁻¹(B₂(sᵢ₊₁) - r₂(sᵢ₊₁.t))
 A⁻¹B₁ᵀf = A⁻¹(B₁ᵀ(sᵢ₊₁.f))
-sᵢ₊₁.u -= QB₁ᵀf
+sᵢ₊₁.u -= A⁻¹B₁ᵀf
 
 w = []
 for i = 2:rk.nstage
@@ -57,16 +81,17 @@ for i = 2:rk.nstage
     sᵢ₊₁.u += Δt*rk.a[i][j]*w[j]
   end
   if i < rk.nstage
-    sᵢ₊₁.f = -S⁻¹(B₂(sᵢ₊₁.u) - r₂(sᵢ₊₁.t))
+    sᵢ₊₁.f = -S⁻¹(B₂(sᵢ₊₁) - r₂(sᵢ₊₁.t))
   else
-    sᵢ₊₁.f = -S₀⁻¹(B₂(sᵢ₊₁.u) - r₂(sᵢ₊₁.t))
+    sᵢ₊₁.f = -S₀⁻¹(B₂(sᵢ₊₁) - r₂(sᵢ₊₁.t))
   end
   A⁻¹B₁ᵀf = A⁻¹(B₁ᵀ(sᵢ₊₁.f))
   sᵢ₊₁.u -= A⁻¹B₁ᵀf
 end
-
 s = deepcopy(sᵢ₊₁)
-s.f /= Δt*rk.a[rk.nstage,rk.nstage]
+s.f /= Δt*rk.a[rk.nstage][rk.nstage]
+
+return s
 
 end
 

@@ -139,7 +139,7 @@ function construct_Eᵀ(x::Vector{Float64},g::Grids.DualPatch,ddf_fcn)
         rmax += 0.5
     end
 
-    Eᵀ = [spzeros(length(g.facex)) for i = 1:Whirl2d.ndim]
+    Eᵀ = [spzeros(length(g.facex)),spzeros(length(g.facey))]
 
     # rescale the given points into local grid indexing
     xscale = (x[1]-g.xmin[1])/g.Δx
@@ -173,7 +173,7 @@ function construct_Eᵀ(b::Bodies.Body,g::Grids.DualPatch,ddf_fcn)
     grid `g`
     """
 
-    Eᵀ = [spzeros(length(g.facex),b.N) for i = 1:Whirl2d.ndim]
+    Eᵀ = [spzeros(length(g.facex),b.N),spzeros(length(g.facey),b.N)]
 
     for i = 1:b.N
         Eᵀtmp = construct_Eᵀ(b.x[i],g,ddf_fcn)

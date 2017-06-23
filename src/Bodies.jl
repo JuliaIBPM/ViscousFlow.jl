@@ -40,11 +40,8 @@ mutable struct Body
     "coordinates of Lagrange points in inertial system"
     x::Array{Array{Float64,1},1}
 
-    "Lagrange forcing field components"
-    f::Array{Array{Float64,1},1}
-
-    "body velocity components at Lagrange points"
-    vel::Array{Array{Float64,1},1}
+    "body velocity function, which takes inputs t and position on body"
+    U
 
     "body configuration"
     config::BodyConfig
@@ -59,16 +56,13 @@ function Body(N,xtilde)
     # set up array of inertial coordinates
     x = xtilde
 
-    # set up array of forcing field
-    f = [zeros(Whirl2d.ndim) for i=1:N]
-
-    # set up zero array of body velocities
-    vel = [zeros(Whirl2d.ndim) for i=1:N]
+    # default set the body motion function to -1
+    U(t,xi) = (-1.0,0.0)
 
     # set configuration to origin and zero angle
     config = BodyConfig([0.0,0.0],0.0);
 
-    Body(N,xtilde,x,f,vel,config)
+    Body(N,xtilde,x,U,config)
 
 end
 
