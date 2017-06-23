@@ -52,7 +52,7 @@ end
   r₁ is function that acts upon solution structure s and returns data of size s.u
   r₂ is function that acts upon time value and returns data of size s.f
 =#
-function ifherk!(s::Whirl2d.Soln,p::TimeParams,A⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂)
+function ifherk!(s::Whirl2d.ConstrainedSoln,p::TimeParams,A⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂)
 # Advance the solution by one time step
 @get p (Δt,rk)
 

@@ -56,8 +56,8 @@ function Body(N,xtilde)
     # set up array of inertial coordinates
     x = xtilde
 
-    # default set the body motion function to -1
-    U(t,xi) = (-1.0,0.0)
+    # default set the body motion function to 0
+    U(t,xi) = (0.0,0.0)
 
     # set configuration to origin and zero angle
     config = BodyConfig([0.0,0.0],0.0);
@@ -116,16 +116,16 @@ end
 function Plate(N::Int,len)::Body
 
     # set up points on plate
-    x = [[len*(-0.5 + 0.5*(i-1)/(N-1)),0.0] for i=1:N]
+    x = [[len*(-0.5 + 1.0*(i-1)/(N-1)),0.0] for i=1:N]
 
     # put it at the origin, with zero angle
     Body(N,x,[0.0,0.0],0.0)
 
 end
 
-function Plate(N::Int,rad,xcent::Vector{<:Real},angle)::Body
+function Plate(N::Int,len,xcent::Vector{<:Real},angle)::Body
 
-    b = Plate(N,rad)
+    b = Plate(N,len)
     update_body!(b,BodyConfig(xcent,angle))
     b
 

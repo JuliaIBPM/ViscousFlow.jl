@@ -59,6 +59,8 @@ function DualDomain()
     S₀ = []
 
     ddf_fcn = Whirl2d.DDF.ddf_roma
+    #ddf_fcn = Whirl2d.DDF.ddf_goza
+
 
     DualDomain(xmin,xmax,grid,[],nbody,nbodypts,firstbpt,
            ddf_fcn,Eᵀ,ECᵀ,S,S₀)

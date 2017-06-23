@@ -7,6 +7,7 @@ export ddf_roma
 roma1(r) = (1+sqrt(-3r^2+1))/3;
 roma2(r) = (5-3r-sqrt(1-3(1-r)^2))/6;
 
+
 function ddf_roma(r::Float64)
     rr = abs(r)
     if rr <= 0.5
@@ -30,6 +31,27 @@ function ddf_roma(r::Array{Float64,1})
 
   f
 
+end
+
+goza(r) = exp(-π^2/36 * r^2)*sqrt(π/36);
+
+function ddf_goza(r::Float64)
+  rr = abs(r)
+  if rr <= 14
+    goza(rr)
+  else
+      0.0
+  end
+end
+
+function ddf_goza(r::Array{Float64,1})
+  rr = abs.(r)
+
+  f = zeros(rr)
+  pts = find(x -> x<=14,rr)
+  f[pts] = goza.(rr[pts])
+
+  f
 end
 
 end

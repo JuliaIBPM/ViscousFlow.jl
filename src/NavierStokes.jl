@@ -28,19 +28,47 @@ function TwoLevelBodySoln(dom::Systems.DualDomain)
   Whirl2d.ConstrainedSoln(t,w,f,ψ)
 end
 
+mutable struct PhysParams
+  U∞ :: Array{Float64}
+  Re :: Float64
+end
+
+PhysParams() = PhysParams(zeros(Whirl2d.ndim),0.0)
+
+function set_freestream!(p::PhysParams,U∞)
+  p.U∞ = U∞
+end
+
+function set_freestream(U∞)
+  p = PhysParams()
+  set_freestream!(p,U∞)
+  p
+end
+
+function set_Re!(p::PhysParams,Re)
+  p.Re = Re
+end
+
+function set_Re(Re)
+  p = PhysParams()
+  set_Re!(p,Re)
+  p
+end
+
+
 # Set forms of the convective term
 # ∇⋅(ωu)
-function N_divwu(g::Grids.DualPatch,u::Array{Float64,2})
+function N_divwu(g::Grids.DualPatch,u::Array{Float64,2},U∞::Array{Float64,1})
   @get Grids (curl, shift, dualdiverg)
    vx, vy = -shift(g,curl(g,Grids.L⁻¹(g,u)))
    wx, wy = shift(g,u)
-   dualdiverg(g,(vx+1).*wx,vy.*wy)/g.Δx
+   dualdiverg(g,(vx+U∞[1]).*wx,(vy+U∞[2]).*wy)/g.Δx
 end
-function N_divwu(g::Grids.DualPatch,s::Whirl2d.Soln)
+function N_divwu(g::Grids.DualPatch,s::Whirl2d.Soln,U∞::Array{Float64,1})
   @get Grids (curl, shift, dualdiverg)
    vx, vy = shift(g,curl(g,s.ψ))
    wx, wy = shift(g,s.u)
-   dualdiverg(g,(vx+1).*wx,vy.*wy)/g.Δx
+   dualdiverg(g,(vx+U∞[1]).*wx,(vy+U∞[2]).*wy)/g.Δx
 end
 
 #=
@@ -49,9 +77,12 @@ we wish to solve.
 
 set_operators_body sets up the operators for a Navier-Stokes solution with a body
 =#
-function set_operators_body!(dom,α)
+function set_operators_body!(dom,params)
   @get Grids (curl, shift, dualdiverg)
   @get dom (grid,nbodypts)
+
+  physparams = params[1]
+  α = params[2]
 
   # Set up the LGF and integrating factor tables
   Grids.lgf_table!(dom.grid);
@@ -104,7 +135,7 @@ function set_operators_body!(dom,α)
   S₀⁻¹(f) = reshape(dom.S₀\reshape(f,length(f),1),size(f))
 
   # r₁ is function that acts upon solution structure s and returns data of size s.u
-  r₁(s) = -N_divwu(dom.grid,s)
+  r₁(s) = -N_divwu(dom.grid,s,physparams.U∞)
 
   # r₂ is function that acts upon time value and returns data of size s.f
   # Th
@@ -112,8 +143,10 @@ function set_operators_body!(dom,α)
     vel = zeros(Float64,dom.nbodypts,2)
     for i = 1:dom.nbody
         for j = dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1
-          vel[j,1] = dom.body[i].U(t,dom.body[i].x[j]-dom.firstbpt[i]+1)[1]
-          vel[j,2] = dom.body[i].U(t,dom.body[i].x[j]-dom.firstbpt[i]+1)[2]
+          vel[j,1] = dom.body[i].U(t,dom.body[i].x[j]-dom.firstbpt[i]+1)[1] -
+                      physparams.U∞[1]
+          vel[j,2] = dom.body[i].U(t,dom.body[i].x[j]-dom.firstbpt[i]+1)[2] -
+                      physparams.U∞[2]
         end
     end
     vel
