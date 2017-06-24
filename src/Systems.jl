@@ -31,7 +31,7 @@ mutable struct DualDomain <: Domain
     """
     (EC)^T operator, acting on body Lagrange points and returning dual grid cell data
     """
-    ECᵀ::Array{SparseMatrixCSC{Float64,Int},1}
+    CᵀEᵀ::Array{SparseMatrixCSC{Float64,Int},1}
 
     """
     Schur complements (factorizations)
@@ -53,7 +53,7 @@ function DualDomain()
     nbodypts = 0
     firstbpt = []
     Eᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
-    ECᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
+    CᵀEᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
 
     S = []
     S₀ = []
@@ -63,7 +63,7 @@ function DualDomain()
 
 
     DualDomain(xmin,xmax,grid,[],nbody,nbodypts,firstbpt,
-           ddf_fcn,Eᵀ,ECᵀ,S,S₀)
+           ddf_fcn,Eᵀ,CᵀEᵀ,S,S₀)
 
 end
 
@@ -199,30 +199,41 @@ function construct_Eᵀ!(dom::DualDomain)
     end
 end
 
-function construct_ECᵀ!(dom::DualDomain)
+function construct_CᵀEᵀ!(dom::DualDomain)
 
     construct_Eᵀ!(dom)
     @get dom (grid,Eᵀ)
 
     m = dom.nbodypts
 
-    dom.ECᵀ = [spzeros(length(dom.grid.cell),m) for i = 1:Whirl2d.ndim]
+    dom.CᵀEᵀ = [spzeros(length(dom.grid.cell),m) for i = 1:Whirl2d.ndim]
 
 
     qy = zeros(grid.facey)
     for i = 1:m
         qx = reshape(Eᵀ[1][:,i],size(grid.facex))
-	      dom.ECᵀ[1][:,i] = sparse(reshape(Grids.curl(grid,qx,qy),length(grid.cell),1))
+	      dom.CᵀEᵀ[1][:,i] = sparse(reshape(Grids.curl(grid,qx,qy),length(grid.cell),1))
     end
     qx = zeros(grid.facex)
     for i = 1:m
         qy = reshape(Eᵀ[2][:,i],size(grid.facey))
-	      dom.ECᵀ[2][:,i] = sparse(reshape(Grids.curl(grid,qx,qy),length(grid.cell),1))
+	      dom.CᵀEᵀ[2][:,i] = sparse(reshape(Grids.curl(grid,qx,qy),length(grid.cell),1))
     end
 
 
 end
 
+# Set the current components of the body velocity from all bodies in the system
+function Ubody(dom::DualDomain,t::Float64)
+  vel = zeros(Float64,dom.nbodypts,2)
+  for i = 1:dom.nbody
+      for j = dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1
+        vel[j,1] = dom.body[i].U(t,dom.body[i].x[j]-dom.firstbpt[i]+1)[1]
+        vel[j,2] = dom.body[i].U(t,dom.body[i].x[j]-dom.firstbpt[i]+1)[2]
+      end
+  end
+  vel
+end
 
 function Base.show(io::IO, dom::DualDomain)
     println(io, "Domain: xmin = $(dom.xmin), xmax = $(dom.xmax)\n"*

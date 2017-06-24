@@ -56,6 +56,7 @@ function ifherk!(s::Whirl2d.ConstrainedSoln,p::TimeParams,A⁻¹,B₁ᵀ,B₂,S�
 # Advance the solution by one time step
 @get p (Δt,rk)
 
+# first stage
 sᵢ = deepcopy(s)
 sᵢ₊₁ = deepcopy(sᵢ)
 sᵢ₊₁.t = s.t + Δt*rk.c[1]
@@ -67,7 +68,7 @@ A⁻¹B₁ᵀf = A⁻¹(B₁ᵀ(sᵢ₊₁.f))
 sᵢ₊₁.u -= A⁻¹B₁ᵀf
 
 w = []
-for i = 2:rk.nstage
+for i = 2:rk.nstage-1
   sᵢ = deepcopy(sᵢ₊₁)
   sᵢ₊₁.t = s.t + Δt*rk.c[i]
   push!(w,(A⁻¹gᵢ-A⁻¹B₁ᵀf)/(Δt*rk.a[i-1][i-1]))
@@ -88,8 +89,72 @@ for i = 2:rk.nstage
   A⁻¹B₁ᵀf = A⁻¹(B₁ᵀ(sᵢ₊₁.f))
   sᵢ₊₁.u -= A⁻¹B₁ᵀf
 end
+
+# In final stage, A⁻¹ is assumed to be the identity
+i = rk.nstage
+sᵢ = deepcopy(sᵢ₊₁)
+sᵢ₊₁.t = s.t + Δt*rk.c[i]
+push!(w,(A⁻¹gᵢ-A⁻¹B₁ᵀf)/(Δt*rk.a[i-1][i-1]))
+for j = 1:i-1
+  w[j] = w[j]
+end
+A⁻¹gᵢ = Δt*rk.a[i][i]*r₁(sᵢ)
+sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
+for j = 1:i-1
+  sᵢ₊₁.u += Δt*rk.a[i][j]*w[j]
+end
+sᵢ₊₁.f = -S₀⁻¹(B₂(sᵢ₊₁) - r₂(sᵢ₊₁.t))
+A⁻¹B₁ᵀf = B₁ᵀ(sᵢ₊₁.f)
+sᵢ₊₁.u -= A⁻¹B₁ᵀf
+
+# Finalize
 s = deepcopy(sᵢ₊₁)
 s.f /= Δt*rk.a[rk.nstage][rk.nstage]
+
+return s
+
+end
+
+function ifrk!(s::Whirl2d.Soln,p::TimeParams,A⁻¹,r₁)
+# Advance the solution by one time step
+@get p (Δt,rk)
+
+sᵢ = deepcopy(s)
+sᵢ₊₁ = deepcopy(sᵢ)
+sᵢ₊₁.t = s.t + Δt*rk.c[1]
+A⁻¹gᵢ = Δt*rk.a[1][1]*A⁻¹(r₁(sᵢ))
+qᵢ₊₁ = A⁻¹(s.u)
+sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
+
+w = []
+for i = 2:rk.nstage-1
+  sᵢ = deepcopy(sᵢ₊₁)
+  sᵢ₊₁.t = s.t + Δt*rk.c[i]
+  push!(w,A⁻¹gᵢ/(Δt*rk.a[i-1][i-1]))
+  for j = 1:i-1
+    w[j] = A⁻¹(w[j])
+  end
+  A⁻¹gᵢ = Δt*rk.a[i][i]*A⁻¹(r₁(sᵢ))
+  qᵢ₊₁ = A⁻¹(qᵢ₊₁)
+  sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
+  for j = 1:i-1
+    sᵢ₊₁.u += Δt*rk.a[i][j]*w[j]
+  end
+end
+
+# In final stage, A⁻¹ is assumed to be the identity
+i = rk.nstage
+sᵢ = deepcopy(sᵢ₊₁)
+sᵢ₊₁.t = s.t + Δt*rk.c[i]
+push!(w,A⁻¹gᵢ/(Δt*rk.a[i-1][i-1]))
+A⁻¹gᵢ = Δt*rk.a[i][i]*r₁(sᵢ)
+sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
+for j = 1:i-1
+  sᵢ₊₁.u += Δt*rk.a[i][j]*w[j]
+end
+
+# finalize
+s = deepcopy(sᵢ₊₁)
 
 return s
 
