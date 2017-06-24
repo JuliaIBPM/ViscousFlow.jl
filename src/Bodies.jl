@@ -51,7 +51,7 @@ end
 # Set up blank body
 Body() = Body(0,[])
 
-function Body(N,xtilde,nl=1)
+function Body(N,xtilde)
 
     # set up array of inertial coordinates
     x = xtilde
@@ -59,6 +59,7 @@ function Body(N,xtilde,nl=1)
     # default set the body motion function to 0 at every level
     #U = [(t,xi)->[0.0,0.0] for i = 1:nl]
     U = Function[]
+    push!(U,(t,xi)->[0.0,0.0])
 
     # set configuration to origin and zero angle
     config = BodyConfig([0.0,0.0],0.0);
