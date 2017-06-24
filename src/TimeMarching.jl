@@ -81,11 +81,7 @@ for i = 2:rk.nstage-1
   for j = 1:i-1
     sᵢ₊₁.u += Δt*rk.a[i][j]*w[j]
   end
-  if i < rk.nstage
-    sᵢ₊₁.f = -S⁻¹(B₂(sᵢ₊₁) - r₂(sᵢ₊₁.t))
-  else
-    sᵢ₊₁.f = -S₀⁻¹(B₂(sᵢ₊₁) - r₂(sᵢ₊₁.t))
-  end
+  sᵢ₊₁.f = -S⁻¹(B₂(sᵢ₊₁) - r₂(sᵢ₊₁.t))
   A⁻¹B₁ᵀf = A⁻¹(B₁ᵀ(sᵢ₊₁.f))
   sᵢ₊₁.u -= A⁻¹B₁ᵀf
 end

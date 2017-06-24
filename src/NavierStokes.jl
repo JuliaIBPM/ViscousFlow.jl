@@ -83,9 +83,10 @@ function N_divwu(g::Grids.DualPatch,u::Array{Float64,2},U∞::Array{Float64,1})
    wx, wy = shift(g,u)
    dualdiverg(g,(vx+U∞[1]).*wx,(vy+U∞[2]).*wy)/g.Δx
 end
-function N_divwu(g::Grids.DualPatch,s::Whirl2d.Soln,U∞::Array{Float64,1})
+function N_divwu(g::Grids.DualPatch,s::Whirl2d.SolnType,U∞::Array{Float64,1})
   @get Grids (curl, shift, dualdiverg)
-   vx, vy = shift(g,curl(g,s.ψ))
+   vx, vy = shift(g,curl(g,-Grids.L⁻¹(g,s.u)))
+   #vx, vy = shift(g,curl(g,s.ψ))
    wx, wy = shift(g,s.u)
    dualdiverg(g,(vx+U∞[1]).*wx,(vy+U∞[2]).*wy)/g.Δx
 end
@@ -128,8 +129,8 @@ function set_operators!(dom,params)
 
   # r₁ is function that acts upon solution structure s and returns data of size s.u
   # In Navier-Stokes problem, this provides the negative of the convective term.
-  #r₁(s) = -N_divwu(dom.grid,s,physparams.U∞)
-  r₁(s) = zeros(s.u)
+  r₁(s) = -N_divwu(dom.grid,s,physparams.U∞)
+  #r₁(s) = zeros(s.u)
 
 
   return A⁻¹,r₁
@@ -159,7 +160,7 @@ function set_operators_body!(dom,params)
 
   # B₂! is function that takes solution array `s` (and acts upon s.u) and returns
   # data of size s.f. It also modifies the auxiliary variable in `s`
-  B₂!(s::Whirl2d.Soln) = -ECL⁻¹!(dom,s.u,s.ψ)
+  B₂!(s::Whirl2d.SolnType) = -ECL⁻¹!(dom,s.u,s.ψ)
   B₂(u) = -ECL⁻¹(dom,u)
 
   # A⁻¹ is function that acts upon data of size s.u and returns data of same size

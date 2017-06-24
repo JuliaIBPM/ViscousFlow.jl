@@ -14,7 +14,9 @@ using .Utils
 
 const ndim = 2
 
-mutable struct Soln
+abstract type SolnType end
+
+mutable struct Soln <: SolnType
   # Current time of solution
   t::Float64
 
@@ -26,7 +28,7 @@ mutable struct Soln
 
 end
 
-mutable struct ConstrainedSoln
+mutable struct ConstrainedSoln <: SolnType
   # Current time of solution
   t::Float64
 
