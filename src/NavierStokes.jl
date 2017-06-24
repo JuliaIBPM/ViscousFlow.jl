@@ -7,6 +7,7 @@ import Whirl2d.Bodies
 import Whirl2d.Systems
 import Whirl2d.TimeMarching
 
+# For problems without a body
 function Soln(dom::Systems.DualDomain)
 
   t = 0.0
@@ -20,6 +21,7 @@ function Soln(dom::Systems.DualDomain)
   Whirl2d.Soln(t,w,ψ)
 end
 
+# For Navier-Stokes problems with a body
 function BodySoln(dom::Systems.DualDomain)
 
   t = 0.0
@@ -36,8 +38,8 @@ function BodySoln(dom::Systems.DualDomain)
   Whirl2d.ConstrainedSoln(t,w,f,ψ)
 end
 
+# Designated for two-level asymptotic solutions
 function TwoLevelBodySoln(dom::Systems.DualDomain)
-  # Designated for two-level asymptotic solutions
 
   t = 0.0
   w = [zeros(dom.grid.cell), zeros(dom.grid.cell)]
@@ -77,20 +79,22 @@ end
 
 # Set forms of the convective term
 # ∇⋅(ωu)
+# This version computes a fresh streamfunction
 function N_divwu(g::Grids.DualPatch,u::Array{Float64,2},U∞::Array{Float64,1})
   @get Grids (curl, shift, dualdiverg)
    vx, vy = shift(g,curl(g,-Grids.L⁻¹(g,u)))
    wx, wy = shift(g,u)
    dualdiverg(g,(vx+U∞[1]).*wx,(vy+U∞[2]).*wy)/g.Δx
 end
+# This form makes use of the streamfunction already in the solution structure
 function N_divwu(g::Grids.DualPatch,s::Whirl2d.SolnType,U∞::Array{Float64,1})
   @get Grids (curl, shift, dualdiverg)
-   vx, vy = shift(g,curl(g,-Grids.L⁻¹(g,s.u)))
-   #vx, vy = shift(g,curl(g,s.ψ))
+   vx, vy = shift(g,curl(g,s.ψ))
    wx, wy = shift(g,s.u)
    dualdiverg(g,(vx+U∞[1]).*wx,(vy+U∞[2]).*wy)/g.Δx
 end
 
+# Set functions that apply body-grid operators
 CᵀEᵀ(dom::Systems.DualDomain,f) =
       reshape(dom.CᵀEᵀ[1]*f[:,1]+dom.CᵀEᵀ[2]*f[:,2],size(dom.grid.cell))
 
@@ -127,13 +131,16 @@ function set_operators!(dom,params)
   # A⁻¹ is function that acts upon data of size s.u and returns data of same size
   A⁻¹(u) = Grids.Q(dom.grid,u)
 
+  # L⁻¹ is function that acts upon data of size s.u and returns data of same size
+  L⁻¹(u) = Grids.L⁻¹(dom.grid,u)
+
   # r₁ is function that acts upon solution structure s and returns data of size s.u
   # In Navier-Stokes problem, this provides the negative of the convective term.
-  r₁(s) = -N_divwu(dom.grid,s,physparams.U∞)
+  r₁(s) = -N_divwu(dom.grid,s.u,physparams.U∞)
   #r₁(s) = zeros(s.u)
 
 
-  return A⁻¹,r₁
+  return A⁻¹,L⁻¹,r₁
 end
 
 
@@ -166,6 +173,9 @@ function set_operators_body!(dom,params)
   # A⁻¹ is function that acts upon data of size s.u and returns data of same size
   A⁻¹(u) = Grids.Q(dom.grid,u)
 
+  # L⁻¹ is function that acts upon data of size s.u and returns data of same size
+  L⁻¹(u) = Grids.L⁻¹(dom.grid,u)
+
   # Compute Schur complements and their inverses
   m = dom.nbodypts
   S = zeros(2*m,2*m)
@@ -192,7 +202,7 @@ function set_operators_body!(dom,params)
 
   # r₁ is function that acts upon solution structure s and returns data of size s.u
   # In Navier-Stokes problem, this provides the negative of the convective term.
-  r₁(s) = -N_divwu(dom.grid,s,physparams.U∞)
+  r₁(s) = -N_divwu(dom.grid,s.u,physparams.U∞)
 
   # r₂ is function that acts upon time value and returns data of size s.f
   # In Navier-Stokes problem, this specifies the body velocity (minus the free
@@ -200,21 +210,48 @@ function set_operators_body!(dom,params)
   # Should allow U∞ to be time-varying function.
   r₂(t) = Systems.Ubody(dom,t) - transpose(repmat(physparams.U∞,1,dom.nbodypts))
 
-  return A⁻¹,B₁ᵀ,B₂!,S⁻¹,S₀⁻¹,r₁,r₂
+  return A⁻¹,L⁻¹,B₁ᵀ,B₂!,S⁻¹,S₀⁻¹,r₁,r₂
 end
 
 function set_operators_two_level_body!(dom,params)
 
-  # Set these operators to accept the
+  # Set these operators to accept multiple levels of solution
+  physparams = params[1]
+  α = params[2]
 
-  A⁻¹1,B₁ᵀ1,B₂1!,S⁻¹1,S₀⁻¹1,r₁1,r₂1 = set_operators_body!(dom,params)
+  A⁻¹1,L⁻¹1,B₁ᵀ1,B₂1!,S⁻¹1,S₀⁻¹1,r₁1,r₂1 = set_operators_body!(dom,params)
 
   A⁻¹(u) = [A⁻¹1(u[1]), A⁻¹1(u[2])]
+
+  L⁻¹(u) = [L⁻¹1(u[1]), L⁻¹1(u[2])]
+
 
   # B₁ᵀ is function that acts upon data of size s.f and returns data of size s.u
   B₁ᵀ(f) = [B₁ᵀ1(f[1]), B₁ᵀ1(f[2])]
 
-  B₂!
+  # B₂! is function that takes solution array `s` (and acts upon s.u) and returns
+  # data of size s.f. It also modifies the auxiliary variables in `s`
+  B₂!(s::Whirl2d.SolnType) = [-ECL⁻¹!(dom,s.u[1],s.ψ[1]), -ECL⁻¹!(dom,s.u[2],s.ψ[2])]
+  B₂(u) = [-ECL⁻¹(dom,u[1]), -ECL⁻¹(dom,u[2])]
+
+  # These functions take in data of size s.f and return data of the same size.
+  # They produce the inverse of the Schur complement.
+  S⁻¹(f) = [S⁻¹1(f[1]), S⁻¹1(f[2])]
+  S₀⁻¹(f) = [S₀⁻¹1(f[1]), S₀⁻¹1(f[2])]
+
+  # r₁ is function that acts upon solution structure s and returns data of size s.u
+  # In two-level asymptotic problem, there is no convective term at the first
+  # asymptotic level, and at the second level it uses the convective term based
+  # on the first level solution
+  r₁(s) = -[zeros(size(s.u[1])), N_divwu(dom.grid,s.u[1],physparams.U∞)]
+
+  # r₂ is function that acts upon time value and returns data of size s.f
+  # This specifies the body velocity (minus the free stream).
+  # There is no free stream at the second asymptotic level.
+  r₂(t) = [Systems.Ubody(dom,t,1) - transpose(repmat(physparams.U∞,1,dom.nbodypts)),
+            Systems.Ubody(dom,t,2)]
+
+  return A⁻¹,L⁻¹,B₁ᵀ,B₂!,S⁻¹,S₀⁻¹,r₁,r₂
 
 end
 

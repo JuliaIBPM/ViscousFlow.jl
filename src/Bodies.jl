@@ -41,7 +41,7 @@ mutable struct Body
     x::Array{Array{Float64,1},1}
 
     "body velocity function, which takes inputs t and position on body"
-    U
+    U::Array{Function}
 
     "body configuration"
     config::BodyConfig
@@ -51,22 +51,22 @@ end
 # Set up blank body
 Body() = Body(0,[])
 
-function Body(N,xtilde)
+function Body(N,xtilde,nl=1)
 
     # set up array of inertial coordinates
     x = xtilde
 
-    # default set the body motion function to 0
-    U(t,xi) = (0.0,0.0)
+    # default set the body motion function to 0 at every level
+    #U = [(t,xi)->[0.0,0.0] for i = 1:nl]
+    U = Function[]
 
     # set configuration to origin and zero angle
     config = BodyConfig([0.0,0.0],0.0);
 
     Body(N,xtilde,x,U,config)
-
 end
 
-function Body(N,xtilde,config)
+function Body(N,xtilde,config::BodyConfig)
 
     b = Body(N,xtilde)
     update_body!(b,config)
@@ -74,7 +74,7 @@ function Body(N,xtilde,config)
 
 end
 
-Body(N,xtilde,xref,angle) = Body(N,xtilde,BodyConfig(xref,angle))
+Body(N,xtilde,xref::Vector{Float64},angle::Float64) = Body(N,xtilde,BodyConfig(xref,angle))
 
 function dims(body::Body)
     xmin = Inf*ones(Whirl2d.ndim)
@@ -91,8 +91,13 @@ function update_body!(body::Body,config::BodyConfig)
     body.x = transform(body.xtilde,config)
 end
 
-function set_body_velocities!(body::Body,vel::Array{Array{Float64,1},1})
-    body.vel = vel
+# Set the body motion function at level `l`
+function set_velocity!(body::Body,U::Function,l=1)
+  if l > length(body.U)
+    push!(body.U,U)
+  else
+    body.U[l] = U
+  end
 end
 
 function Circle(N::Int,rad)::Body
@@ -123,7 +128,7 @@ function Plate(N::Int,len)::Body
 
 end
 
-function Plate(N::Int,len,xcent::Vector{<:Real},angle)::Body
+function Plate(N::Int,len,xcent::Vector{<:Real},angle::Float64)::Body
 
     b = Plate(N,len)
     update_body!(b,BodyConfig(xcent,angle))

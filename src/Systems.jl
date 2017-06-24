@@ -224,12 +224,13 @@ function construct_CᵀEᵀ!(dom::DualDomain)
 end
 
 # Set the current components of the body velocity from all bodies in the system
-function Ubody(dom::DualDomain,t::Float64)
+# Set them at level l
+function Ubody(dom::DualDomain,t::Float64,l=1)
   vel = zeros(Float64,dom.nbodypts,2)
   for i = 1:dom.nbody
       for j = dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1
-        vel[j,1] = dom.body[i].U(t,dom.body[i].x[j]-dom.firstbpt[i]+1)[1]
-        vel[j,2] = dom.body[i].U(t,dom.body[i].x[j]-dom.firstbpt[i]+1)[2]
+        vel[j,1] = dom.body[i].U[l](t,dom.body[i].x[j]-dom.firstbpt[i]+1)[1]
+        vel[j,2] = dom.body[i].U[l](t,dom.body[i].x[j]-dom.firstbpt[i]+1)[2]
       end
   end
   vel
