@@ -62,10 +62,10 @@ sᵢ₊₁ = deepcopy(sᵢ)
 sᵢ₊₁.t = s.t + Δt*rk.c[1]
 A⁻¹gᵢ = Δt*rk.a[1][1]*A⁻¹(r₁(sᵢ,sᵢ₊₁.t))
 qᵢ₊₁ = A⁻¹(s.u)
-sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
-sᵢ₊₁.f = -S⁻¹(B₂(sᵢ₊₁) - r₂(sᵢ,sᵢ₊₁.t))
+@. sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
+@. sᵢ₊₁.f = -S⁻¹(B₂(sᵢ₊₁) - r₂(sᵢ,sᵢ₊₁.t))
 A⁻¹B₁ᵀf = A⁻¹(B₁ᵀ(sᵢ₊₁.f))
-sᵢ₊₁.u -= A⁻¹B₁ᵀf
+@. sᵢ₊₁.u -= A⁻¹B₁ᵀf
 
 w = []
 for i = 2:rk.nstage-1
@@ -77,13 +77,13 @@ for i = 2:rk.nstage-1
   end
   A⁻¹gᵢ = Δt*rk.a[i][i]*A⁻¹(r₁(sᵢ,sᵢ₊₁.t))
   qᵢ₊₁ = A⁻¹(qᵢ₊₁)
-  sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
+  @. sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
   for j = 1:i-1
-    sᵢ₊₁.u += Δt*rk.a[i][j]*w[j]
+    @. sᵢ₊₁.u += Δt*rk.a[i][j]*w[j]
   end
-  sᵢ₊₁.f = -S⁻¹(B₂(sᵢ₊₁) - r₂(sᵢ,sᵢ₊₁.t))
+  @.  sᵢ₊₁.f = -S⁻¹(B₂(sᵢ₊₁) - r₂(sᵢ,sᵢ₊₁.t))
   A⁻¹B₁ᵀf = A⁻¹(B₁ᵀ(sᵢ₊₁.f))
-  sᵢ₊₁.u -= A⁻¹B₁ᵀf
+  @. sᵢ₊₁.u -= A⁻¹B₁ᵀf
 end
 
 # In final stage, A⁻¹ is assumed to be the identity
@@ -95,13 +95,13 @@ for j = 1:i-1
   w[j] = w[j]
 end
 A⁻¹gᵢ = Δt*rk.a[i][i]*r₁(sᵢ,sᵢ₊₁.t)
-sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
+@. sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
 for j = 1:i-1
-  sᵢ₊₁.u += Δt*rk.a[i][j]*w[j]
+  @. sᵢ₊₁.u += Δt*rk.a[i][j]*w[j]
 end
-sᵢ₊₁.f = -S₀⁻¹(B₂(sᵢ₊₁) - r₂(sᵢ,sᵢ₊₁.t))
+@. sᵢ₊₁.f = -S₀⁻¹(B₂(sᵢ₊₁) - r₂(sᵢ,sᵢ₊₁.t))
 A⁻¹B₁ᵀf = B₁ᵀ(sᵢ₊₁.f)
-sᵢ₊₁.u -= A⁻¹B₁ᵀf
+@. sᵢ₊₁.u -= A⁻¹B₁ᵀf
 
 # Finalize
 s = deepcopy(sᵢ₊₁)
@@ -120,7 +120,7 @@ sᵢ₊₁ = deepcopy(sᵢ)
 sᵢ₊₁.t = s.t + Δt*rk.c[1]
 A⁻¹gᵢ = Δt*rk.a[1][1]*A⁻¹(r₁(sᵢ,sᵢ₊₁.t))
 qᵢ₊₁ = A⁻¹(s.u)
-sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
+@. sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
 
 w = []
 for i = 2:rk.nstage-1
@@ -132,9 +132,9 @@ for i = 2:rk.nstage-1
   end
   A⁻¹gᵢ = Δt*rk.a[i][i]*A⁻¹(r₁(sᵢ,sᵢ₊₁.t))
   qᵢ₊₁ = A⁻¹(qᵢ₊₁)
-  sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
+  @. sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
   for j = 1:i-1
-    sᵢ₊₁.u += Δt*rk.a[i][j]*w[j]
+    @. sᵢ₊₁.u += Δt*rk.a[i][j]*w[j]
   end
 end
 
@@ -144,9 +144,9 @@ sᵢ = deepcopy(sᵢ₊₁)
 sᵢ₊₁.t = s.t + Δt*rk.c[i]
 push!(w,A⁻¹gᵢ/(Δt*rk.a[i-1][i-1]))
 A⁻¹gᵢ = Δt*rk.a[i][i]*r₁(sᵢ,sᵢ₊₁.t)
-sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
+@. sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
 for j = 1:i-1
-  sᵢ₊₁.u += Δt*rk.a[i][j]*w[j]
+  @. sᵢ₊₁.u += Δt*rk.a[i][j]*w[j]
 end
 
 # finalize
