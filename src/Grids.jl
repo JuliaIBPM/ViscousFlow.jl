@@ -158,6 +158,17 @@ function grad!(facex,facey,ir::UnitRange{Int},jr::UnitRange{Int},node)
     facex[ir,jr.start-1] = node[ir,jr.start-1]-node[ir-1,jr.start-1]
 end
 
+function grad!(gradface,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
+    irnode = ir.start-1:ir.stop
+    jrnode = jr.start-1:jr.stop
+    gradface[1,1][irnode,jrnode] =
+                           facex[irnode+1,jrnode]-facex[irnode,jrnode] # node
+    gradface[1,2][ir,jr] = facex[ir,jr]-facex[ir,jr-1] # cell
+    gradface[2,1][ir,jr] = facey[ir,jr]-facey[ir-1,jr] # cell
+    gradface[2,2][irnode,jrnode] =
+                           facey[irnode,jrnode+1]-facey[irnode,jrnode] # node
+end
+
 function lap!(lapf,ir::UnitRange{Int},jr::UnitRange{Int},f)
     lapf[ir,jr] = f[ir+1,jr]+f[ir-1,jr]+f[ir,jr+1]+f[ir,jr-1]-4f[ir,jr]
 end
@@ -220,6 +231,14 @@ function grad(g::DualPatch,node)
     facey = zeros(g.facey)
     grad!(facex,facey,g.cellint[1],g.cellint[2],node)
     facex,facey
+end
+
+function grad(g::DualPatch,facex,facey)
+    gradface = Array{Array{Float64,2}}(2,2)
+    gradface[1,1] = gradface[2,2] = zeros(g.node)
+    gradface[1,2] = gradface[2,1] = zeros(g.cell)
+    grad!(gradface,g.cellint[1],g.cellint[2],facex,facey)
+    gradface
 end
 
 function lap(g::DualPatch,cell)

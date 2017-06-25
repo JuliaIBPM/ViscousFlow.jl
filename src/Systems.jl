@@ -36,6 +36,11 @@ mutable struct DualDomain <: Domain
     CᵀEᵀ::Array{SparseMatrixCSC{Float64,Int},1}
 
     """
+    (ẼG̃)ᵀ operator, acting on body Lagrange points and returning grid face data
+    """
+    G̃ᵀẼᵀ::Array{SparseMatrixCSC{Float64,Int},2}
+
+    """
     Schur complements (factorizations)
     S is Schur complement with the integrating factor, S = -ECL⁻¹QCᵀEᵀ
     S₀ is Schur complement without the integrating factor, S₀ = -ECL⁻¹CᵀEᵀ
@@ -57,6 +62,7 @@ function DualDomain()
     Eᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
     Ẽᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
     CᵀEᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
+    G̃ᵀẼᵀ = [spzeros(0) for i=1:Whirl2d.ndim,j=1:Whirl2d.ndim]
 
     S = []
     S₀ = []
@@ -66,7 +72,7 @@ function DualDomain()
 
 
     DualDomain(xmin,xmax,grid,[],nbody,nbodypts,firstbpt,
-           ddf_fcn,Eᵀ,Ẽᵀ,CᵀEᵀ,S,S₀)
+           ddf_fcn,Eᵀ,Ẽᵀ,CᵀEᵀ,G̃ᵀẼᵀ,S,S₀)
 
 end
 
@@ -258,11 +264,11 @@ end
 function construct_CᵀEᵀ!(dom::DualDomain)
 
     construct_Eᵀ!(dom)
-    @get dom (grid,Eᵀ)
+    @get dom (grid,Eᵀ,Ẽᵀ)
 
     m = dom.nbodypts
 
-    dom.CᵀEᵀ = [spzeros(length(dom.grid.cell),m) for i = 1:Whirl2d.ndim]
+    dom.CᵀEᵀ = [spzeros(length(grid.cell),m) for i = 1:Whirl2d.ndim]
 
 
     qy = zeros(grid.facey)
@@ -276,8 +282,26 @@ function construct_CᵀEᵀ!(dom::DualDomain)
 	      dom.CᵀEᵀ[2][:,i] = sparse(reshape(Grids.curl(grid,qx,qy),length(grid.cell),1))
     end
 
+    # Construct ẼG̃ operator, which maps grid face data to the body points
+    dom.G̃ᵀẼᵀ = Array{SparseMatrixCSC{Float64,Int}}(2,2)
+    dom.G̃ᵀẼᵀ[1,1] = dom.G̃ᵀẼᵀ[2,1] = spzeros(length(grid.facex),m)
+    dom.G̃ᵀẼᵀ[1,2] = dom.G̃ᵀẼᵀ[2,2] = spzeros(length(grid.facey),m)
+
+    for i = 1:m
+        # Lagrange points to nodes
+        facex,facey = Grids.grad(grid,reshape(Ẽᵀ[2][:,i],size(grid.node)))
+	      dom.G̃ᵀẼᵀ[1,1][:,i] = sparse(reshape(-facex,length(grid.facex),1))
+        dom.G̃ᵀẼᵀ[2,2][:,i] = sparse(reshape(-facey,length(grid.facey),1))
+        # Lagrange points to cell centers
+        facex,facey = Grids.curl(grid,reshape(Ẽᵀ[1][:,i],size(grid.cell)))
+        dom.G̃ᵀẼᵀ[1,2][:,i] = sparse(reshape(facey,length(grid.facey),1))
+        dom.G̃ᵀẼᵀ[2,1][:,i] = sparse(reshape(-facex,length(grid.facex),1))
+    end
+
 
 end
+
+
 
 # Set the current components of the body velocity from all bodies in the system
 # Set them at level l

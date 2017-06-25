@@ -98,6 +98,19 @@ end
 CᵀEᵀ(dom::Systems.DualDomain,f) =
       reshape(dom.CᵀEᵀ[1]*f[:,1]+dom.CᵀEᵀ[2]*f[:,2],size(dom.grid.cell))
 
+function ẼG̃(dom::Systems.DualDomain,qx,qy)
+  f = [zeros(dom.nbodypts) for i=1:Whirl2d.ndim, j = 1:Whirl2d.ndim]
+  f[1,1] = dom.G̃ᵀẼᵀ[1,1]'*squeeze(reshape(qx,length(qx),1),2)
+  f[1,2] = dom.G̃ᵀẼᵀ[2,1]'*squeeze(reshape(qx,length(qx),1),2)
+  f[2,1] = dom.G̃ᵀẼᵀ[1,2]'*squeeze(reshape(qy,length(qy),1),2)
+  f[2,2] = dom.G̃ᵀẼᵀ[2,2]'*squeeze(reshape(qy,length(qy),1),2)
+  f
+end
+
+function ẼG̃CL⁻¹(dom,u)
+  qx,qy = Grids.curl(dom.grid,-Grids.L⁻¹(dom.grid,u))
+  ẼG̃(dom,qx,qy)
+end
 
 function ECL⁻¹!(dom,u,ψ)
   # This version remembers the streamfunction as the auxiliary variable in
