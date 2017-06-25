@@ -22,14 +22,16 @@ mutable struct DualDomain <: Domain
     ddf_fcn
 
     """
-    E^T operator, acting on body Lagrange points and returning data at
+    Eᵀ operator, acting on body Lagrange points and returning data at
     cell faces
+    Ẽᵀ operator, acting on body Lagrange points and returning data at cell
+    centers and nodes
     """
     Eᵀ::Array{SparseMatrixCSC{Float64,Int},1}
-
+    Ẽᵀ::Array{SparseMatrixCSC{Float64,Int},1}
 
     """
-    (EC)^T operator, acting on body Lagrange points and returning dual grid cell data
+    (EC)ᵀ operator, acting on body Lagrange points and returning dual grid cell data
     """
     CᵀEᵀ::Array{SparseMatrixCSC{Float64,Int},1}
 
@@ -53,6 +55,7 @@ function DualDomain()
     nbodypts = 0
     firstbpt = []
     Eᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
+    Ẽᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
     CᵀEᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
 
     S = []
@@ -63,7 +66,7 @@ function DualDomain()
 
 
     DualDomain(xmin,xmax,grid,[],nbody,nbodypts,firstbpt,
-           ddf_fcn,Eᵀ,CᵀEᵀ,S,S₀)
+           ddf_fcn,Eᵀ,Ẽᵀ,CᵀEᵀ,S,S₀)
 
 end
 
@@ -148,8 +151,8 @@ function construct_Eᵀ(x::Vector{Float64},g::Grids.DualPatch,ddf_fcn)
     yscale = (x[2]-g.xmin[2])/g.Δx
 
     # x faces
-    gxscale = [i-0.5 for i=1:size(g.facex,1), j=1:size(g.facex,2)]
-    gyscale = [j for i=1:size(g.facex,1), j=1:size(g.facex,2)]
+    gxscale = [i+0.5-g.ifirst[1] for i=1:size(g.facex,1), j=1:size(g.facex,2)]
+    gyscale = [j+1.0-g.ifirst[2] for i=1:size(g.facex,1), j=1:size(g.facex,2)]
 
     tmpx = abs.(gxscale-xscale).<=rmax
     tmpy = abs.(gyscale-yscale).<=rmax
@@ -157,8 +160,48 @@ function construct_Eᵀ(x::Vector{Float64},g::Grids.DualPatch,ddf_fcn)
     Eᵀ[1][ind] = ddf_fcn(gxscale[ind]-xscale).*ddf_fcn(gyscale[ind]-yscale)
 
     # y faces
-    gxscale = [i for i=1:size(g.facey,1), j=1:size(g.facey,2)]
-    gyscale = [j-0.5 for i=1:size(g.facey,1), j=1:size(g.facey,2)]
+    gxscale = [i+1.0-g.ifirst[1] for i=1:size(g.facey,1), j=1:size(g.facey,2)]
+    gyscale = [j+0.5-g.ifirst[2] for i=1:size(g.facey,1), j=1:size(g.facey,2)]
+
+    tmpx = abs.(gxscale-xscale).<=rmax
+    tmpy = abs.(gyscale-yscale).<=rmax
+    ind = find(tmpx.&tmpy)
+    Eᵀ[2][ind] = ddf_fcn(gxscale[ind]-xscale).*ddf_fcn(gyscale[ind]-yscale)
+
+    return Eᵀ
+
+end
+
+function construct_Eᵀ_cellnode(x::Vector{Float64},g::Grids.DualPatch,ddf_fcn)
+    """
+    construct body to grid regularization between point `x` and dual
+    grid `g`
+    """
+
+    # find the support of the discrete delta function
+    rmax = 0.0
+    while abs(ddf_fcn(rmax))+abs(ddf_fcn(rmax+1e-5)) > 0.0
+        rmax += 0.5
+    end
+
+    Eᵀ = [spzeros(length(g.cell)),spzeros(length(g.node))]
+
+    # rescale the given points into local grid indexing
+    xscale = (x[1]-g.xmin[1])/g.Δx
+    yscale = (x[2]-g.xmin[2])/g.Δx
+
+    # cell centers
+    gxscale = [i+0.5-g.ifirst[1] for i=1:size(g.cell,1), j=1:size(g.cell,2)]
+    gyscale = [j+0.5-g.ifirst[2] for i=1:size(g.cell,1), j=1:size(g.cell,2)]
+
+    tmpx = abs.(gxscale-xscale).<=rmax
+    tmpy = abs.(gyscale-yscale).<=rmax
+    ind = find(tmpx.&tmpy)
+    Eᵀ[1][ind] = ddf_fcn(gxscale[ind]-xscale).*ddf_fcn(gyscale[ind]-yscale)
+
+    # cell nodes
+    gxscale = [i+1.0-g.ifirst[1] for i=1:size(g.node,1), j=1:size(g.node,2)]
+    gyscale = [j+1.0-g.ifirst[2] for i=1:size(g.node,1), j=1:size(g.node,2)]
 
     tmpx = abs.(gxscale-xscale).<=rmax
     tmpy = abs.(gyscale-yscale).<=rmax
@@ -176,14 +219,19 @@ function construct_Eᵀ(b::Bodies.Body,g::Grids.DualPatch,ddf_fcn)
     """
 
     Eᵀ = [spzeros(length(g.facex),b.N),spzeros(length(g.facey),b.N)]
+    Ẽᵀ = [spzeros(length(g.cell),b.N),spzeros(length(g.node),b.N)]
 
     for i = 1:b.N
         Eᵀtmp = construct_Eᵀ(b.x[i],g,ddf_fcn)
     	  Eᵀ[1][:,i] = Eᵀtmp[1]
 	      Eᵀ[2][:,i] = Eᵀtmp[2]
+        Eᵀtmp = construct_Eᵀ_cellnode(b.x[i],g,ddf_fcn)
+        Ẽᵀ[1][:,i] = Eᵀtmp[1]
+        Ẽᵀ[2][:,i] = Eᵀtmp[2]
+
     end
 
-    return Eᵀ
+    return Eᵀ, Ẽᵀ
 
 end
 
@@ -191,13 +239,21 @@ function construct_Eᵀ!(dom::DualDomain)
     dom.Eᵀ[1] = spzeros(length(dom.grid.facex),dom.nbodypts)
     dom.Eᵀ[2] = spzeros(length(dom.grid.facey),dom.nbodypts)
 
+    dom.Ẽᵀ[1] = spzeros(length(dom.grid.cell),dom.nbodypts)
+    dom.Ẽᵀ[2] = spzeros(length(dom.grid.node),dom.nbodypts)
+
     for i = 1:dom.nbody
-    	Eᵀtmp = construct_Eᵀ(dom.body[i],dom.grid,dom.ddf_fcn)
-	    dom.Eᵀ[1][:,dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1] = Eᵀtmp[1]
-	    dom.Eᵀ[2][:,dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1] = Eᵀtmp[2]
+    	Eᵀ, Ẽᵀ = construct_Eᵀ(dom.body[i],dom.grid,dom.ddf_fcn)
+	    dom.Eᵀ[1][:,dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1] = Eᵀ[1]
+	    dom.Eᵀ[2][:,dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1] = Eᵀ[2]
+
+      dom.Ẽᵀ[1][:,dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1] = Ẽᵀ[1]
+	    dom.Ẽᵀ[2][:,dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1] = Ẽᵀ[2]
 
     end
 end
+
+
 
 function construct_CᵀEᵀ!(dom::DualDomain)
 

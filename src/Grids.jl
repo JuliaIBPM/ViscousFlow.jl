@@ -306,7 +306,6 @@ This zeros out the values lower than machine epsilon.
 intfact(g::Grid,a::Float64) = reshape([intfact([i,j],a) > eps(Float64) ?
         intfact([i,j],a) : 0.0
         for i=0:g.N[1]+1,j=0:g.N[2]+1], g.N[1]+2,g.N[2]+2)
-        #for i=0:g.N[1]+1,j=0:g.N[2]+1], g.N[1]+2,g.N[2]+2)
 
 
 """
