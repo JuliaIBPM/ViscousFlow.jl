@@ -133,49 +133,49 @@ end
 
 # Differential operations
 function curl!(cell,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
-    cell[ir,jr] = -facex[ir,jr]+facex[ir,jr-1]+facey[ir,jr]-facey[ir-1,jr]
+    @. cell[ir,jr] = -facex[ir,jr]+facex[ir,jr-1]+facey[ir,jr]-facey[ir-1,jr]
 end
 
 function curl!(facex,facey,ir::UnitRange{Int},jr::UnitRange{Int},cell)
-    facex[ir,jr] = cell[ir,jr+1]-cell[ir,jr]
-	  facey[ir,jr] = cell[ir,jr]-cell[ir+1,jr]
-    facex[ir.stop+1,jr] = cell[ir.stop+1,jr+1]-cell[ir.stop+1,jr]
-    facey[ir,jr.stop+1] = cell[ir,jr.stop+1]-cell[ir+1,jr.stop+1]
+    @. facex[ir,jr] = cell[ir,jr+1]-cell[ir,jr]
+	@. facey[ir,jr] = cell[ir,jr]-cell[ir+1,jr]
+    @. facex[ir.stop+1,jr] = cell[ir.stop+1,jr+1]-cell[ir.stop+1,jr]
+    @. facey[ir,jr.stop+1] = cell[ir,jr.stop+1]-cell[ir+1,jr.stop+1]
 end
 
 function diverg!(node,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
-    node[ir,jr] = facex[ir+1,jr]-facex[ir,jr]+facey[ir,jr+1]-facey[ir,jr]
+    @. node[ir,jr] = facex[ir+1,jr]-facex[ir,jr]+facey[ir,jr+1]-facey[ir,jr]
 end
 
 function dualdiverg!(cell,ir::UnitRange{Int},jr::UnitRange{Int},dualfacex,dualfacey)
-    cell[ir,jr] = dualfacex[ir,jr]-dualfacex[ir-1,jr]+dualfacey[ir,jr]-dualfacey[ir,jr-1]
+    @. cell[ir,jr] = dualfacex[ir,jr]-dualfacex[ir-1,jr]+dualfacey[ir,jr]-dualfacey[ir,jr-1]
 end
 
 function grad!(facex,facey,ir::UnitRange{Int},jr::UnitRange{Int},node)
-    facex[ir,jr] = node[ir,jr]-node[ir-1,jr]
-	  facey[ir,jr] = node[ir,jr]-node[ir,jr-1]
-    facey[ir.start-1,jr] = node[ir.start-1,jr]-node[ir.start-1,jr-1]
-    facex[ir,jr.start-1] = node[ir,jr.start-1]-node[ir-1,jr.start-1]
+    @. facex[ir,jr] = node[ir,jr]-node[ir-1,jr]
+	@. facey[ir,jr] = node[ir,jr]-node[ir,jr-1]
+    @. facey[ir.start-1,jr] = node[ir.start-1,jr]-node[ir.start-1,jr-1]
+    @. facex[ir,jr.start-1] = node[ir,jr.start-1]-node[ir-1,jr.start-1]
 end
 
 function lap!(lapf,ir::UnitRange{Int},jr::UnitRange{Int},f)
-    lapf[ir,jr] = f[ir+1,jr]+f[ir-1,jr]+f[ir,jr+1]+f[ir,jr-1]-4f[ir,jr]
+    @. lapf[ir,jr] = f[ir+1,jr]+f[ir-1,jr]+f[ir,jr+1]+f[ir,jr-1]-4f[ir,jr]
 end
 
 function shift!(vx,vy,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
-    vx[ir.start-1,jr] = 0.25(facex[ir.start-1,jr]+facex[ir.start,jr]+
+    @. vx[ir.start-1,jr] = 0.25(facex[ir.start-1,jr]+facex[ir.start,jr]+
 			        facex[ir.start-1,jr-1]+facex[ir.start,jr-1])
-	  vy[ir,jr.start-1] = 0.25(facey[ir-1,jr.start-1]+facey[ir-1,jr.start]+
+	@. vy[ir,jr.start-1] = 0.25(facey[ir-1,jr.start-1]+facey[ir-1,jr.start]+
 			        facey[ir,jr.start-1]+facey[ir,jr.start])
-    vx[ir,jr] = 0.25(facex[ir,jr]+facex[ir+1,jr]+facex[ir,jr-1]+facex[ir+1,jr-1])
-	  vy[ir,jr] = 0.25(facey[ir-1,jr]+facey[ir-1,jr+1]+facey[ir,jr]+facey[ir,jr+1])
+    @. vx[ir,jr] = 0.25(facex[ir,jr]+facex[ir+1,jr]+facex[ir,jr-1]+facex[ir+1,jr-1])
+	@. vy[ir,jr] = 0.25(facey[ir-1,jr]+facey[ir-1,jr+1]+facey[ir,jr]+facey[ir,jr+1])
 end
 
 function shift!(vx,vy,ir::UnitRange{Int},jr::UnitRange{Int},v)
-    vx[ir.start-1,jr]=0.5(v[ir.start-1,jr]+v[ir.start,jr])
-    vy[ir,jr.start-1]=0.5(v[ir,jr.start-1]+v[ir,jr.start])
-    vx[ir,jr] = 0.5(v[ir,jr]+v[ir+1,jr])
-    vy[ir,jr] = 0.5(v[ir,jr]+v[ir,jr+1])
+    @. vx[ir.start-1,jr]=0.5(v[ir.start-1,jr]+v[ir.start,jr])
+    @. vy[ir,jr.start-1]=0.5(v[ir,jr.start-1]+v[ir,jr.start])
+    @. vx[ir,jr] = 0.5(v[ir,jr]+v[ir+1,jr])
+    @. vy[ir,jr] = 0.5(v[ir,jr]+v[ir,jr+1])
 end
 
 # Differential operations with grid interface
@@ -336,14 +336,15 @@ end
 function convolve_fft(fftop::FFTW.FFTWPlan{T,K,false},
         Ghat::Array{Complex{T},2},cell::AbstractArray{T,2}) where {T<:AbstractFloat,K}
 
-  cellbig = mirror(zeros(cell))
   n = size(cell)
+  cellbig = zeros(T, 2.*n .- 1)
   cellbig[1:n[1],1:n[2]] = cell
+
   cellhat = fftop * cellbig
+  cellhat .*= Ghat
 
-  Gwbig = fftop \ (Ghat .* cellhat)
-  Gwbig[n[1]:end,n[2]:end]
-
+  A_ldiv_B!(cellbig, fftop, cellhat)
+  cellbig[n[1]:end,n[2]:end]
 end
 
 convolve_fft(g::Grid,Ghat::Array{Complex{T},2},cell) where T =
@@ -356,10 +357,15 @@ Q(g::Grid,cell) = convolve_fft(g,g.qhat,cell)
 L⁻¹_slow(g::Grid,cell) = convolve(g.lgftab,cell)
 Q_slow(g::Grid,cell) = convolve(g.qtab,cell)
 
-mirror(a::AbstractArray{T,2} where T) = hcat(
-  flipdim(vcat(flipdim(a[:,2:end],1),a[2:end,2:end]),2),
-  vcat(flipdim(a,1),a[2:end,:])
-  )
+function mirror(a::AbstractArray{T,2}) where {T}
+    Nr, Nc = size(a)
+    A = zeros(T, 2Nr-1, 2Nc-1)
+    A[1:Nr-1, 1:Nc-1] .= a[Nr:-1:2, Nc:-1:2]
+    A[1:Nr-1, Nc:end] .= a[Nr:-1:2, 1:Nc]
+    A[Nr:end, 1:Nc-1] .= a[1:Nr, Nc:-1:2]
+    A[Nr:end, Nc:end] .= a
+    A
+end
 
 function lgf_table!(g::Grid)
   g.lgftab = lgf(g)
