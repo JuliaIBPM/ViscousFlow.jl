@@ -62,7 +62,7 @@ include("NavierStokes.jl")
 using .NavierStokes
 
 
-function Base.show(io::IO, s::ConstrainedSoln)
+function Base.show(io::IO, s::SolnType)
     println(io, "Solution: t = $(s.t)")
 end
 
