@@ -54,7 +54,33 @@ mutable struct PhysParams
   Re :: Float64
 end
 
+# Eventually, this will hold a lot more specification of the body motions
+mutable struct StreamingParams
+
+  "Angular frequency"
+  Ω :: Float64
+
+  "Amplitude in x direction. Must be between 0 and 1."
+  Ax:: Float64
+
+  "Phase in x direction."
+  xϕ :: Float64
+
+  "Amplitude in y direction. Must be between 0 and 1."
+  Ay :: Float64
+
+  "Phase in y direction."
+  yϕ :: Float64
+
+  "Motion function in x and y directions"
+  X :: Function
+end
+
 PhysParams() = PhysParams(zeros(Whirl2d.ndim),0.0)
+
+StreamingParams() = StreamingParams(0.0,0.0,0.0,0.0,0.0,(t)->[0.0,0.0])
+
+StreamingParams(Ω,Ax,xϕ,Ay,yϕ) = StreamingParams(Ω,Ax,xϕ,Ay,yϕ,(t)->[0.0,0.0])
 
 function set_freestream!(p::PhysParams,U∞)
   p.U∞ = U∞
@@ -76,6 +102,13 @@ function set_Re(Re)
   p
 end
 
+function set_oscil_motion!(b::Bodies.Body,p::StreamingParams)
+  X(t) = [p.Ax*sin(p.Ω*t+p.xϕ), p.Ay*sin(p.Ω*t+p.yϕ)]
+  U(t) = p.Ω*[p.Ax*cos(p.Ω*t+p.xϕ), p.Ay*cos(p.Ω*t+p.yϕ)]
+  Bodies.set_velocity!(b,(t,xi)->U(t),1)
+  Bodies.set_velocity!(b,(t,xi)->[0.0,0.0],2)
+  p.X = X
+end
 
 # Set forms of the convective term
 # ∇⋅(ωu)
@@ -107,11 +140,6 @@ function ẼG̃(dom::Systems.DualDomain,qx,qy)
   f
 end
 
-function ẼG̃CL⁻¹(dom,u)
-  qx,qy = Grids.curl(dom.grid,-Grids.L⁻¹(dom.grid,u))
-  ẼG̃(dom,qx,qy)
-end
-
 function ECL⁻¹!(dom,u,ψ)
   # This version remembers the streamfunction as the auxiliary variable in
   # the solution structure
@@ -126,6 +154,12 @@ function ECL⁻¹(dom,u)
   tmp = reshape(Grids.L⁻¹(dom.grid,u),length(u),1)
   [dom.CᵀEᵀ[1]'*tmp dom.CᵀEᵀ[2]'*tmp]
 end
+
+function ẼG̃CL⁻¹(dom,u)
+  qx,qy = Grids.curl(dom.grid,-Grids.L⁻¹(dom.grid,u))
+  ẼG̃(dom,qx,qy)
+end
+
 
 #=
 This is where we define the operators that define the particular system of equations
@@ -149,8 +183,8 @@ function set_operators!(dom,params)
 
   # r₁ is function that acts upon solution structure s and returns data of size s.u
   # In Navier-Stokes problem, this provides the negative of the convective term.
-  r₁(s) = -N_divwu(dom.grid,s.u,physparams.U∞)
-  #r₁(s) = zeros(s.u)
+  r₁(s,t) = -N_divwu(dom.grid,s.u,physparams.U∞)
+  #r₁(s,t) = zeros(s.u)
 
 
   return A⁻¹,L⁻¹,r₁
@@ -215,13 +249,13 @@ function set_operators_body!(dom,params)
 
   # r₁ is function that acts upon solution structure s and returns data of size s.u
   # In Navier-Stokes problem, this provides the negative of the convective term.
-  r₁(s) = -N_divwu(dom.grid,s.u,physparams.U∞)
+  r₁(s,t) = -N_divwu(dom.grid,s.u,physparams.U∞)
 
   # r₂ is function that acts upon time value and returns data of size s.f
   # In Navier-Stokes problem, this specifies the body velocity (minus the free
   # stream).
   # Should allow U∞ to be time-varying function.
-  r₂(t) = Systems.Ubody(dom,t) - transpose(repmat(physparams.U∞,1,dom.nbodypts))
+  r₂(s,t) = Systems.Ubody(dom,t) - transpose(repmat(physparams.U∞,1,dom.nbodypts))
 
   return A⁻¹,L⁻¹,B₁ᵀ,B₂!,S⁻¹,S₀⁻¹,r₁,r₂
 end
@@ -231,6 +265,7 @@ function set_operators_two_level_body!(dom,params)
   # Set these operators to accept multiple levels of solution
   physparams = params[1]
   α = params[2]
+  sparams = params[3]
 
   A⁻¹1,L⁻¹1,B₁ᵀ1,B₂1!,S⁻¹1,S₀⁻¹1,r₁1,r₂1 = set_operators_body!(dom,params)
 
@@ -256,13 +291,23 @@ function set_operators_two_level_body!(dom,params)
   # In two-level asymptotic problem, there is no convective term at the first
   # asymptotic level, and at the second level it uses the convective term based
   # on the first level solution
-  r₁(s) = -[zeros(size(s.u[1])), N_divwu(dom.grid,s.u[1],physparams.U∞)]
+  r₁(s,t) = -[zeros(size(s.u[1])), N_divwu(dom.grid,s.u[1],physparams.U∞)]
 
   # r₂ is function that acts upon time value and returns data of size s.f
   # This specifies the body velocity (minus the free stream).
-  # There is no free stream at the second asymptotic level.
-  r₂(t) = [Systems.Ubody(dom,t,1) - transpose(repmat(physparams.U∞,1,dom.nbodypts)),
-            Systems.Ubody(dom,t,2)]
+  # At the second asymptotic level, the boundary data are based on
+  #   v[2] = -X(t)⋅∇v[1]
+  function r₂(s,t)
+    gradv1 = ẼG̃CL⁻¹(dom,s.u[1])
+    vel = zeros(Float64,dom.nbodypts,2)
+    for i = 1:dom.nbody
+        ir = dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1
+        vel[ir,1] = -gradv1[1,1][ir]*sparams[i].X(t)[1]-gradv1[1,2][ir]*sparams[i].X(t)[2]
+        vel[ir,2] = -gradv1[2,1][ir]*sparams[i].X(t)[1]-gradv1[2,2][ir]*sparams[i].X(t)[2]
+    end
+    [Systems.Ubody(dom,t,1) - transpose(repmat(physparams.U∞,1,dom.nbodypts)),
+     vel]
+  end
 
   return A⁻¹,L⁻¹,B₁ᵀ,B₂!,S⁻¹,S₀⁻¹,r₁,r₂
 

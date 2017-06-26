@@ -284,8 +284,11 @@ function construct_CᵀEᵀ!(dom::DualDomain)
 
     # Construct ẼG̃ operator, which maps grid face data to the body points
     dom.G̃ᵀẼᵀ = Array{SparseMatrixCSC{Float64,Int}}(2,2)
-    dom.G̃ᵀẼᵀ[1,1] = dom.G̃ᵀẼᵀ[2,1] = spzeros(length(grid.facex),m)
-    dom.G̃ᵀẼᵀ[1,2] = dom.G̃ᵀẼᵀ[2,2] = spzeros(length(grid.facey),m)
+    dom.G̃ᵀẼᵀ[1,1] = spzeros(length(grid.facex),m)
+    dom.G̃ᵀẼᵀ[2,1] = spzeros(length(grid.facex),m)
+    dom.G̃ᵀẼᵀ[1,2] = spzeros(length(grid.facey),m)
+    dom.G̃ᵀẼᵀ[2,2] = spzeros(length(grid.facey),m)
+
 
     for i = 1:m
         # Lagrange points to nodes

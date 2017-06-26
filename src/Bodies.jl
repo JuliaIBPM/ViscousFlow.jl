@@ -40,7 +40,7 @@ mutable struct Body
     "coordinates of Lagrange points in inertial system"
     x::Array{Array{Float64,1},1}
 
-    "body velocity function, which takes inputs t and position on body"
+    "body velocity function(s), which takes inputs t and position on body"
     U::Array{Function}
 
     "body configuration"
@@ -57,7 +57,6 @@ function Body(N,xtilde)
     x = xtilde
 
     # default set the body motion function to 0 at every level
-    #U = [(t,xi)->[0.0,0.0] for i = 1:nl]
     U = Function[]
     push!(U,(t,xi)->[0.0,0.0])
 
