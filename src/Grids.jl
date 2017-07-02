@@ -17,7 +17,7 @@ using FastGaussQuadrature
 
 abstract type Grid end
 
-nodes, weights = gausslegendre(100)
+const nodes, weights = gausslegendre(100)
 
 mutable struct DualPatch <: Grid
     "array of number of dual cells in each direction in patch interior"
@@ -75,6 +75,7 @@ mutable struct DualPatch <: Grid
     fftop::FFTW.rFFTWPlan
 
 end
+
 
 function DualPatch(N,Δx,xmin)
 
@@ -144,28 +145,33 @@ yfacey(g::DualPatch) = [g.xmin[2]+g.Δx*(j-g.ifirst[2]+1/2) for i=g.faceyint[1],
 # Differential operations
 function curl!(cell,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
     @. cell[ir,jr] = -facex[ir,jr]+facex[ir,jr-1]+facey[ir,jr]-facey[ir-1,jr]
+    nothing
 end
 
 function curl!(facex,facey,ir::UnitRange{Int},jr::UnitRange{Int},cell)
     @. facex[ir,jr] = cell[ir,jr+1]-cell[ir,jr]
-	@. facey[ir,jr] = cell[ir,jr]-cell[ir+1,jr]
+    @. facey[ir,jr] = cell[ir,jr]-cell[ir+1,jr]
     @. facex[ir.stop+1,jr] = cell[ir.stop+1,jr+1]-cell[ir.stop+1,jr]
     @. facey[ir,jr.stop+1] = cell[ir,jr.stop+1]-cell[ir+1,jr.stop+1]
+    nothing
 end
 
 function diverg!(node,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
     @. node[ir,jr] = facex[ir+1,jr]-facex[ir,jr]+facey[ir,jr+1]-facey[ir,jr]
+    nothing
 end
 
 function dualdiverg!(cell,ir::UnitRange{Int},jr::UnitRange{Int},dualfacex,dualfacey)
     @. cell[ir,jr] = dualfacex[ir,jr]-dualfacex[ir-1,jr]+dualfacey[ir,jr]-dualfacey[ir,jr-1]
+    nothing
 end
 
 function grad!(facex,facey,ir::UnitRange{Int},jr::UnitRange{Int},node)
     @. facex[ir,jr] = node[ir,jr]-node[ir-1,jr]
-	@. facey[ir,jr] = node[ir,jr]-node[ir,jr-1]
+    @. facey[ir,jr] = node[ir,jr]-node[ir,jr-1]
     @. facey[ir.start-1,jr] = node[ir.start-1,jr]-node[ir.start-1,jr-1]
     @. facex[ir,jr.start-1] = node[ir,jr.start-1]-node[ir-1,jr.start-1]
+    nothing
 end
 
 function grad!(gradface,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
@@ -186,10 +192,11 @@ end
 function shift!(vx,vy,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
     @. vx[ir.start-1,jr] = 0.25(facex[ir.start-1,jr]+facex[ir.start,jr]+
 			        facex[ir.start-1,jr-1]+facex[ir.start,jr-1])
-	@. vy[ir,jr.start-1] = 0.25(facey[ir-1,jr.start-1]+facey[ir-1,jr.start]+
+    @. vy[ir,jr.start-1] = 0.25(facey[ir-1,jr.start-1]+facey[ir-1,jr.start]+
 			        facey[ir,jr.start-1]+facey[ir,jr.start])
     @. vx[ir,jr] = 0.25(facex[ir,jr]+facex[ir+1,jr]+facex[ir,jr-1]+facex[ir+1,jr-1])
-	@. vy[ir,jr] = 0.25(facey[ir-1,jr]+facey[ir-1,jr+1]+facey[ir,jr]+facey[ir,jr+1])
+    @. vy[ir,jr] = 0.25(facey[ir-1,jr]+facey[ir-1,jr+1]+facey[ir,jr]+facey[ir,jr+1])
+    nothing
 end
 
 function shift!(vx,vy,ir::UnitRange{Int},jr::UnitRange{Int},v)
@@ -197,6 +204,7 @@ function shift!(vx,vy,ir::UnitRange{Int},jr::UnitRange{Int},v)
     @. vy[ir,jr.start-1]=0.5(v[ir,jr.start-1]+v[ir,jr.start])
     @. vx[ir,jr] = 0.5(v[ir,jr]+v[ir+1,jr])
     @. vy[ir,jr] = 0.5(v[ir,jr]+v[ir,jr+1])
+    nothing
 end
 
 # Differential operations with grid interface
@@ -361,26 +369,42 @@ function convolve(G::Array{T,2},cell::AbstractArray{T,2}) where T
     Gw
 end
 
-function convolve_fft(fftop::FFTW.FFTWPlan{T,K,false},
-        Ghat::Array{Complex{T},2},cell::AbstractArray{T,2}) where {T<:AbstractFloat,K}
-
-  n = size(cell)
-  cellbig = zeros(T, 2.*n .- 1)
-  cellbig[1:n[1],1:n[2]] = cell
-
-  cellhat = fftop * cellbig
-  cellhat .*= Ghat
-
-  A_ldiv_B!(cellbig, fftop, cellhat)
-  cellbig[n[1]:end,n[2]:end]
+# We only need the larger padded matrix as an intermediate step
+# So instead of reallocating it each time we need to apply a
+# convolution, we can preallocate it as an internal variable
+# in a convolution operator
+struct Convolution{T, M, N}
+    F̂::Array{Complex{T}, 2}
+    Ĝ::Array{Complex{T}, 2}
+    fftop::FFTW.rFFTWPlan{T}
+    paddedSpace::Array{T, 2}
 end
 
-convolve_fft(g::Grid,Ghat::Array{Complex{T},2},cell) where T =
-        convolve_fft(g.fftop,Ghat,cell)
+function Convolution(fftop::FFTW.rFFTWPlan{T}, Ĝ) where T
+    m, n = size(fftop)
+    m̂, n̂ = @. ((m,n) + 1) ÷ 2
 
+    paddedSpace = zeros(T, m, n)
 
-L⁻¹(g::Grid,cell) = convolve_fft(g,g.lgfhat,cell)
-Q(g::Grid,cell) = convolve_fft(g,g.qhat,cell)
+    F̂ = zeros(Complex{T}, m̂, n)
+
+    Convolution{T, m̂, n̂}(F̂, Ĝ, fftop, paddedSpace)
+end
+
+function (c::Convolution{T,M,N})(cell) where {T,M,N}
+    inds = CartesianRange((M,N))
+    fill!(c.paddedSpace, zero(T))
+    copy!(c.paddedSpace, inds, cell, inds)
+    A_mul_B!(c.F̂, c.fftop, c.paddedSpace)
+
+    c.F̂ .*= c.Ĝ
+
+    A_ldiv_B!(c.paddedSpace, c.fftop, c.F̂)
+    c.paddedSpace[M:end, N:end]
+end
+
+L⁻¹(g::Grid) = Convolution(g.fftop, g.lgfhat)
+Q(g::Grid) = Convolution(g.fftop,g.qhat)
 
 L⁻¹_slow(g::Grid,cell) = convolve(g.lgftab,cell)
 Q_slow(g::Grid,cell) = convolve(g.qtab,cell)

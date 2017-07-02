@@ -113,9 +113,9 @@ end
 # Set forms of the convective term
 # ∇⋅(ωu)
 # This version computes a fresh streamfunction
-function N_divwu(g::Grids.DualPatch,u::Array{Float64,2},U∞::Array{Float64,1})
+function N_divwu(g::Grids.DualPatch, L⁻¹::Grids.Convolution, u::Array{Float64,2},U∞::Array{Float64,1})
   @get Grids (curl, shift, dualdiverg)
-   vx, vy = shift(g,curl(g,-Grids.L⁻¹(g,u)))
+   vx, vy = shift(g,curl(g,-L⁻¹(u)))
    wx, wy = shift(g,u)
    dualdiverg(g,(vx+U∞[1]).*wx,(vy+U∞[2]).*wy)/g.Δx
 end
@@ -143,7 +143,7 @@ end
 function ECL⁻¹!(dom,u,ψ)
   # This version remembers the streamfunction as the auxiliary variable in
   # the solution structure
-  ψ = -Grids.L⁻¹(dom.grid,u)
+  ψ = -Grids.L⁻¹(dom.grid)(u)
   tmp = reshape(-ψ,length(ψ),1)
   [dom.CᵀEᵀ[1]'*tmp dom.CᵀEᵀ[2]'*tmp]
 end
@@ -151,12 +151,12 @@ end
 function ECL⁻¹(dom,u)
   # This version remembers the streamfunction as the auxiliary variable in
   # the solution structure
-  tmp = reshape(Grids.L⁻¹(dom.grid,u),length(u),1)
+  tmp = reshape(Grids.L⁻¹(dom.grid)(u),length(u),1)
   [dom.CᵀEᵀ[1]'*tmp dom.CᵀEᵀ[2]'*tmp]
 end
 
 function ẼG̃CL⁻¹(dom,u)
-  qx,qy = Grids.curl(dom.grid,-Grids.L⁻¹(dom.grid,u))
+  qx,qy = Grids.curl(dom.grid,-Grids.L⁻¹(dom.grid)(u))
   ẼG̃(dom,qx,qy)
 end
 
@@ -176,14 +176,14 @@ function set_operators!(dom,params)
   Grids.q_table!(dom.grid,α);
 
   # A⁻¹ is function that acts upon data of size s.u and returns data of same size
-  A⁻¹(u) = Grids.Q(dom.grid,u)
+  A⁻¹ = Grids.Q(dom.grid)
 
   # L⁻¹ is function that acts upon data of size s.u and returns data of same size
-  L⁻¹(u) = Grids.L⁻¹(dom.grid,u)
+  L⁻¹ = Grids.L⁻¹(dom.grid)
 
   # r₁ is function that acts upon solution structure s and returns data of size s.u
   # In Navier-Stokes problem, this provides the negative of the convective term.
-  r₁(s,t) = -N_divwu(dom.grid,s.u,physparams.U∞)
+  r₁(s,t) = -N_divwu(dom.grid,L⁻¹,s.u,physparams.U∞)
   #r₁(s,t) = zeros(s.u)
 
 
@@ -218,10 +218,10 @@ function set_operators_body!(dom,params)
   B₂(u) = -ECL⁻¹(dom,u)
 
   # A⁻¹ is function that acts upon data of size s.u and returns data of same size
-  A⁻¹(u) = Grids.Q(dom.grid,u)
+  A⁻¹ = Grids.Q(dom.grid)
 
   # L⁻¹ is function that acts upon data of size s.u and returns data of same size
-  L⁻¹(u) = Grids.L⁻¹(dom.grid,u)
+  L⁻¹ = Grids.L⁻¹(dom.grid)
 
   # Compute Schur complements and their inverses
   m = dom.nbodypts
@@ -249,7 +249,7 @@ function set_operators_body!(dom,params)
 
   # r₁ is function that acts upon solution structure s and returns data of size s.u
   # In Navier-Stokes problem, this provides the negative of the convective term.
-  r₁(s,t) = -N_divwu(dom.grid,s.u,physparams.U∞)
+  r₁(s,t) = -N_divwu(dom.grid,L⁻¹,s.u,physparams.U∞)
 
   # r₂ is function that acts upon time value and returns data of size s.f
   # In Navier-Stokes problem, this specifies the body velocity (minus the free
@@ -273,7 +273,6 @@ function set_operators_two_level_body!(dom,params)
 
   L⁻¹(u) = [L⁻¹1(u[1]), L⁻¹1(u[2])]
 
-
   # B₁ᵀ is function that acts upon data of size s.f and returns data of size s.u
   B₁ᵀ(f) = [B₁ᵀ1(f[1]), B₁ᵀ1(f[2])]
 
@@ -291,7 +290,7 @@ function set_operators_two_level_body!(dom,params)
   # In two-level asymptotic problem, there is no convective term at the first
   # asymptotic level, and at the second level it uses the convective term based
   # on the first level solution
-  r₁(s,t) = -[zeros(size(s.u[1])), N_divwu(dom.grid,s.u[1],physparams.U∞)]
+  r₁(s,t) = -[zeros(size(s.u[1])), N_divwu(dom.grid,L⁻¹,s.u[1],physparams.U∞)]
 
   # r₂ is function that acts upon time value and returns data of size s.f
   # This specifies the body velocity (minus the free stream).
