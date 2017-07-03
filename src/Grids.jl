@@ -177,16 +177,18 @@ end
 function grad!(gradface,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
     irnode = ir.start-1:ir.stop
     jrnode = jr.start-1:jr.stop
-    gradface[1,1][irnode,jrnode] =
+    @. gradface[1,1][irnode,jrnode] =
                            facex[irnode+1,jrnode]-facex[irnode,jrnode] # node
-    gradface[1,2][ir,jr] = facex[ir,jr]-facex[ir,jr-1] # cell
-    gradface[2,1][ir,jr] = facey[ir,jr]-facey[ir-1,jr] # cell
-    gradface[2,2][irnode,jrnode] =
+    @. gradface[1,2][ir,jr] = facex[ir,jr]-facex[ir,jr-1] # cell
+    @. gradface[2,1][ir,jr] = facey[ir,jr]-facey[ir-1,jr] # cell
+    @. gradface[2,2][irnode,jrnode] =
                            facey[irnode,jrnode+1]-facey[irnode,jrnode] # node
+    nothing
 end
 
 function lap!(lapf,ir::UnitRange{Int},jr::UnitRange{Int},f)
     @. lapf[ir,jr] = f[ir+1,jr]+f[ir-1,jr]+f[ir,jr+1]+f[ir,jr-1]-4f[ir,jr]
+    nothing
 end
 
 function shift!(vx,vy,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
