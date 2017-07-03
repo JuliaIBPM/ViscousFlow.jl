@@ -369,15 +369,50 @@ function convolve(G::Array{T,2},cell::AbstractArray{T,2}) where T
     Gw
 end
 
-# We only need the larger padded matrix as an intermediate step
-# So instead of reallocating it each time we need to apply a
-# convolution, we can preallocate it as an internal variable
-# in a convolution operator
+"""
+    Convolution{T, M, N}
+
+A preplanned, zero-padded convolution operator for an M × N matrix.
+
+# Fields
+- `F̂`: preallocated space to store the DFT of the zero-padded input matrix
+- `Ĝ`: DFT coefficients of the convolution kernel
+- `fftop`: preplanned rFFT on a (2M-1) × (2N-1) matrix
+- `paddedSpace`: preallocated space to zero-pad the input matrix
+
+# Constructors:
+
+- `Convolution(fftop::FFTW.rFFTWPlan{T}, Ĝ) where T`
+
+# Example:
+```jldoctest
+julia> G = mirror(repmat(1:3,1,4))
+5×7 Array{Int64,2}:
+ 3  3  3  3  3  3  3
+ 2  2  2  2  2  2  2
+ 1  1  1  1  1  1  1
+ 2  2  2  2  2  2  2
+ 3  3  3  3  3  3  3
+
+julia> C = Convolution(plan_rfft(G), rfft(G))
+Zero-padded convolution for a 3 × 4 matrix
+
+julia> C(reshape(1:12, 3, 4))
+3×4 Array{Float64,2}:
+ 164.0  164.0  164.0  164.0
+ 130.0  130.0  130.0  130.0
+ 148.0  148.0  148.0  148.0
+```
+"""
 struct Convolution{T, M, N}
     F̂::Array{Complex{T}, 2}
     Ĝ::Array{Complex{T}, 2}
     fftop::FFTW.rFFTWPlan{T}
     paddedSpace::Array{T, 2}
+end
+
+function Base.show(io::IO, c::Convolution{T, M, N}) where {T, M, N}
+    print(io, "Zero-padded convolution for a $M × $N matrix")
 end
 
 function Convolution(fftop::FFTW.rFFTWPlan{T}, Ĝ) where T
@@ -409,6 +444,38 @@ Q(g::Grid) = Convolution(g.fftop,g.qhat)
 L⁻¹_slow(g::Grid,cell) = convolve(g.lgftab,cell)
 Q_slow(g::Grid,cell) = convolve(g.qtab,cell)
 
+"""
+    mirror(A::AbstractMatrix{T}) where {T}
+
+Mirror a matrix about its first column and row, i.e.
+```
+                    N … 1 … N
+    1 … N        M |   |     |
+ 1 |     |       ⋮ |___|_____|
+ ⋮ |  A  |  ⟶    1 |   |     |
+ M |     |       ⋮ |   |  A  |
+                 M |   |     |
+
+```
+
+Example
+
+```jldoctest
+julia> x = reshape(1:12, 3,4)
+3×4 Base.ReshapedArray{Int64,2,UnitRange{Int64},Tuple{}}:
+ 1  4  7  10
+ 2  5  8  11
+ 3  6  9  12
+
+julia> mirror(x)
+5×7 Array{Int64,2}:
+ 12  9  6  3  6  9  12
+ 11  8  5  2  5  8  11
+ 10  7  4  1  4  7  10
+ 11  8  5  2  5  8  11
+ 12  9  6  3  6  9  12
+```
+"""
 function mirror(a::AbstractArray{T,2}) where {T}
     Nr, Nc = size(a)
     A = zeros(T, 2Nr-1, 2Nc-1)
