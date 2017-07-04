@@ -140,23 +140,20 @@ function ẼG̃(dom::Systems.DualDomain,qx,qy)
   f
 end
 
-function ECL⁻¹!(dom,u,ψ)
-  # This version remembers the streamfunction as the auxiliary variable in
-  # the solution structure
-  ψ = -Grids.L⁻¹(dom.grid)(u)
+function ECL⁻¹!(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,u,ψ)
+  # This version saves the streamfunction it computes
+  ψ = -L⁻¹(u)
   tmp = reshape(-ψ,length(ψ),1)
   [dom.CᵀEᵀ[1]'*tmp dom.CᵀEᵀ[2]'*tmp]
 end
 
-function ECL⁻¹(dom,u)
-  # This version remembers the streamfunction as the auxiliary variable in
-  # the solution structure
-  tmp = reshape(Grids.L⁻¹(dom.grid)(u),length(u),1)
+function ECL⁻¹(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,u)
+  tmp = reshape(L⁻¹(u),length(u),1)
   [dom.CᵀEᵀ[1]'*tmp dom.CᵀEᵀ[2]'*tmp]
 end
 
-function ẼG̃CL⁻¹(dom,u)
-  qx,qy = Grids.curl(dom.grid,-Grids.L⁻¹(dom.grid)(u))
+function ẼG̃CL⁻¹(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,u)
+  qx,qy = Grids.curl(dom.grid,-L⁻¹(u))
   ẼG̃(dom,qx,qy)
 end
 
@@ -205,6 +202,12 @@ function set_operators_body!(dom,params)
   Grids.lgf_table!(dom.grid);
   Grids.q_table!(dom.grid,α);
 
+  # A⁻¹ is function that acts upon data of size s.u and returns data of same size
+  A⁻¹ = Grids.Q(dom.grid)
+
+  # L⁻¹ is function that acts upon data of size s.u and returns data of same size
+  L⁻¹ = Grids.L⁻¹(dom.grid)
+
   # Compute the body-to-grid operators
   #Systems.construct_schur!(dom)
   Systems.construct_CᵀEᵀ!(dom)
@@ -214,14 +217,8 @@ function set_operators_body!(dom,params)
 
   # B₂! is function that takes solution array `s` (and acts upon s.u) and returns
   # data of size s.f. It also modifies the auxiliary variable in `s`
-  B₂!(s::Whirl2d.SolnType) = -ECL⁻¹!(dom,s.u,s.ψ)
-  B₂(u) = -ECL⁻¹(dom,u)
-
-  # A⁻¹ is function that acts upon data of size s.u and returns data of same size
-  A⁻¹ = Grids.Q(dom.grid)
-
-  # L⁻¹ is function that acts upon data of size s.u and returns data of same size
-  L⁻¹ = Grids.L⁻¹(dom.grid)
+  B₂!(s::Whirl2d.SolnType) = -ECL⁻¹!(dom,L⁻¹,s.u,s.ψ)
+  B₂(u) = -ECL⁻¹(dom,L⁻¹,u)
 
   # Compute Schur complements and their inverses
   m = dom.nbodypts
@@ -278,8 +275,8 @@ function set_operators_two_level_body!(dom,params)
 
   # B₂! is function that takes solution array `s` (and acts upon s.u) and returns
   # data of size s.f. It also modifies the auxiliary variables in `s`
-  B₂!(s::Whirl2d.SolnType) = [-ECL⁻¹!(dom,s.u[1],s.ψ[1]), -ECL⁻¹!(dom,s.u[2],s.ψ[2])]
-  B₂(u) = [-ECL⁻¹(dom,u[1]), -ECL⁻¹(dom,u[2])]
+  B₂!(s::Whirl2d.SolnType) = [-ECL⁻¹!(dom,L⁻¹1,s.u[1],s.ψ[1]), -ECL⁻¹!(dom,L⁻¹1,s.u[2],s.ψ[2])]
+  B₂(u) = [-ECL⁻¹(dom,L⁻¹1,u[1]), -ECL⁻¹(dom,L⁻¹1,u[2])]
 
   # These functions take in data of size s.f and return data of the same size.
   # They produce the inverse of the Schur complement.
@@ -290,14 +287,14 @@ function set_operators_two_level_body!(dom,params)
   # In two-level asymptotic problem, there is no convective term at the first
   # asymptotic level, and at the second level it uses the convective term based
   # on the first level solution
-  r₁(s,t) = -[zeros(size(s.u[1])), N_divwu(dom.grid,L⁻¹,s.u[1],physparams.U∞)]
+  r₁(s,t) = -[zeros(size(s.u[1])), N_divwu(dom.grid,L⁻¹1,s.u[1],physparams.U∞)]
 
   # r₂ is function that acts upon time value and returns data of size s.f
   # This specifies the body velocity (minus the free stream).
   # At the second asymptotic level, the boundary data are based on
   #   v[2] = -X(t)⋅∇v[1]
   function r₂(s,t)
-    gradv1 = ẼG̃CL⁻¹(dom,s.u[1])
+    gradv1 = ẼG̃CL⁻¹(dom,L⁻¹1,s.u[1])
     vel = zeros(Float64,dom.nbodypts,2)
     for i = 1:dom.nbody
         ir = dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1
