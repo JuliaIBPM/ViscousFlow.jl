@@ -157,6 +157,40 @@ function ẼG̃CL⁻¹(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,u)
   ẼG̃(dom,qx,qy)
 end
 
+struct Schur{T, M}
+    Sfact::Factorization
+    result::Array{T, 1}
+end
+
+function Schur(m,B₁ᵀ,B₂,A⁻¹::Union{Grids.Convolution,Grids.Identity})
+
+    S = zeros(Float64, 2*m, 2*m)
+    result = zeros(Float64, 2*m)
+
+    for i = 1:m
+      f = zeros(m,2)
+      f[i,1] = 1
+      S[:,i] = -reshape(B₂(A⁻¹(B₁ᵀ(f))),length(f),1)
+    end
+    for i = 1:m
+      f = zeros(m,2)
+      f[i,2] = 1
+      S[:,i+m] = -reshape(B₂(A⁻¹(B₁ᵀ(f))),length(f),1)
+    end
+    Sfact = factorize(S)
+
+    Schur{Float64, m}(Sfact,result)
+end
+
+function (S⁻¹::Schur{T,M})(f) where {T,M}
+
+  A_ldiv_B!(S⁻¹.result, S⁻¹.Sfact, reshape(f,length(f),1))
+
+  reshape(S⁻¹.result,size(f))
+end
+
+
+
 
 #=
 This is where we define the operators that define the particular system of equations
@@ -202,6 +236,9 @@ function set_operators_body!(dom,params)
   Grids.lgf_table!(dom.grid);
   Grids.q_table!(dom.grid,α);
 
+  # Id is identity
+  Id = Grids.Id(dom.grid)
+
   # A⁻¹ is function that acts upon data of size s.u and returns data of same size
   A⁻¹ = Grids.Q(dom.grid)
 
@@ -221,28 +258,9 @@ function set_operators_body!(dom,params)
   B₂(u) = -ECL⁻¹(dom,L⁻¹,u)
 
   # Compute Schur complements and their inverses
-  m = dom.nbodypts
-  S = zeros(2*m,2*m)
-  S₀ = zeros(2*m,2*m)
-  for i = 1:m
-    f = zeros(m,2)
-    f[i,1] = 1
-    S[:,i] = -reshape(B₂(A⁻¹(B₁ᵀ(f))),length(f),1)
-    S₀[:,i] = -reshape(B₂(B₁ᵀ(f)),length(f),1)
-  end
-  for i = 1:m
-    f = zeros(m,2)
-    f[i,2] = 1
-    S[:,i+m] = -reshape(B₂(A⁻¹(B₁ᵀ(f))),length(f),1)
-    S₀[:,i+m] = -reshape(B₂(B₁ᵀ(f)),length(f),1)
-  end
-  dom.S = factorize(S)
-  dom.S₀ = factorize(S₀)
+  S⁻¹ = Schur(dom.nbodypts,B₁ᵀ,B₂,A⁻¹)
+  S₀⁻¹ = Schur(dom.nbodypts,B₁ᵀ,B₂,Id)
 
-  # These functions take in data of size s.f and return data of the same size.
-  # They produce the inverse of the Schur complement.
-  S⁻¹(f) = reshape(dom.S\reshape(f,length(f),1),size(f))
-  S₀⁻¹(f) = reshape(dom.S₀\reshape(f,length(f),1),size(f))
 
   # r₁ is function that acts upon solution structure s and returns data of size s.u
   # In Navier-Stokes problem, this provides the negative of the convective term.

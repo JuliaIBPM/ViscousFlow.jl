@@ -371,6 +371,22 @@ function convolve(G::Array{T,2},cell::AbstractArray{T,2}) where T
     Gw
 end
 
+struct Identity{T, M, N}
+end
+
+function Base.show(io::IO, c::Identity{T,M,N}) where {T,M,N}
+    print(io, "Identity operator for field on a $M × $N grid")
+end
+
+function Identity(cell::Array{T,2}) where {T}
+  m, n = size(cell)
+  res = zeros(T,m,n)
+  Identity{T,m,n}()
+end
+
+(c::Identity{T,M,N})(cell) where {T,M,N} = cell
+
+
 """
     Convolution{T, M, N}
 
@@ -442,6 +458,7 @@ end
 
 L⁻¹(g::Grid) = Convolution(g.fftop, g.lgfhat)
 Q(g::Grid) = Convolution(g.fftop,g.qhat)
+Id(g::DualPatch) = Identity(g.cell)
 
 L⁻¹_slow(g::Grid,cell) = convolve(g.lgftab,cell)
 Q_slow(g::Grid,cell) = convolve(g.qtab,cell)
