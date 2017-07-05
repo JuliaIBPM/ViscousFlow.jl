@@ -47,8 +47,8 @@ mutable struct DualDomain <: Domain
     """
     #S::Array{Float64,2}
     #S₀::Array{Float64,2}
-    S
-    S₀
+    #S
+    #S₀
 
 end
 
@@ -64,15 +64,15 @@ function DualDomain()
     CᵀEᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
     G̃ᵀẼᵀ = [spzeros(0) for i=1:Whirl2d.ndim,j=1:Whirl2d.ndim]
 
-    S = []
-    S₀ = []
+    #S = []
+    #S₀ = []
 
     ddf_fcn = Whirl2d.DDF.ddf_roma
     #ddf_fcn = Whirl2d.DDF.ddf_goza
 
 
     DualDomain(xmin,xmax,grid,[],nbody,nbodypts,firstbpt,
-           ddf_fcn,Eᵀ,Ẽᵀ,CᵀEᵀ,G̃ᵀẼᵀ,S,S₀)
+           ddf_fcn,Eᵀ,Ẽᵀ,CᵀEᵀ,G̃ᵀẼᵀ) #,S,S₀)
 
 end
 

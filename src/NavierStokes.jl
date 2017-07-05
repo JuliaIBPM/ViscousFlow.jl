@@ -128,10 +128,10 @@ function N_divwu(g::Grids.DualPatch,s::Whirl2d.SolnType,U∞::Array{Float64,1})
 end
 
 # Set functions that apply body-grid operators
-CᵀEᵀ(dom::Systems.DualDomain,f) =
+CᵀEᵀ(dom::Systems.DualDomain,f::Array{T,2}) where T =
       reshape(dom.CᵀEᵀ[1]*f[:,1]+dom.CᵀEᵀ[2]*f[:,2],size(dom.grid.cell))
 
-function ẼG̃(dom::Systems.DualDomain,qx,qy)
+function ẼG̃(dom::Systems.DualDomain,qx::Array{T,2},qy::Array{T,2}) where T
   f = [zeros(dom.nbodypts) for i=1:Whirl2d.ndim, j = 1:Whirl2d.ndim]
   f[1,1] = dom.G̃ᵀẼᵀ[1,1]'*squeeze(reshape(qx,length(qx),1),2)
   f[1,2] = dom.G̃ᵀẼᵀ[2,1]'*squeeze(reshape(qx,length(qx),1),2)
@@ -140,14 +140,15 @@ function ẼG̃(dom::Systems.DualDomain,qx,qy)
   f
 end
 
-function ECL⁻¹!(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,u,ψ)
+function ECL⁻¹!(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,
+                u::Array{T,2},ψ::Array{T,2}) where T
   # This version saves the streamfunction it computes
   ψ = -L⁻¹(u)
   tmp = reshape(-ψ,length(ψ),1)
   [dom.CᵀEᵀ[1]'*tmp dom.CᵀEᵀ[2]'*tmp]
 end
 
-function ECL⁻¹(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,u)
+function ECL⁻¹(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,u::Array{T,2}) where T
   tmp = reshape(L⁻¹(u),length(u),1)
   [dom.CᵀEᵀ[1]'*tmp dom.CᵀEᵀ[2]'*tmp]
 end
@@ -157,8 +158,8 @@ function ẼG̃CL⁻¹(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,u)
   ẼG̃(dom,qx,qy)
 end
 
-struct Schur{T, M}
-    Sfact::Factorization
+struct Schur{T,M}
+    Sfact::Factorization{T}
     result::Array{T, 1}
 end
 
@@ -179,7 +180,7 @@ function Schur(m,B₁ᵀ,B₂,A⁻¹::Union{Grids.Convolution,Grids.Identity})
     end
     Sfact = factorize(S)
 
-    Schur{Float64, m}(Sfact,result)
+    Schur{Float64,2*m}(Sfact,result)
 end
 
 function (S⁻¹::Schur{T,M})(f) where {T,M}
