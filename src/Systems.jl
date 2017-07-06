@@ -19,7 +19,7 @@ mutable struct DualDomain <: Domain
     nbodypts::Int
     firstbpt::Vector{Int}
 
-    ddf_fcn
+    ddf_fcn::Function
 
     """
     Eᵀ operator, acting on body Lagrange points and returning data at
@@ -308,7 +308,7 @@ end
 
 # Set the current components of the body velocity from all bodies in the system
 # Set them at level l
-function Ubody(dom::DualDomain,t::Float64,l=1)
+function Ubody(dom::DualDomain,t::Float64,l=1)::Array{Float64,2}
   vel = zeros(Float64,dom.nbodypts,2)
   for i = 1:dom.nbody
       for j = dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1

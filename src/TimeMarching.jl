@@ -5,8 +5,8 @@ import Whirl2d:@get
 
 struct RKparams
   nstage::Int
-  c::Array{Float64}
-  a::Array{Array{Float64}}
+  c::Array{Float64,1}
+  a::Array{Array{Float64,1},1}
 end
 
 
@@ -52,7 +52,7 @@ end
   r₁ is function that acts upon solution structure s and returns data of size s.u
   r₂ is function that acts upon time value and returns data of size s.f
 =#
-function ifherk!(s::Whirl2d.ConstrainedSoln,p::TimeParams,A⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂)
+function ifherk!(s::Whirl2d.ConstrainedSoln{T,K},p::TimeParams,A⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂) where {T,K}
 # Advance the solution by one time step
 @get p (Δt,rk)
 
@@ -111,7 +111,7 @@ return s
 
 end
 
-function ifrk!(s::Whirl2d.Soln,p::TimeParams,A⁻¹,r₁)
+function ifrk!(s::Whirl2d.Soln{T},p::TimeParams,A⁻¹,r₁) where {T}
 # Advance the solution by one time step
 @get p (Δt,rk)
 

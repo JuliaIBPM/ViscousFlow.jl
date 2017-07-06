@@ -10,21 +10,21 @@ import Whirl2d.TimeMarching
 # For problems without a body
 function Soln(dom::Systems.DualDomain)
 
-  t = 0.0
+  #t = 0.0
 
   # State variable. In this case, vorticity on dual grid
   w = zeros(dom.grid.cell)
 
   # Auxiliary data. In this case, streamfunction on dual grid
-  ψ = zeros(dom.grid.cell)
+  #ψ = zeros(dom.grid.cell)
 
-  Whirl2d.Soln(t,w,ψ)
+  Whirl2d.Soln(w)
 end
 
 # For Navier-Stokes problems with a body
 function BodySoln(dom::Systems.DualDomain)
 
-  t = 0.0
+  #t = 0.0
 
   # State variable. In this case, vorticity on dual grid
   w = zeros(dom.grid.cell)
@@ -33,20 +33,21 @@ function BodySoln(dom::Systems.DualDomain)
   f = zeros(dom.nbodypts,Whirl2d.ndim)
 
   # Auxiliary data. In this case, streamfunction on dual grid
-  ψ = zeros(dom.grid.cell)
+  #ψ = zeros(dom.grid.cell)
 
-  Whirl2d.ConstrainedSoln(t,w,f,ψ)
+  #Whirl2d.ConstrainedSoln{Float64}(t,w,f,ψ)
+  Whirl2d.ConstrainedSoln(w,f)
 end
 
 # Designated for two-level asymptotic solutions
 function TwoLevelBodySoln(dom::Systems.DualDomain)
 
-  t = 0.0
+  #t = 0.0
   w = [zeros(dom.grid.cell), zeros(dom.grid.cell)]
   f = [zeros(dom.nbodypts,Whirl2d.ndim),zeros(dom.nbodypts,Whirl2d.ndim)]
-  ψ = [zeros(dom.grid.cell), zeros(dom.grid.cell)]
+  #ψ = [zeros(dom.grid.cell), zeros(dom.grid.cell)]
 
-  Whirl2d.ConstrainedSoln(t,w,f,ψ)
+  Whirl2d.ConstrainedSoln(w,f)
 end
 
 mutable struct PhysParams
@@ -117,7 +118,7 @@ function N_divwu(g::Grids.DualPatch, L⁻¹::Grids.Convolution, u::Array{Float64
   @get Grids (curl, shift, dualdiverg)
    vx, vy = shift(g,curl(g,-L⁻¹(u)))
    wx, wy = shift(g,u)
-   dualdiverg(g,(vx+U∞[1]).*wx,(vy+U∞[2]).*wy)/g.Δx
+   dualdiverg(g,(vx+U∞[1]).*wx./g.Δx,(vy+U∞[2]).*wy./g.Δx)
 end
 # This form makes use of the streamfunction already in the solution structure
 function N_divwu(g::Grids.DualPatch,s::Whirl2d.SolnType,U∞::Array{Float64,1})
@@ -153,7 +154,7 @@ function ECL⁻¹(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,u::Array{T,2
   [dom.CᵀEᵀ[1]'*tmp dom.CᵀEᵀ[2]'*tmp]
 end
 
-function ẼG̃CL⁻¹(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,u)
+function ẼG̃CL⁻¹(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,u::Array{T,2}) where T
   qx,qy = Grids.curl(dom.grid,-L⁻¹(u))
   ẼG̃(dom,qx,qy)
 end
@@ -180,17 +181,16 @@ function Schur(m,B₁ᵀ,B₂,A⁻¹::Union{Grids.Convolution,Grids.Identity})
     end
     Sfact = factorize(S)
 
-    Schur{Float64,2*m}(Sfact,result)
+    Schur{Float64,m}(Sfact,result)
 end
 
-function (S⁻¹::Schur{T,M})(f) where {T,M}
+function (S⁻¹::Schur{T,M})(f::Array{T,2}) where {T,M}
 
+  copy!(S⁻¹.result,f)
   A_ldiv_B!(S⁻¹.result, S⁻¹.Sfact, reshape(f,length(f),1))
 
-  reshape(S⁻¹.result,size(f))
+  [S⁻¹.result[1:M] S⁻¹.result[M+1:2*M]]
 end
-
-
 
 
 #=
@@ -285,22 +285,24 @@ function set_operators_two_level_body!(dom,params)
 
   A⁻¹1,L⁻¹1,B₁ᵀ1,B₂1!,S⁻¹1,S₀⁻¹1,r₁1,r₂1 = set_operators_body!(dom,params)
 
-  A⁻¹(u) = [A⁻¹1(u[1]), A⁻¹1(u[2])]
+  A⁻¹(u) = A⁻¹1.(u)
 
-  L⁻¹(u) = [L⁻¹1(u[1]), L⁻¹1(u[2])]
+  L⁻¹(u) = L⁻¹1.(u)
 
   # B₁ᵀ is function that acts upon data of size s.f and returns data of size s.u
-  B₁ᵀ(f) = [B₁ᵀ1(f[1]), B₁ᵀ1(f[2])]
+  B₁ᵀ(f) = B₁ᵀ1.(f)
 
   # B₂! is function that takes solution array `s` (and acts upon s.u) and returns
   # data of size s.f. It also modifies the auxiliary variables in `s`
-  B₂!(s::Whirl2d.SolnType) = [-ECL⁻¹!(dom,L⁻¹1,s.u[1],s.ψ[1]), -ECL⁻¹!(dom,L⁻¹1,s.u[2],s.ψ[2])]
-  B₂(u) = [-ECL⁻¹(dom,L⁻¹1,u[1]), -ECL⁻¹(dom,L⁻¹1,u[2])]
+  #B₂!(s::Whirl2d.SolnType) = [-ECL⁻¹!(dom,L⁻¹1,s.u[1],s.ψ[1]), -ECL⁻¹!(dom,L⁻¹1,s.u[2],s.ψ[2])]
+  #B₂(u) = [-ECL⁻¹(dom,L⁻¹1,u[1]), -ECL⁻¹(dom,L⁻¹1,u[2])]
+  B₂!(s::Whirl2d.SolnType) = -ECL⁻¹!.(dom,L⁻¹1,s.u,s.ψ)
+  B₂(u) = -ECL⁻¹.(dom,L⁻¹1,u)
 
   # These functions take in data of size s.f and return data of the same size.
   # They produce the inverse of the Schur complement.
-  S⁻¹(f) = [S⁻¹1(f[1]), S⁻¹1(f[2])]
-  S₀⁻¹(f) = [S₀⁻¹1(f[1]), S₀⁻¹1(f[2])]
+  S⁻¹(f::Vector{Array{T,2}}) where T = S⁻¹1.(f)
+  S₀⁻¹(f::Vector{Array{T,2}}) where T = S₀⁻¹1.(f)
 
   # r₁ is function that acts upon solution structure s and returns data of size s.u
   # In two-level asymptotic problem, there is no convective term at the first

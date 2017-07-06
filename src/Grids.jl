@@ -39,11 +39,13 @@ mutable struct DualPatch <: Grid
     facexint::Array{UnitRange{Int},1}
     faceyint::Array{UnitRange{Int},1}
 
+#=
     "mapping from grid index to matrix row/column"
     cellmap
     nodemap
     facexmap
     faceymap
+=#
 
     "cell center variable"
     cell::Array{Float64,Whirl2d.ndim}
@@ -99,6 +101,7 @@ function DualPatch(N,Δx,xmin)
     facexint = ifirst-1+[1:N[1],1:N[2]-1];
     faceyint = ifirst-1+[1:N[1]-1,1:N[2]];
 
+#=
     """
         construct maps of grid interior indices to matrix operator
         row/column indices.
@@ -115,6 +118,7 @@ function DualPatch(N,Δx,xmin)
     nodemap(i,j) = i-ifirst[1]+1+(j-ifirst[2])*(N[1]-1)
     facexmap(i,j) = i-ifirst[1]+1+(j-ifirst[2])*N[1]
     faceymap(i,j) = i-ifirst[1]+1+(j-ifirst[2])*(N[1]-1)
+    =#
 
     lgftab = Array{Float64}(0,0)
     lgfhat = Array{Complex{Float64}}(0,0)
@@ -126,9 +130,10 @@ function DualPatch(N,Δx,xmin)
     fftop = FFTW.plan_rfft(zeros(2*N[1]+3,2*N[2]+3))
 
     DualPatch(N,Δx,xmin,xmax,ifirst,cellint,nodeint,facexint,faceyint,
-	      cellmap,nodemap,facexmap,faceymap,
-	      cell,facex,facey,dualfacex,dualfacey,node,
-        lgftab,lgfhat,qtab,qhat,gqhat,α,fftop)
+    cell,facex,facey,dualfacex,dualfacey,node,
+    lgftab,lgfhat,qtab,qhat,gqhat,α,fftop)
+	      #cellmap,nodemap,facexmap,faceymap,
+
 
 end
 
@@ -149,10 +154,10 @@ function curl!(cell,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
 end
 
 function curl!(facex,facey,ir::UnitRange{Int},jr::UnitRange{Int},cell)
-    @. facex[ir,jr] = cell[ir,jr+1]-cell[ir,jr]
-    @. facey[ir,jr] = cell[ir,jr]-cell[ir+1,jr]
-    @. facex[ir.stop+1,jr] = cell[ir.stop+1,jr+1]-cell[ir.stop+1,jr]
-    @. facey[ir,jr.stop+1] = cell[ir,jr.stop+1]-cell[ir+1,jr.stop+1]
+    irx = ir.start:ir.stop+1
+    jry = jr.start:jr.stop+1
+    @. facex[irx,jr] = cell[irx,jr+1]-cell[irx,jr]
+    @. facey[ir,jry] = cell[ir,jry]-cell[ir+1,jry]
     nothing
 end
 
@@ -167,10 +172,10 @@ function dualdiverg!(cell,ir::UnitRange{Int},jr::UnitRange{Int},dualfacex,dualfa
 end
 
 function grad!(facex,facey,ir::UnitRange{Int},jr::UnitRange{Int},node)
-    @. facex[ir,jr] = node[ir,jr]-node[ir-1,jr]
-    @. facey[ir,jr] = node[ir,jr]-node[ir,jr-1]
-    @. facey[ir.start-1,jr] = node[ir.start-1,jr]-node[ir.start-1,jr-1]
-    @. facex[ir,jr.start-1] = node[ir,jr.start-1]-node[ir-1,jr.start-1]
+    iry = ir.start-1:ir.stop
+    jrx = jr.start-1:jr.stop
+    @. facex[ir,jrx] = node[ir,jrx]-node[ir-1,jrx]
+    @. facey[iry,jr] = node[iry,jr]-node[iry,jr-1]
     nothing
 end
 
@@ -192,20 +197,18 @@ function lap!(lapf,ir::UnitRange{Int},jr::UnitRange{Int},f)
 end
 
 function shift!(vx,vy,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
-    @. vx[ir.start-1,jr] = 0.25(facex[ir.start-1,jr]+facex[ir.start,jr]+
-			        facex[ir.start-1,jr-1]+facex[ir.start,jr-1])
-    @. vy[ir,jr.start-1] = 0.25(facey[ir-1,jr.start-1]+facey[ir-1,jr.start]+
-			        facey[ir,jr.start-1]+facey[ir,jr.start])
-    @. vx[ir,jr] = 0.25(facex[ir,jr]+facex[ir+1,jr]+facex[ir,jr-1]+facex[ir+1,jr-1])
-    @. vy[ir,jr] = 0.25(facey[ir-1,jr]+facey[ir-1,jr+1]+facey[ir,jr]+facey[ir,jr+1])
+    irx = ir.start-1:ir.stop
+    jry = jr.start-1:jr.stop
+    @. vx[irx,jr] = 0.25(facex[irx,jr]+facex[irx+1,jr]+facex[irx,jr-1]+facex[irx+1,jr-1])
+    @. vy[ir,jry] = 0.25(facey[ir-1,jry]+facey[ir-1,jry+1]+facey[ir,jry]+facey[ir,jry+1])
     nothing
 end
 
 function shift!(vx,vy,ir::UnitRange{Int},jr::UnitRange{Int},v)
-    @. vx[ir.start-1,jr]=0.5(v[ir.start-1,jr]+v[ir.start,jr])
-    @. vy[ir,jr.start-1]=0.5(v[ir,jr.start-1]+v[ir,jr.start])
-    @. vx[ir,jr] = 0.5(v[ir,jr]+v[ir+1,jr])
-    @. vy[ir,jr] = 0.5(v[ir,jr]+v[ir,jr+1])
+    irx = ir.start-1:ir.stop
+    jry = jr.start-1:jr.stop
+    @. vx[irx,jr] = 0.5(v[irx,jr]+v[irx+1,jr])
+    @. vy[ir,jry] = 0.5(v[ir,jry]+v[ir,jry+1])
     nothing
 end
 
@@ -435,7 +438,8 @@ end
 
 function Convolution(fftop::FFTW.rFFTWPlan{T}, Ĝ) where T
     m, n = size(fftop)
-    m̂, n̂ = @. ((m,n) + 1) ÷ 2
+    #m̂, n̂ = @. ((m,n) + 1) ÷ 2
+    m̂, n̂ = @. ((m,n) ÷ 2) + 1
 
     paddedSpace = zeros(T, m, n)
 
