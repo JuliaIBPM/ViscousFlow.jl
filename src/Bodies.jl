@@ -100,23 +100,27 @@ function set_velocity!(body::Body,U::Function,l=1)
   end
 end
 
-function Circle(N::Int,rad)::Body
+function Ellipse(N::Int,a,b)::Body
 
     # set up the points on the circle with radius `rad`
-    x = [[rad*cos(2*pi*(i-1)/N),rad*sin(2*pi*(i-1)/N)] for i=1:N]
+    x = [[a*cos(2*pi*(i-1)/N),b*sin(2*pi*(i-1)/N)] for i=1:N]
 
     # put it at the origin, with zero angle
     Body(N,x,[0.0,0.0],0.0)
 
 end
 
-function Circle(N::Int,rad,xcent::Vector{<:Real},angle)::Body
+function Ellipse(N::Int,a,b,xcent::Vector{<:Real},angle)::Body
 
-    b = Circle(N,rad)
+    b = Ellipse(N,a,b)
     update_body!(b,BodyConfig(xcent,angle))
     b
 
 end
+
+Circle(N::Int,rad) = Ellipse(N,rad,rad)
+
+Circle(N::Int,rad,xcent::Vector{<:Real},angle) = Ellipse(N,rad,rad,xcent,angle)
 
 function Plate(N::Int,len)::Body
 

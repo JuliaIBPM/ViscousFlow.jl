@@ -20,6 +20,10 @@ struct TimeParams
   rk::RKparams
 end
 
+function Base.show(io::IO, p::TimeParams)
+    print(io, "Time step size $(p.Δt)")
+end
+
 #=
   We seek to advance, from tⁿ to tⁿ+Δt, the solution of equations of the form
 
