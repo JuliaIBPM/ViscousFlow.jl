@@ -120,13 +120,6 @@ function N_divwu(g::Grids.DualPatch, L⁻¹::Grids.Convolution, u::Array{Float64
    wx, wy = shift(g,u)
    dualdiverg(g,(vx+U∞[1]).*wx./g.Δx,(vy+U∞[2]).*wy./g.Δx)
 end
-# This form makes use of the streamfunction already in the solution structure
-function N_divwu(g::Grids.DualPatch,s::Whirl2d.SolnType,U∞::Array{Float64,1})
-  @get Grids (curl, shift, dualdiverg)
-   vx, vy = shift(g,curl(g,s.ψ))
-   wx, wy = shift(g,s.u)
-   dualdiverg(g,(vx+U∞[1]).*wx,(vy+U∞[2]).*wy)/g.Δx
-end
 
 # Set functions that apply body-grid operators
 CᵀEᵀ(dom::Systems.DualDomain,f::Array{T,2}) where T =
