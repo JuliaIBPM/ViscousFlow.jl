@@ -24,28 +24,20 @@ end
 # For Navier-Stokes problems with a body
 function BodySoln(dom::Systems.DualDomain)
 
-  #t = 0.0
-
   # State variable. In this case, vorticity on dual grid
   w = zeros(dom.grid.cell)
 
   # Constraint force. In this case, Lagrange forces at body points
   f = zeros(dom.nbodypts,Whirl2d.ndim)
 
-  # Auxiliary data. In this case, streamfunction on dual grid
-  #ψ = zeros(dom.grid.cell)
-
-  #Whirl2d.ConstrainedSoln{Float64}(t,w,f,ψ)
   Whirl2d.ConstrainedSoln(w,f)
 end
 
 # Designated for two-level asymptotic solutions
 function TwoLevelBodySoln(dom::Systems.DualDomain)
 
-  #t = 0.0
   w = [zeros(dom.grid.cell), zeros(dom.grid.cell)]
   f = [zeros(dom.nbodypts,Whirl2d.ndim),zeros(dom.nbodypts,Whirl2d.ndim)]
-  #ψ = [zeros(dom.grid.cell), zeros(dom.grid.cell)]
 
   Whirl2d.ConstrainedSoln(w,f)
 end
@@ -61,13 +53,16 @@ mutable struct StreamingParams
   "Angular frequency"
   Ω :: Float64
 
-  "Amplitude in x direction. Must be between 0 and 1."
+  "A/L, ratio of amplitude to length scale"
+  ϵ :: Float64
+
+  "Amplitude factor in x direction. Must be between 0 and 1."
   Ax:: Float64
 
   "Phase in x direction."
   xϕ :: Float64
 
-  "Amplitude in y direction. Must be between 0 and 1."
+  "Amplitude factor in y direction. Must be between 0 and 1."
   Ay :: Float64
 
   "Phase in y direction."
@@ -79,9 +74,9 @@ end
 
 PhysParams() = PhysParams(zeros(Whirl2d.ndim),0.0)
 
-StreamingParams() = StreamingParams(0.0,0.0,0.0,0.0,0.0,(t)->[0.0,0.0])
+StreamingParams() = StreamingParams(0.0,0.0,0.0,0.0,0.0,0.0,(t)->[0.0,0.0])
 
-StreamingParams(Ω,Ax,xϕ,Ay,yϕ) = StreamingParams(Ω,Ax,xϕ,Ay,yϕ,(t)->[0.0,0.0])
+StreamingParams(Ω,ϵ,Ax,xϕ,Ay,yϕ) = StreamingParams(Ω,ϵ,Ax,xϕ,Ay,yϕ,(t)->[0.0,0.0])
 
 function set_freestream!(p::PhysParams,U∞)
   p.U∞ = U∞
@@ -113,7 +108,6 @@ end
 
 # Set forms of the convective term
 # ∇⋅(ωu)
-# This version computes a fresh streamfunction
 function N_divwu(g::Grids.DualPatch, L⁻¹::Grids.Convolution, u::Array{Float64,2},U∞::Array{Float64,1})
   @get Grids (curl, shift, dualdiverg)
    vx, vy = shift(g,curl(g,-L⁻¹(u)))
@@ -248,7 +242,6 @@ function set_operators_body!(dom,params)
 
   # B₂! is function that takes solution array `s` (and acts upon s.u) and returns
   # data of size s.f. It also modifies the auxiliary variable in `s`
-  B₂!(s::Whirl2d.SolnType) = -ECL⁻¹(dom,L⁻¹,s.u)
   B₂(u) = -ECL⁻¹(dom,L⁻¹,u)
 
   # Compute Schur complements and their inverses
@@ -266,7 +259,7 @@ function set_operators_body!(dom,params)
   # Should allow U∞ to be time-varying function.
   r₂(s,t) = Systems.Ubody(dom,t) - transpose(repmat(physparams.U∞,1,dom.nbodypts))
 
-  return A⁻¹,L⁻¹,B₁ᵀ,B₂!,S⁻¹,S₀⁻¹,r₁,r₂
+  return A⁻¹,L⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂
 end
 
 function set_operators_two_level_body!(dom,params)
@@ -289,7 +282,6 @@ function set_operators_two_level_body!(dom,params)
   # data of size s.f. It also modifies the auxiliary variables in `s`
   #B₂!(s::Whirl2d.SolnType) = [-ECL⁻¹!(dom,L⁻¹1,s.u[1],s.ψ[1]), -ECL⁻¹!(dom,L⁻¹1,s.u[2],s.ψ[2])]
   #B₂(u) = [-ECL⁻¹(dom,L⁻¹1,u[1]), -ECL⁻¹(dom,L⁻¹1,u[2])]
-  B₂!(s::Whirl2d.SolnType) = -ECL⁻¹.(dom,L⁻¹1,s.u)
   B₂(u) = -ECL⁻¹.(dom,L⁻¹1,u)
 
   # These functions take in data of size s.f and return data of the same size.
@@ -319,7 +311,7 @@ function set_operators_two_level_body!(dom,params)
      vel]
   end
 
-  return A⁻¹,L⁻¹,B₁ᵀ,B₂!,S⁻¹,S₀⁻¹,r₁,r₂
+  return A⁻¹,L⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂
 
 end
 
