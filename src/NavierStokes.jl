@@ -315,7 +315,7 @@ function set_operators_two_level_body!(dom,params)
   # At the second asymptotic level, the boundary data are based on
   #   v[2] = -X(t)⋅∇v[1]
   function r₂(s,t)
-    gradv1 = ẼG̃CL⁻¹(dom,L⁻¹1,s.u[1])
+    gradv1 = ẼG̃CL⁻¹(dom,L⁻¹1,s.u[1])/dom.grid.Δx
     vel = zeros(Float64,dom.nbodypts,2)
     for i = 1:dom.nbody
         ir = dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1
