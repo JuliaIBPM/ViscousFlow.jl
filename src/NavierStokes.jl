@@ -206,7 +206,7 @@ function set_operators!(dom,params)
   #r₁(s,t) = zeros(s.u)
 
 
-  return A⁻¹,L⁻¹,r₁
+  return TimeMarching.Operators(A⁻¹,L⁻¹,r₁)
 end
 
 
@@ -259,7 +259,7 @@ function set_operators_body!(dom,params)
   # Should allow U∞ to be time-varying function.
   r₂(s,t) = Systems.Ubody(dom,t) - transpose(repmat(physparams.U∞,1,dom.nbodypts))
 
-  return A⁻¹,L⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂
+  return TimeMarching.ConstrainedOperators(A⁻¹,L⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂)
 end
 
 function set_operators_two_level_body!(dom,params)
@@ -269,7 +269,9 @@ function set_operators_two_level_body!(dom,params)
   α = params[2]
   sparams = params[3]
 
-  A⁻¹1,L⁻¹1,B₁ᵀ1,B₂1!,S⁻¹1,S₀⁻¹1,r₁1,r₂1 = set_operators_body!(dom,params)
+  ops1 = set_operators_body!(dom,params)
+
+  @get ops1 (A⁻¹,L⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂) (A⁻¹1,L⁻¹1,B₁ᵀ1,B₂1,S⁻¹1,S₀⁻¹1,r₁1,r₂1)
 
   A⁻¹(u) = A⁻¹1.(u)
 
@@ -311,7 +313,7 @@ function set_operators_two_level_body!(dom,params)
      vel]
   end
 
-  return A⁻¹,L⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂
+  return TimeMarching.ConstrainedOperators(A⁻¹,L⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂)
 
 end
 

@@ -15,6 +15,29 @@ RK31() = RKparams(3,[0.5,1.0,1.0],
 
 
 
+
+struct Operators{TA,TL}
+
+  A⁻¹ :: TA
+  L⁻¹ :: TL
+  r₁ :: Function
+
+end
+
+struct ConstrainedOperators{TA,TL,S,S0}
+
+  A⁻¹ :: TA
+  L⁻¹ :: TL
+  B₁ᵀ :: Function
+  B₂ :: Function
+  S⁻¹ :: S
+  S₀⁻¹ :: S0
+  r₁ :: Function
+  r₂ :: Function
+
+end
+
+
 struct TimeParams
   Δt::Float64
   rk::RKparams
@@ -56,9 +79,10 @@ end
   r₁ is function that acts upon solution structure s and returns data of size s.u
   r₂ is function that acts upon time value and returns data of size s.f
 =#
-function ifherk!(s::Whirl2d.ConstrainedSoln{T,K},p::TimeParams,A⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂) where {T,K}
+function ifherk!(s::Whirl2d.ConstrainedSoln{T,K},p::TimeParams,ops::ConstrainedOperators) where {T,K}
 # Advance the solution by one time step
 @get p (Δt,rk)
+@get ops (A⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂)
 
 # first stage
 sᵢ = deepcopy(s)
@@ -115,9 +139,10 @@ return s
 
 end
 
-function ifrk!(s::Whirl2d.Soln{T},p::TimeParams,A⁻¹,r₁) where {T}
+function ifrk!(s::Whirl2d.Soln{T},p::TimeParams,ops::Operators) where {T}
 # Advance the solution by one time step
 @get p (Δt,rk)
+@get ops (A⁻¹,r₁)
 
 sᵢ = deepcopy(s)
 sᵢ₊₁ = deepcopy(sᵢ)
