@@ -24,18 +24,18 @@ mutable struct Soln{T} <: SolnType
   u::T
 
   # Auxiliary solution data
-  ψ::T
+  #ψ::T
 
 end
 
 function Soln(u::Array{T,2})  where {T}
-  ψ = zeros(u)
-  Soln{Array{T,2}}(0.0,u,ψ)
+  #ψ = zeros(u)
+  Soln{Array{T,2}}(0.0,u)
 end
 
 function Soln(u::Vector{Array{T,2}}) where {T}
-  ψ = zeros(u)
-  Soln{Vector{Array{T,2}}}(0.0,u,ψ)
+  #ψ = zeros(u)
+  Soln{Vector{Array{T,2}}}(0.0,u)
 end
 
 mutable struct ConstrainedSoln{T,K} <: SolnType
@@ -49,18 +49,18 @@ mutable struct ConstrainedSoln{T,K} <: SolnType
   f::K
 
   # Auxiliary solution data
-  ψ::T
+  #ψ::T
 
 end
 
 function ConstrainedSoln(u::Array{T,2},f::Array{T,2}) where {T}
-  ψ = zeros(u)
-  ConstrainedSoln{Array{T,2},Array{T,2}}(0.0,u,f,ψ)
+  #ψ = zeros(u)
+  ConstrainedSoln{Array{T,2},Array{T,2}}(0.0,u,f)
 end
 
 function ConstrainedSoln(u::Vector{Array{T,2}},f::Vector{Array{T,2}}) where {T}
-  ψ = [zeros(u[i]) for i=1:length(u)]
-  ConstrainedSoln{Vector{Array{T,2}},Vector{Array{T,2}}}(0.0,u,f,ψ)
+  #ψ = [zeros(u[i]) for i=1:length(u)]
+  ConstrainedSoln{Vector{Array{T,2}},Vector{Array{T,2}}}(0.0,u,f)
 end
 
 include("TimeMarching.jl")

@@ -137,14 +137,14 @@ function DualPatch(N,Δx,xmin)
 
 end
 
-xcell(g::DualPatch) = [g.xmin[1]+g.Δx*(i-g.ifirst[1]+1/2) for i=g.cellint[1], j=g.cellint[2]]
-ycell(g::DualPatch) = [g.xmin[2]+g.Δx*(j-g.ifirst[2]+1/2) for i=g.cellint[1], j=g.cellint[2]]
-xnode(g::DualPatch) = [g.xmin[1]+g.Δx*(i-g.ifirst[1]+1) for i=g.nodeint[1], j=g.nodeint[2]]
-ynode(g::DualPatch) = [g.xmin[2]+g.Δx*(j-g.ifirst[2]+1) for i=g.nodeint[1], j=g.nodeint[2]]
-xfacex(g::DualPatch) = [g.xmin[1]+g.Δx*(i-g.ifirst[1]+1/2) for i=g.facexint[1], j=g.facexint[2]]
-yfacex(g::DualPatch) = [g.xmin[2]+g.Δx*(j-g.ifirst[2]+1) for i=g.facexint[1], j=g.facexint[2]]
-xfacey(g::DualPatch) = [g.xmin[1]+g.Δx*(i-g.ifirst[1]+1) for i=g.faceyint[1], j=g.faceyint[2]]
-yfacey(g::DualPatch) = [g.xmin[2]+g.Δx*(j-g.ifirst[2]+1/2) for i=g.faceyint[1], j=g.faceyint[2]]
+xcell(g::DualPatch) = [g.xmin[1]+g.Δx*(i-g.ifirst[1]+1/2) for i=g.cellint[1]]
+ycell(g::DualPatch) = [g.xmin[2]+g.Δx*(j-g.ifirst[2]+1/2) for j=g.cellint[2]]
+xnode(g::DualPatch) = [g.xmin[1]+g.Δx*(i-g.ifirst[1]+1) for i=g.nodeint[1]]
+ynode(g::DualPatch) = [g.xmin[2]+g.Δx*(j-g.ifirst[2]+1) for j=g.nodeint[2]]
+xfacex(g::DualPatch) = [g.xmin[1]+g.Δx*(i-g.ifirst[1]+1/2) for i=g.facexint[1]]
+yfacex(g::DualPatch) = [g.xmin[2]+g.Δx*(j-g.ifirst[2]+1) for j=g.facexint[2]]
+xfacey(g::DualPatch) = [g.xmin[1]+g.Δx*(i-g.ifirst[1]+1) for i=g.faceyint[1]]
+yfacey(g::DualPatch) = [g.xmin[2]+g.Δx*(j-g.ifirst[2]+1/2) for j=g.faceyint[2]]
 
 
 # Differential operations

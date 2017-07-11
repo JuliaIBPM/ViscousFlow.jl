@@ -248,7 +248,7 @@ function set_operators_body!(dom,params)
 
   # B₂! is function that takes solution array `s` (and acts upon s.u) and returns
   # data of size s.f. It also modifies the auxiliary variable in `s`
-  B₂!(s::Whirl2d.SolnType) = -ECL⁻¹!(dom,L⁻¹,s.u,s.ψ)
+  B₂!(s::Whirl2d.SolnType) = -ECL⁻¹(dom,L⁻¹,s.u)
   B₂(u) = -ECL⁻¹(dom,L⁻¹,u)
 
   # Compute Schur complements and their inverses
@@ -289,7 +289,7 @@ function set_operators_two_level_body!(dom,params)
   # data of size s.f. It also modifies the auxiliary variables in `s`
   #B₂!(s::Whirl2d.SolnType) = [-ECL⁻¹!(dom,L⁻¹1,s.u[1],s.ψ[1]), -ECL⁻¹!(dom,L⁻¹1,s.u[2],s.ψ[2])]
   #B₂(u) = [-ECL⁻¹(dom,L⁻¹1,u[1]), -ECL⁻¹(dom,L⁻¹1,u[2])]
-  B₂!(s::Whirl2d.SolnType) = -ECL⁻¹!.(dom,L⁻¹1,s.u,s.ψ)
+  B₂!(s::Whirl2d.SolnType) = -ECL⁻¹.(dom,L⁻¹1,s.u)
   B₂(u) = -ECL⁻¹.(dom,L⁻¹1,u)
 
   # These functions take in data of size s.f and return data of the same size.
