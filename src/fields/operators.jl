@@ -10,6 +10,11 @@ function curl!(edges::Edges{Primal}, nodes::Nodes{Dual})
     edges
 end
 
+function curl(nodes::Nodes{Dual})
+    edges = Edges(Primal, nodes.celldims, nodes.ghostlayers)
+    curl!(edges, nodes)
+end
+
 function curl!(nodes::Nodes{Dual}, edges::Edges{Primal})
     u, v = edges.u, edges.v
     for y in 2:size(nodes,2)-1, x in 2:size(nodes,1)-1
@@ -18,7 +23,7 @@ function curl!(nodes::Nodes{Dual}, edges::Edges{Primal})
     nodes
 end
 
-#function curl!(cell,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)
-#    @. cell[ir,jr] = -facex[ir,jr]+facex[ir,jr-1]+facey[ir,jr]-facey[ir-1,jr]
-#    nothing
-#end
+function curl(edges::Edges{Primal})
+    nodes = Nodes(Dual, edges.celldims, edges.ghostlayers)
+    curl!(nodes, edges)
+end

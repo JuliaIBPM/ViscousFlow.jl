@@ -31,12 +31,12 @@ include("fields/operators.jl")
 
 function shift!(dual::Edges{Dual}, nodes::Nodes{Dual})
     ω = nodes.data
-    for j in 2:size(dual.u,2)-1, i in 1:size(dual.u,1)
-        dual.u[i,j] = (ω[i,j] + ω[i+1,j])/2
+    for y in 2:size(dual.u,2)-1, x in 1:size(dual.u,1)
+        dual.u[x,y] = (ω[x,y] + ω[x+1,y])/2
     end
 
-    for j in 1:size(dual.v,2), i in 2:size(dual.v,1)-1
-        dual.v[i,j] = (ω[i,j] + ω[i,j+1])/2
+    for y in 1:size(dual.v,2), x in 2:size(dual.v,1)-1
+        dual.v[x,y] = (ω[x,y] + ω[x,y+1])/2
     end
     dual
 end
