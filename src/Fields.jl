@@ -29,15 +29,13 @@ include("fields/nodes.jl")
 include("fields/edges.jl")
 include("fields/operators.jl")
 
-function shift!(dual::Edges{Dual}, nodes::DualNodes)
-    @assert dual.nodedims == size(nodes)
-
+function shift!(dual::Edges{Dual, NX, NY}, nodes::DualNodes{NX, NY}) where {NX, NY}
     w = nodes.data
-    for y in 1:size(dual.u,2), x in 1:size(dual.u,1)
+    @inbounds for y in 1:size(dual.u,2), x in 1:size(dual.u,1)
         dual.u[x,y] = (w[x,y+1] + w[x+1,y+1])/2
     end
 
-    for y in 1:size(dual.v,2), x in 1:size(dual.v,1)
+    @inbounds for y in 1:size(dual.v,2), x in 1:size(dual.v,1)
         dual.v[x,y] = (w[x+1,y] + w[x+1,y+1])/2
     end
     dual
