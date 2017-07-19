@@ -35,3 +35,24 @@ import Whirl2d:@get
 
     @bench "Single-Step NS Solver" TimeMarching.ifrk!($s,$tparams,$ops)
 end
+
+include(joinpath(Pkg.dir("Whirl2d"), "src/Fields.jl"))
+using Fields
+
+@benchgroup "Fields"  begin
+    celldims = (100, 100)
+    edges = Edges(Primal, celldims, 1)
+    edges.u .= reshape(1:length(edges.u), size(edges.u))
+    edges.v .= reshape(1:length(edges.v), size(edges.v))
+
+    dual = Edges(Dual, celldims, 1)
+
+    nodes = Nodes(Dual, celldims, 1)
+    nodes .= rand(size(nodes))
+
+    @bench "Shift Edges to Edges" Fields.shift!($dual, $edges)
+    @bench "Shift Nodes to Edges" Fields.shift!($dual, $nodes)
+
+    @bench "Node to Edge Curl" curl!($edges, $nodes)
+    @bench "Edge to Node Curl" curl!($nodes, $edges)
+end
