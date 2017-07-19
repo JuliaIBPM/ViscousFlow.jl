@@ -21,3 +21,14 @@ function curl!(nodes::DualNodes, edges::Edges{Primal})
 end
 
 curl(edges::Edges{Primal}) = curl!(DualNodes(edges.nodedims), edges)
+
+function divergence!(nodes::DualNodes, edges::Edges{Dual})
+    u, v = edges.u, edges.v
+
+    for y in 2:size(nodes,2)-1, x in 2:size(nodes,1)-1
+        nodes[x,y] = - u[x-1,y-1] + u[x,y-1] - v[x-1,y-1] + v[x-1,y]
+    end
+    nodes
+end
+
+divergence(edges::Edges{Dual}) = divergence!(DualNodes(edges.nodedims), edges)

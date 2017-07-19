@@ -3,6 +3,28 @@ include(joinpath(Pkg.dir("Whirl2d"), "src/Grids.jl"))
 using Fields
 
 @testset "Fields" begin
+    @testset "Discrete Divergence" begin
+        s = DualNodes(5, 4)
+        s .= rand(5, 4)
+
+        @test iszero(divergence(Fields.shift(curl(s))))
+
+        q′ = Edges(Dual, (5, 4))
+        q′.u .= reshape(1:8, 4, 2)
+        q′.v .= reshape(1:9, 3, 3)
+
+        # Not sure if this is the behavior we want yet
+        # Currently, the ghost cells are not affected
+        # by the divergence operator
+        s .= 1.0
+        divergence!(s, q′)
+        @test s == [ 1.0  1.0  1.0  1.0
+                     1.0  4.0  4.0  1.0
+                     1.0  4.0  4.0  1.0
+                     1.0  4.0  4.0  1.0
+                     1.0  1.0  1.0  1.0 ]
+    end
+
     @testset "Discrete Curl" begin
         s = DualNodes(5, 4)
         s .= reshape(1:20, 4, 5)'
