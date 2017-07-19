@@ -27,6 +27,7 @@ end
 
 include("fields/edges.jl")
 include("fields/nodes.jl")
+include("fields/operators.jl")
 
 function shift!(dual::Edges{Dual}, nodes::Nodes{Dual})
     ω = nodes.data
