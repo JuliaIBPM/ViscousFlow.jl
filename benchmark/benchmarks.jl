@@ -40,7 +40,7 @@ include(joinpath(Pkg.dir("Whirl2d"), "src/Fields.jl"))
 using Fields
 
 @benchgroup "Fields"  begin
-    celldims = (100, 100)
+    celldims = (500, 500)
     edges = Edges(Primal, celldims, 1)
     edges.u .= reshape(1:length(edges.u), size(edges.u))
     edges.v .= reshape(1:length(edges.v), size(edges.v))
