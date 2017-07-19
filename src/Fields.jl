@@ -1,7 +1,7 @@
 module Fields
 
 import Base: @propagate_inbounds
-export Primal, Dual, Edges, Nodes,
+export Primal, Dual, Edges, DualNodes,
        curl, curl!
 
 abstract type CellType end
@@ -25,25 +25,24 @@ macro wraparray(wrapper, field)
     end
 end
 
-include("fields/edges.jl")
 include("fields/nodes.jl")
+include("fields/edges.jl")
 include("fields/operators.jl")
 
-function shift!(dual::Edges{Dual}, nodes::Nodes{Dual})
-    ω = nodes.data
-    for y in 2:size(dual.u,2)-1, x in 1:size(dual.u,1)
-        dual.u[x,y] = (ω[x,y] + ω[x+1,y])/2
+function shift!(dual::Edges{Dual}, nodes::DualNodes)
+    @assert dual.nodedims == size(nodes)
+
+    w = nodes.data
+    for y in 1:size(dual.u,2), x in 1:size(dual.u,1)
+        dual.u[x,y] = (w[x,y+1] + w[x+1,y+1])/2
     end
 
-    for y in 1:size(dual.v,2), x in 2:size(dual.v,1)-1
-        dual.v[x,y] = (ω[x,y] + ω[x,y+1])/2
+    for y in 1:size(dual.v,2), x in 1:size(dual.v,1)
+        dual.v[x,y] = (w[x+1,y] + w[x+1,y+1])/2
     end
     dual
 end
 
-function shift(nodes::Nodes{Dual})
-    dual = Edges(Dual, nodes.celldims, nodes.ghostlayers)
-    shift!(dual, nodes)
-end
+shift(nodes::DualNodes) = shift!(Edges(Dual, nodes), nodes)
 
 end
