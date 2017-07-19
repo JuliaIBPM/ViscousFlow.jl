@@ -90,7 +90,7 @@ using Fields
         ω = Nodes(Dual, (3, 5), 1)
         ω .= reshape(1:35, 5, 7)
 
-        dual = shift(ω)
+        dual = Fields.shift(ω)
 
         @test dual.u == [0.0  6.5  11.5  16.5  21.5  26.5  0.0
                          0.0  7.5  12.5  17.5  22.5  27.5  0.0

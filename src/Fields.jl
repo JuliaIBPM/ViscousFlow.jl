@@ -1,8 +1,7 @@
 module Fields
 
 import Base: @propagate_inbounds
-export Primal, Dual, Edges, Nodes,
-       shift, shift!
+export Primal, Dual, Edges, Nodes
 
 abstract type CellType end
 abstract type Primal <: CellType end
