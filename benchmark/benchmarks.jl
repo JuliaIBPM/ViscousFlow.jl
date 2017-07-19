@@ -41,14 +41,15 @@ using Fields
 
 @benchgroup "Fields"  begin
     celldims = (500, 500)
-    edges = Edges(Primal, celldims, 1)
+
+    nodes = DualNodes(celldims)
+    nodes .= rand(size(nodes))
+
+    edges = Edges(Primal, nodes)
     edges.u .= reshape(1:length(edges.u), size(edges.u))
     edges.v .= reshape(1:length(edges.v), size(edges.v))
 
-    dual = Edges(Dual, celldims, 1)
-
-    nodes = Nodes(Dual, celldims, 1)
-    nodes .= rand(size(nodes))
+    dual = Edges(Dual, nodes)
 
     @bench "Shift Edges to Edges" Fields.shift!($dual, $edges)
     @bench "Shift Nodes to Edges" Fields.shift!($dual, $nodes)
