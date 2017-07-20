@@ -51,9 +51,15 @@ using Fields
 
     dual = Edges(Dual, nodes)
 
+    L = Laplacian(celldims, with_inverse = true, fftw_flags = FFTW.PATIENT)
+
     @bench "Shift Edges to Edges" Fields.shift!($dual, $edges)
     @bench "Shift Nodes to Edges" Fields.shift!($dual, $nodes)
 
     @bench "Node to Edge Curl" curl!($edges, $nodes)
     @bench "Edge to Node Curl" curl!($nodes, $edges)
+
+    out = DualNodes(celldims)
+    @bench "Laplacian" A_mul_B!($out, $L, $nodes)
+    @bench "Inverse Laplacian" A_ldiv_B!($out, $L, $nodes)
 end
