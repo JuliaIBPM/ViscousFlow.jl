@@ -1,12 +1,11 @@
 function curl!(edges::Edges{Primal, NX, NY},
-               nodes::DualNodes{NX, NY}) where {NX, NY}
+               s::DualNodes{NX, NY}) where {NX, NY}
 
-    s = nodes.data
-    @inbounds for y in 1:size(edges.u,2), x in 1:size(edges.u,1)
+    @inbounds for y in 1:NY-1, x in 1:NX
         edges.u[x,y] = s[x,y+1] - s[x,y]
     end
 
-    @inbounds for y in 1:size(edges.v,2), x in 1:size(edges.v,1)
+    @inbounds for y in 1:NY, x in 1:NX-1
         edges.v[x,y] = s[x,y] - s[x+1,y]
     end
     edges

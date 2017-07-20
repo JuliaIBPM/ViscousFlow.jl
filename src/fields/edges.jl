@@ -18,12 +18,12 @@ Edges(T, nodes::DualNodes) = Edges(T, size(nodes))
 function shift!(dual::Edges{Dual, NX, NY},
                 primal::Edges{Primal, NX, NY}) where {NX, NY}
     uₚ = primal.u
-    @inbounds for y in 1:size(dual.u,2), x in 1:size(dual.u,1)
+    @inbounds for y in 1:NY-2, x in 1:NX-1
         dual.u[x,y] = (uₚ[x,y] + uₚ[x+1,y] + uₚ[x,y+1] + uₚ[x+1,y+1])/4
     end
 
     vₚ = primal.v
-    @inbounds for y in 1:size(dual.v,2), x in 1:size(dual.v,1)
+    @inbounds for y in 1:NY-1, x in 1:NX-2
         dual.v[x,y] = (vₚ[x,y] + vₚ[x+1,y] + vₚ[x,y+1] + vₚ[x+1,y+1])/4
     end
     dual
