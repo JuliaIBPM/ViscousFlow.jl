@@ -3,6 +3,20 @@ include(joinpath(Pkg.dir("Whirl2d"), "src/Grids.jl"))
 using Fields
 
 @testset "Fields" begin
+    @testset "Discrete Laplacian" begin
+        s = DualNodes(30, 40)
+        s[3:end-2, 3:end-2] .= rand(26, 36)
+
+        L = Laplacian(30, 40)
+
+        @test L*s ≈ -curl(curl(s))
+
+        @test_throws MethodError (L \ s)
+
+        L = Laplacian(30, 40, with_inverse = true, fftw_flags = FFTW.PATIENT)
+        @test L \ (L*s) ≈ s
+    end
+
     @testset "Discrete Divergence" begin
         s = DualNodes(5, 4)
         s .= rand(5, 4)
