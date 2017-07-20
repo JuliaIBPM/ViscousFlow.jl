@@ -27,8 +27,6 @@ end
 
 Soln(u::T)  where {T} = Soln{T}(0.0,u)
 
-#Soln(u::Vector{Array{T,2}}) where {T} = Soln{Vector{Array{T,2}}}(0.0,u)
-
 mutable struct ConstrainedSoln{T,K} <: SolnType
   # Current time of solution
   t::Float64
@@ -42,8 +40,6 @@ mutable struct ConstrainedSoln{T,K} <: SolnType
 end
 
 ConstrainedSoln(u::T,f::K) where {T,K} = ConstrainedSoln{T,K}(0.0,u,f)
-
-#ConstrainedSoln(u::Vector{Array{T,2}},f::Vector{Array{T,2}}) where {T} = ConstrainedSoln{Vector{Array{T,2}},Vector{Array{T,2}}}(0.0,u,f)
 
 
 include("TimeMarching.jl")

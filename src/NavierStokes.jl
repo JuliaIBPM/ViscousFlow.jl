@@ -200,13 +200,14 @@ function set_operators!(dom,params)
   # L⁻¹ is function that acts upon data of size s.u and returns data of same size
   L⁻¹ = Grids.L⁻¹(dom.grid)
 
+  curl(ψ) = Grids.curl(dom.grid,ψ)
+
   # r₁ is function that acts upon solution structure s and returns data of size s.u
   # In Navier-Stokes problem, this provides the negative of the convective term.
   r₁(s,t) = -N_divwu(dom.grid,L⁻¹,s.u,physparams.U∞)
   #r₁(s,t) = zeros(s.u)
 
-
-  return TimeMarching.Operators(A⁻¹,L⁻¹,r₁)
+  return Grids.GridOperators(L⁻¹,curl), TimeMarching.Operators(A⁻¹,r₁)
 end
 
 
@@ -232,6 +233,7 @@ function set_operators_body!(dom,params)
 
   # L⁻¹ is function that acts upon data of size s.u and returns data of same size
   L⁻¹ = Grids.L⁻¹(dom.grid)
+  curl(ψ) = Grids.curl(dom.grid,ψ)
 
   # Compute the body-to-grid operators
   #Systems.construct_schur!(dom)
@@ -259,7 +261,8 @@ function set_operators_body!(dom,params)
   # Should allow U∞ to be time-varying function.
   r₂(s,t) = Systems.Ubody(dom,t) - transpose(repmat(physparams.U∞,1,dom.nbodypts))
 
-  return TimeMarching.ConstrainedOperators(A⁻¹,L⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂)
+  return Grids.GridOperators(L⁻¹,curl),
+         TimeMarching.ConstrainedOperators(A⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂)
 end
 
 function set_operators_two_level_body!(dom,params)
@@ -269,13 +272,16 @@ function set_operators_two_level_body!(dom,params)
   α = params[2]
   sparams = params[3]
 
-  ops1 = set_operators_body!(dom,params)
+  gops1, ops1 = set_operators_body!(dom,params)
 
-  @get ops1 (A⁻¹,L⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂) (A⁻¹1,L⁻¹1,B₁ᵀ1,B₂1,S⁻¹1,S₀⁻¹1,r₁1,r₂1)
+  @get ops1 (A⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂) (A⁻¹1,B₁ᵀ1,B₂1,S⁻¹1,S₀⁻¹1,r₁1,r₂1)
+  @get gops1 (L⁻¹,curl) (L⁻¹1,curl1)
 
   A⁻¹(u) = A⁻¹1.(u)
 
   L⁻¹(u) = L⁻¹1.(u)
+
+  curl(ψ) = curl1.(ψ)
 
   # B₁ᵀ is function that acts upon data of size s.f and returns data of size s.u
   B₁ᵀ(f) = B₁ᵀ1.(f)
@@ -313,8 +319,21 @@ function set_operators_two_level_body!(dom,params)
      vel]
   end
 
-  return TimeMarching.ConstrainedOperators(A⁻¹,L⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂)
+  return Grids.GridOperators(L⁻¹,curl),
+         TimeMarching.ConstrainedOperators(A⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂)
 
 end
+
+function evaluateFields(u::Array{Float64,2},g::Grids.DualPatch)
+  # ω, ψ, ux, uy = evaluateFields(u,g)
+
+  ψtmp = -Grids.L⁻¹(g)(u)
+  utmp, vtmp = Grids.curl(g,ψtmp)
+
+  return u[g.cellint[1],g.cellint[2]]/g.Δx, ψtmp[g.cellint[1],g.cellint[2]]*g.Δx,
+            utmp[g.facexint[1],g.facexint[2]], vtmp[g.faceyint[1],g.faceyint[2]]
+
+end
+
 
 end

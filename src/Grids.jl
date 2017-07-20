@@ -146,6 +146,13 @@ yfacex(g::DualPatch) = [g.xmin[2]+g.Δx*(j-g.ifirst[2]+1) for j=g.facexint[2]]
 xfacey(g::DualPatch) = [g.xmin[1]+g.Δx*(i-g.ifirst[1]+1) for i=g.faceyint[1]]
 yfacey(g::DualPatch) = [g.xmin[2]+g.Δx*(j-g.ifirst[2]+1/2) for j=g.faceyint[2]]
 
+struct GridOperators{TL}
+
+  L⁻¹ :: TL
+  curl :: Function
+
+end
+
 
 # Differential operations
 function curl!(cell,ir::UnitRange{Int},jr::UnitRange{Int},facex,facey)

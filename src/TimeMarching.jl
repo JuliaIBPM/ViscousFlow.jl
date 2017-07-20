@@ -16,18 +16,16 @@ RK31() = RKparams(3,[0.5,1.0,1.0],
 
 
 
-struct Operators{TA,TL}
+struct Operators{TA}
 
   A⁻¹ :: TA
-  L⁻¹ :: TL
   r₁ :: Function
 
 end
 
-struct ConstrainedOperators{TA,TL,S,S0}
+struct ConstrainedOperators{TA,S,S0}
 
   A⁻¹ :: TA
-  L⁻¹ :: TL
   B₁ᵀ :: Function
   B₂ :: Function
   S⁻¹ :: S
