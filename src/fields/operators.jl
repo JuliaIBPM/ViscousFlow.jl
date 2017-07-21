@@ -47,6 +47,7 @@ function A_ldiv_B!(out::DualNodes{NX, NY},
                    s::DualNodes{NX, NY}) where {NX, NY}
 
     A_mul_B!(out.data, get(L.conv), s.data)
+    out
 end
 L::Laplacian \ s::DualNodes = A_ldiv_B!(DualNodes(size(s)), L, s)
 
