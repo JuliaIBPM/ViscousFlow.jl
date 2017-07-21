@@ -1,3 +1,5 @@
+import Base: ∘
+
 struct Edges{C <: CellType, NX, NY}
     u::Matrix{Float64}
     v::Matrix{Float64}
@@ -31,6 +33,28 @@ end
 
 function shift(primal::Edges{Primal, NX, NY}) where {NX, NY}
     shift!(Edges(Dual, (NX, NY)), primal)
+end
+
+function product!(out::Edges{T, NX, NY},
+                  p::Edges{T, NX, NY},
+                  q::Edges{T, NX, NY}) where {T, NX, NY}
+
+    @inbounds for y in 1:NY-2, x in 1:NX-1
+        out.u[x,y] = p.u[x,y] * q.u[x,y]
+    end
+
+    @inbounds for y in 1:NY-1, x in 1:NX-2
+        out.v[x,y] = p.v[x,y] * q.v[x,y]
+    end
+    out
+end
+
+function product(p::Edges{T, NX, NY}, q::Edges{T, NX, NY}) where {T, NX, NY}
+    product!(Edges(T, (NX, NY)), p, q)
+end
+
+function (∘)(p::Edges{T, NX, NY}, q::Edges) where {T, NX, NY}
+    product!(Edges(T, (NX, NY)), p, q)
 end
 
 function Base.show(io::IO, edges::Edges{T, NX, NY}) where {T, NX, NY}

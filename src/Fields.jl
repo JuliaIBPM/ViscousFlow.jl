@@ -3,8 +3,8 @@ module Fields
 import Base: @propagate_inbounds
 export Primal, Dual, Edges, DualNodes,
        curl, curl!, divergence, divergence!,
-       laplacian, laplacian!, Laplacian
-
+       laplacian, laplacian!, Laplacian,
+       product, product!, ∘
 
 abstract type CellType end
 abstract type Primal <: CellType end
