@@ -39,11 +39,12 @@ function product!(out::Edges{T, NX, NY},
                   p::Edges{T, NX, NY},
                   q::Edges{T, NX, NY}) where {T, NX, NY}
 
-    @inbounds for y in 1:NY-2, x in 1:NX-1
+    uinds, vinds = edge_inds(T, (NX, NY))
+    @inbounds for y in 1:uinds[2], x in 1:uinds[1]
         out.u[x,y] = p.u[x,y] * q.u[x,y]
     end
 
-    @inbounds for y in 1:NY-1, x in 1:NX-2
+    @inbounds for y in 1:vinds[2], x in 1:vinds[1]
         out.v[x,y] = p.v[x,y] * q.v[x,y]
     end
     out

@@ -3,6 +3,20 @@ include(joinpath(Pkg.dir("Whirl2d"), "src/Grids.jl"))
 using Fields
 
 @testset "Fields" begin
+    @testset "Hadamard Product" begin
+        edges_p  = Edges(Primal, (30, 40))
+        edges_p.u .= rand(size(edges_p.u))
+
+        # Should be safe for the output to be the same as the input
+        edges_p2 = edges_p ∘ edges_p
+        product!(edges_p, edges_p, edges_p)
+        @test edges_p2.u == edges_p.u
+        @test edges_p2.v == edges_p.v
+
+        edges_d  = Edges(Dual, (30, 40))
+        @test_throws MethodError (edges_p ∘ edges_d)
+    end
+
     @testset "Discrete Laplacian" begin
         s = DualNodes(30, 40)
         s[3:end-2, 3:end-2] .= rand(26, 36)
