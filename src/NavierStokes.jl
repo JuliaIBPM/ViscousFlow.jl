@@ -281,7 +281,16 @@ function set_operators_two_level_body!(dom,params)
 
   L⁻¹(u) = L⁻¹1.(u)
 
-  curl(ψ) = curl1.(ψ)
+  function curl(ψ)
+    ux = []
+    uy = []
+    for ψi in ψ
+      uxi, uyi = curl1(ψi)
+      push!(ux,uxi)
+      push!(uy,uyi)
+    end
+    return ux, uy
+  end
 
   # B₁ᵀ is function that acts upon data of size s.f and returns data of size s.u
   B₁ᵀ(f) = B₁ᵀ1.(f)
@@ -324,14 +333,47 @@ function set_operators_two_level_body!(dom,params)
 
 end
 
-function evaluateFields(u::Array{Float64,2},g::Grids.DualPatch)
+function evaluateFields(u::Array{Float64,2},g::Grids.DualPatch,gops::Grids.GridOperators)
   # ω, ψ, ux, uy = evaluateFields(u,g)
 
-  ψtmp = -Grids.L⁻¹(g)(u)
-  utmp, vtmp = Grids.curl(g,ψtmp)
+  @get gops (L⁻¹,curl)
+
+  ψtmp = -L⁻¹(u)
+  utmp, vtmp = curl(ψtmp)
 
   return u[g.cellint[1],g.cellint[2]]/g.Δx, ψtmp[g.cellint[1],g.cellint[2]]*g.Δx,
             utmp[g.facexint[1],g.facexint[2]], vtmp[g.faceyint[1],g.faceyint[2]]
+
+end
+
+function evaluateFields(u::Vector{Array{Float64,2}},g::Grids.DualPatch,gops::Grids.GridOperators)
+
+  @get gops (L⁻¹,curl)
+
+  ψtmp = -L⁻¹(u)
+  utmp, vtmp = curl(ψtmp)
+
+  ω = []
+  for ui in u
+    push!(ω,ui[g.cellint[1],g.cellint[2]]/g.Δx)
+  end
+
+  ψ = []
+  for ψi in ψtmp
+    push!(ψ,ψi[g.cellint[1],g.cellint[2]]*g.Δx)
+  end
+
+  ux = []
+  for uxi in utmp
+    push!(ux,uxi[g.facexint[1],g.facexint[2]])
+  end
+
+  uy = []
+  for uyi in vtmp
+    push!(uy,uyi[g.faceyint[1],g.faceyint[2]])
+  end
+
+  return ω, ψ, ux, uy
 
 end
 
