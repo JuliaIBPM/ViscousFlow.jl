@@ -4,7 +4,7 @@ using Fields
 
 @testset "Fields" begin
     @testset "Hadamard Product" begin
-        edges_p  = Edges(Primal, (30, 40))
+        edges_p  = Edges{Primal, 30, 40}()
         edges_p.u .= rand(size(edges_p.u))
 
         # Should be safe for the output to be the same as the input
@@ -13,12 +13,12 @@ using Fields
         @test edges_p2.u == edges_p.u
         @test edges_p2.v == edges_p.v
 
-        edges_d  = Edges(Dual, (30, 40))
+        edges_d  = Edges{Dual, 30, 40}()
         @test_throws MethodError (edges_p ∘ edges_d)
     end
 
     @testset "Discrete Laplacian" begin
-        s = DualNodes(30, 40)
+        s = DualNodes{30, 40}()
         s[3:end-2, 3:end-2] .= rand(26, 36)
 
         L = Laplacian(30, 40)
@@ -32,12 +32,12 @@ using Fields
     end
 
     @testset "Discrete Divergence" begin
-        s = DualNodes(5, 4)
+        s = DualNodes{5, 4}()
         s .= rand(5, 4)
 
         @test iszero(divergence(Fields.shift(curl(s))))
 
-        q′ = Edges(Dual, (5, 4))
+        q′ = Edges{Dual, 5, 4}()
         q′.u .= reshape(1:8, 4, 2)
         q′.v .= reshape(1:9, 3, 3)
 
@@ -54,7 +54,7 @@ using Fields
     end
 
     @testset "Discrete Curl" begin
-        s = DualNodes(5, 4)
+        s = DualNodes{5, 4}()
         s .= reshape(1:20, 4, 5)'
 
         q = curl(s)
@@ -73,7 +73,7 @@ using Fields
 
     @testset "Shifting Primal Edges to Dual Edges" begin
 
-        q = Edges(Primal, (5, 4))
+        q = Edges{Primal, 5, 4}()
         q.u .= reshape(1:15, 5, 3)
         q.v .= reshape(1:16, 4, 4)
 
@@ -91,7 +91,7 @@ using Fields
 
     @testset "Shifting Dual Nodes to Dual Edges" begin
 
-        w = DualNodes(5, 4)
+        w = DualNodes{5, 4}()
         w .= reshape(1:20, 5, 4)
 
         Ww = Fields.shift(w)

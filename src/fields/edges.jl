@@ -16,6 +16,7 @@ function Edges(T::Type{C}, nodedims::Tuple{Int, Int}) where {C <: CellType}
 end
 
 Edges(T, nodes::DualNodes) = Edges(T, size(nodes))
+(::Type{Edges{T,NX,NY}})() where {T,NX,NY} = Edges(T, (NX, NY))
 
 function shift!(dual::Edges{Dual, NX, NY},
                 primal::Edges{Primal, NX, NY}) where {NX, NY}
