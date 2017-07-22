@@ -45,6 +45,9 @@ ConstrainedSoln(u::T,f::K) where {T,K} = ConstrainedSoln{T,K}(0.0,u,f)
 include("TimeMarching.jl")
 using .TimeMarching
 
+include("Process.jl")
+using .Process
+
 include("Grids.jl")
 using .Grids
 

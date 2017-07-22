@@ -333,7 +333,31 @@ function set_operators_two_level_body!(dom,params)
 
 end
 
-function evaluateFields(u::Array{Float64,2},g::Grids.DualPatch,gops::Grids.GridOperators)
+abstract type FieldType end
+
+struct Field{T} <: FieldType
+
+  t :: Float64
+  ω :: T
+  ψ :: T
+  ux :: T
+  uy :: T
+
+end
+
+struct ConstrainedField{T,K} <: FieldType
+
+  t :: Float64
+  ω :: T
+  ψ :: T
+  ux :: T
+  uy :: T
+  f :: K
+
+end
+
+
+function evaluateFields(t::Float64,u::Array{Float64,2},g::Grids.DualPatch,gops::Grids.GridOperators)
   # ω, ψ, ux, uy = evaluateFields(u,g)
 
   @get gops (L⁻¹,curl)
@@ -341,12 +365,12 @@ function evaluateFields(u::Array{Float64,2},g::Grids.DualPatch,gops::Grids.GridO
   ψtmp = -L⁻¹(u)
   utmp, vtmp = curl(ψtmp)
 
-  return u[g.cellint[1],g.cellint[2]]/g.Δx, ψtmp[g.cellint[1],g.cellint[2]]*g.Δx,
-            utmp[g.facexint[1],g.facexint[2]], vtmp[g.faceyint[1],g.faceyint[2]]
+  Field(t,u[g.cellint[1],g.cellint[2]]/g.Δx, ψtmp[g.cellint[1],g.cellint[2]]*g.Δx,
+            utmp[g.facexint[1],g.facexint[2]], vtmp[g.faceyint[1],g.faceyint[2]])
 
 end
 
-function evaluateFields(u::Vector{Array{Float64,2}},g::Grids.DualPatch,gops::Grids.GridOperators)
+function evaluateFields(t::Vector{Float64},u::Vector{Array{Float64,2}},g::Grids.DualPatch,gops::Grids.GridOperators)
 
   @get gops (L⁻¹,curl)
 
@@ -373,9 +397,18 @@ function evaluateFields(u::Vector{Array{Float64,2}},g::Grids.DualPatch,gops::Gri
     push!(uy,uyi[g.faceyint[1],g.faceyint[2]])
   end
 
-  return ω, ψ, ux, uy
+  Field(t, ω, ψ, ux, uy)
 
 end
+
+evaluateFields(s::Whirl2d.SolnType,g::Grids.DualPatch,gops::Grids.GridOperators) =
+      evaluateFields(s.t,s.u,g,gops)
+
+#function evaluateFields(h::Vector{Whirl2d.SolnType},g::Grids.DualPatch,gops::Grids.GridOperators)
+
+
+#end
+
 
 
 end
