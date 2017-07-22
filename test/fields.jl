@@ -104,4 +104,31 @@ using Fields
                         5.5  10.5  15.5
                         6.5  11.5  16.5 ]
     end
+
+    @testset "FieldPool" begin
+        pool = FieldPool(5, 4)
+        @test isempty(pool.nodes)
+
+        w, s = pool(DualNodes)
+        @test size(w) == size(s) == (5, 4)
+        @test length(pool.nodes) == 2
+        w .= rand(5, 4)
+
+        w₂, s₂, s₃ = pool(DualNodes)
+        @test length(pool.nodes) == 3
+        @test w₂ === w
+        @test iszero(w₂)
+
+        @test isempty(pool.dedges)
+        w, s = pool(Edges{Dual})
+        @test length(pool.dedges) == 2
+        @test iszero(w.u)
+        @test iszero(w.v)
+
+        w₂, s₂, s₃ = pool(Edges{Dual})
+        @test length(pool.dedges) == 3
+        @test w₂ === w
+        @test iszero(w.u)
+        @test iszero(w.v)
+    end
 end

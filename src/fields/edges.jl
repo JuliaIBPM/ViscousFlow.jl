@@ -1,4 +1,4 @@
-import Base: ∘
+import Base: fill!, ∘
 
 struct Edges{C <: CellType, NX, NY}
     u::Matrix{Float64}
@@ -17,6 +17,12 @@ end
 
 Edges(T, nodes::DualNodes) = Edges(T, size(nodes))
 (::Type{Edges{T,NX,NY}})() where {T,NX,NY} = Edges(T, (NX, NY))
+
+function fill!(edges::Edges, s::Number)
+    fill!(edges.u, s)
+    fill!(edges.v, s)
+    edges
+end
 
 function shift!(dual::Edges{Dual, NX, NY},
                 primal::Edges{Primal, NX, NY}) where {NX, NY}
