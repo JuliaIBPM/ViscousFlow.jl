@@ -1,4 +1,4 @@
-include(joinpath(Pkg.dir("Whirl2d"), "src/Fields.jl"))
+import Whirl2d: Fields
 using Fields
 
 @testset "Fields" begin
