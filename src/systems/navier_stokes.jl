@@ -40,8 +40,8 @@ function NavierStokes(dims::Tuple{Int, Int}, Re, Δx, Δt, U∞ = (0.0, 0.0), nw
 
     α = Δt/(Re*Δx^2)
     qtab = [intfact(x, y, 0.5α) for x in 0:NX-1, y in 0:NY-1]
-    E = CircularConvolution(qtab)
-    invlap = CircularConvolution(view(Fields.LGF_TABLE, 1:NX, 1:NY))
+    E = CircularConvolution(qtab, FFTW.PATIENT)
+    invlap = CircularConvolution(view(Fields.LGF_TABLE, 1:NX, 1:NY), FFTW.PATIENT)
 
     A⁻¹g = DualNodes{NX, NY}()
     Ñ    = DualNodes{NX, NY}()
