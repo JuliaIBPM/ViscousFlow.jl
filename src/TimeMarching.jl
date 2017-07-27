@@ -2,19 +2,19 @@ module TimeMarching
 
 import Whirl2d
 import Whirl2d:@get
+import StaticArrays: SMatrix, SVector, @SMatrix, @SVector
 
-struct RKparams
-  nstage::Int
-  c::Array{Float64,1}
-  a::Array{Array{Float64,1},1}
+struct RKParams{N}
+  c::SVector{N, Float64}
+  a::SMatrix{N,N,Float64}
 end
 
+using ..IntFactSystems
 
-RK31() = RKparams(3,[0.5,1.0,1.0],
-                    [[1/2],[√3/3,(3-√3)/3],[(3+√3)/6,-√3/3,(3+√3)/6]])
-
-
-
+const RK31 = RKParams((@SVector [0.5, 1.0, 1.0]),
+                      (@SMatrix [     1/2        0        0
+                                     √3/3 (3-√3)/3        0
+                                 (3+√3)/6    -√3/3 (3+√3)/6]))
 
 struct Operators{TA,TL}
 
@@ -40,7 +40,7 @@ end
 
 struct TimeParams
   Δt::Float64
-  rk::RKparams
+  rk::RKParams
 end
 
 function Base.show(io::IO, p::TimeParams)
@@ -139,50 +139,58 @@ return s
 
 end
 
-function ifrk!(s::Whirl2d.Soln{T},p::TimeParams,ops::Operators) where {T}
-# Advance the solution by one time step
-@get p (Δt,rk)
-@get ops (A⁻¹,r₁)
+function ifrk!(s₊, s, Δt, rk::RKParams{nstage}, sys::System{Unconstrained}) where {nstage}
+    @get sys (A⁻¹g, q, Ñ, w) # scratch space
+    resize!(w, nstage-1)
 
-sᵢ = deepcopy(s)
-sᵢ₊₁ = deepcopy(sᵢ)
-sᵢ₊₁.t = s.t + Δt*rk.c[1]
-A⁻¹gᵢ = Δt*rk.a[1][1]*A⁻¹(r₁(sᵢ,sᵢ₊₁.t))
-qᵢ₊₁ = A⁻¹(s.u)
-@. sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
+    u₊ = s₊.u
+    u₊ .= s.u
 
-w = []
-for i = 2:rk.nstage-1
-  sᵢ = deepcopy(sᵢ₊₁)
-  sᵢ₊₁.t = s.t + Δt*rk.c[i]
-  push!(w,A⁻¹gᵢ/(Δt*rk.a[i-1][i-1]))
-  for j = 1:i-1
-    w[j] = A⁻¹(w[j])
-  end
-  A⁻¹gᵢ = Δt*rk.a[i][i]*A⁻¹(r₁(sᵢ,sᵢ₊₁.t))
-  qᵢ₊₁ = A⁻¹(qᵢ₊₁)
-  @. sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
-  for j = 1:i-1
-    @. sᵢ₊₁.u += Δt*rk.a[i][j]*w[j]
-  end
-end
+    t₊ = s.t + Δt*rk.c[1]
 
-# In final stage, A⁻¹ is assumed to be the identity
-i = rk.nstage
-sᵢ = deepcopy(sᵢ₊₁)
-sᵢ₊₁.t = s.t + Δt*rk.c[i]
-push!(w,A⁻¹gᵢ/(Δt*rk.a[i-1][i-1]))
-A⁻¹gᵢ = Δt*rk.a[i][i]*r₁(sᵢ,sᵢ₊₁.t)
-sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
-for j = 1:i-1
-  @. sᵢ₊₁.u += Δt*rk.a[i][j]*w[j]
-end
+    A⁻¹(A⁻¹g, r₁(Ñ, u₊, t₊, sys), sys)
+    A⁻¹g .*= Δt*rk.a[1, 1]
 
-# finalize
-s = deepcopy(sᵢ₊₁)
+    A⁻¹(q, s.u, sys)
 
-return s
+    @. u₊ = q + A⁻¹g
 
+    for i = 2:nstage-1
+        t₊ = s.t + Δt*rk.c[i]
+
+        w[i-1] .= A⁻¹g ./ (Δt*rk.a[i-1, i-1])
+        for j = 1:i-1
+            A⁻¹(w[j], w[j], sys)
+        end
+
+        A⁻¹(A⁻¹g, r₁(Ñ, u₊, t₊, sys), sys)
+        A⁻¹g .*= Δt*rk.a[i,i]
+
+        A⁻¹(q, q, sys)
+
+        @. u₊ = q + A⁻¹g
+
+        for j = 1:i-1
+            @. u₊ += Δt*rk.a[i,j]*w[j]
+        end
+    end
+
+    # In final stage, A⁻¹ is assumed to be the identity
+    i = nstage
+    t₊ = s.t + Δt*rk.c[i]
+    w[i-1] .= A⁻¹g ./ (Δt*rk.a[i-1,i-1])
+
+    r₁(A⁻¹g, u₊, t₊, sys)
+    A⁻¹g .*= Δt*rk.a[i,i]
+
+    @. u₊ = q + A⁻¹g
+    for j in 1:i-1
+        u₊ .+= Δt*rk.a[i,j].*w[j]
+    end
+
+    s₊.t = t₊
+
+    return s₊
 end
 
 end

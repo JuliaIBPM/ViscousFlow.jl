@@ -2,42 +2,30 @@ using PkgBenchmark
 
 include(joinpath(Pkg.dir("Whirl2d"), "src/Whirl2d.jl"))
 import Whirl2d
-import Whirl2d:@get
-@get Whirl2d (Systems, Grids, DualPatch, Bodies, TimeMarching, NavierStokes);
+import Whirl2d:@get, Soln, IntFactSystems, TimeMarching, Fields
+
+using IntFactSystems
+include(joinpath(Pkg.dir("Whirl2d"), "src/systems/navier_stokes.jl"))
+import TimeMarching: ifrk!, RK31
 
 @benchgroup "Navier Stokes" begin
-    xmin = [-1.0,-1.0]
-    xmax = [3.0,1.0]
-    dom = Systems.DualDomain(xmin,xmax)
-
-    Δx = 0.02
-    dom = Systems.add_grid(dom,Δx)
+    wexact(x, y, t) = exp(-((x-t)^2+y^2)/(0.2^2+4t/200))/(1+4t/(200*0.2^2))
 
     Re = 200
-    physparams = NavierStokes.set_freestream([1.0,0.0])
-    NavierStokes.set_Re!(physparams,Re)
+    Δx = 0.02
+    x = linspace(-1-0.5Δx, 3+0.5Δx, 202)
+    y = linspace(-1-0.5Δx, 1+0.5Δx, 102)
     Δt = min(0.5*Δx,0.5*Δx^2*Re)
+    dims = length.((x,y))
 
-    α = Δt/(Re*Δx^2)
-    tparams = TimeMarching.TimeParams(Δt,TimeMarching.RK31())
-
-    params = (physparams,α)
-    ops = NavierStokes.set_operators!(dom,params);
-
-    s = NavierStokes.Soln(dom)
-
-    x = Grids.xcell(dom.grid)
-    y = Grids.ycell(dom.grid)
-    σ = 0.2
-    wexact(t) = [exp(-((x[i]-t)^2+y[j]^2)/(σ^2+4t/Re))/(1+4t/(Re*σ^2)) for i = 1:length(x), j = 1:length(y)];
-    s.u[dom.grid.cellint[1],dom.grid.cellint[2]] = dom.grid.Δx*wexact(0.0);
+    ns = NavierStokes(dims, Re, Δx, Δt, (1.0, 0.0))
+    s = Soln(0.0, Fields.DualNodes(dims));
+    s.u .= [wexact(xᵢ, yᵢ, 0)*Δx for xᵢ in x, yᵢ in y]
+    s₊ = Soln(0.0, Fields.DualNodes(dims));
 
 
-    @bench "Single-Step NS Solver" TimeMarching.ifrk!($s,$tparams,$ops)
+    @bench "Single-Step NS Solver" ifrk!($s₊, $s, $Δt, $RK31, $ns)
 end
-
-include(joinpath(Pkg.dir("Whirl2d"), "src/Fields.jl"))
-using Fields
 
 @benchgroup "Fields"  begin
     celldims = (500, 500)
