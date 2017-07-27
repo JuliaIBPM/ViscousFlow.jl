@@ -2,19 +2,19 @@ module TimeMarching
 
 import Whirl2d
 import Whirl2d:@get
-import StaticArrays: SMatrix, SVector, @SMatrix, @SVector
 
-struct RKParams{N}
-  c::SVector{N, Float64}
-  a::SMatrix{N,N,Float64}
+struct RKParams
+    nstage::Int
+  c::Vector{Float64}
+  a::Matrix{Float64}
 end
 
 using ..IntFactSystems
 
-const RK31 = RKParams((@SVector [0.5, 1.0, 1.0]),
-                      (@SMatrix [     1/2        0        0
-                                     √3/3 (3-√3)/3        0
-                                 (3+√3)/6    -√3/3 (3+√3)/6]))
+const RK31 = RKParams(3, [0.5, 1.0, 1.0],
+                      [1/2        0        0
+                       √3/3 (3-√3)/3        0
+                       (3+√3)/6    -√3/3 (3+√3)/6])
 
 struct Operators{TA,TL}
 
@@ -139,9 +139,9 @@ return s
 
 end
 
-function ifrk!(s₊, s, Δt, rk::RKParams{nstage}, sys::System{Unconstrained}) where {nstage}
+function ifrk!(s₊, s, Δt, rk::RKParams, sys::System{Unconstrained})
     @get sys (A⁻¹g, q, Ñ, w) # scratch space
-    resize!(w, nstage-1)
+    resize!(w, rk.nstage-1)
 
     u₊ = s₊.u
     u₊ .= s.u
@@ -155,7 +155,7 @@ function ifrk!(s₊, s, Δt, rk::RKParams{nstage}, sys::System{Unconstrained}) w
 
     @. u₊ = q + A⁻¹g
 
-    for i = 2:nstage-1
+    for i = 2:rk.nstage-1
         t₊ = s.t + Δt*rk.c[i]
 
         w[i-1] .= A⁻¹g ./ (Δt*rk.a[i-1, i-1])
@@ -176,7 +176,7 @@ function ifrk!(s₊, s, Δt, rk::RKParams{nstage}, sys::System{Unconstrained}) w
     end
 
     # In final stage, A⁻¹ is assumed to be the identity
-    i = nstage
+    i = rk.nstage
     t₊ = s.t + Δt*rk.c[i]
     w[i-1] .= A⁻¹g ./ (Δt*rk.a[i-1,i-1])
 
