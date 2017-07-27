@@ -5,7 +5,7 @@ export Primal, Dual, Edges, DualNodes,
        curl, curl!, divergence, divergence!,
        laplacian, laplacian!, Laplacian,
        product, product!, ∘,
-       FieldPool
+       CircularConvolution
 
 abstract type CellType end
 abstract type Primal <: CellType end
@@ -31,8 +31,6 @@ end
 include("fields/nodes.jl")
 include("fields/edges.jl")
 include("fields/operators.jl")
-
-include("fields/pool.jl")
 
 function shift!(dual::Edges{Dual, NX, NY}, w::DualNodes{NX, NY}) where {NX, NY}
     @inbounds for y in 1:NY-2, x in 1:NX-1
