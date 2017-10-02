@@ -370,7 +370,7 @@ function evaluateFields(t::Float64,u::Array{Float64,2},g::Grids.DualPatch,gops::
 
 end
 
-function evaluateFields(t::Vector{Float64},u::Vector{Array{Float64,2}},g::Grids.DualPatch,gops::Grids.GridOperators)
+function evaluateFields(t::Float64,u::Vector{Array{Float64,2}},g::Grids.DualPatch,gops::Grids.GridOperators)
 
   @get gops (L⁻¹,curl)
 
