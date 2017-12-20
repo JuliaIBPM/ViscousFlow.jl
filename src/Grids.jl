@@ -352,9 +352,22 @@ Set up a table of integrating factor values in the upper right
 quadrant, centered at the lower left ghost cell in grid 'g'.
 This zeros out the values lower than machine epsilon.
 """
-intfact(g::Grid,a::Float64) = reshape([intfact([i,j],a) > eps(Float64) ?
+function intfact(g::Grid,a::Float64)
+
+  Nmax = 0
+  while intfact([Nmax,0],a) > eps(Float64)
+    Nmax += 1
+  end
+
+  return reshape([max(i,j) <= Nmax ?
         intfact([i,j],a) : 0.0
         for i=0:g.N[1]+1,j=0:g.N[2]+1], g.N[1]+2,g.N[2]+2)
+end
+
+# intfact(g::Grid,a::Float64) = reshape([intfact([i,j],a) > eps(Float64) ?
+#         intfact([i,j],a) : 0.0
+#         for i=0:g.N[1]+1,j=0:g.N[2]+1], g.N[1]+2,g.N[2]+2)
+
 
 
 """

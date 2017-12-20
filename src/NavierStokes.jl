@@ -7,6 +7,9 @@ import Whirl2d.Bodies
 import Whirl2d.Systems
 import Whirl2d.TimeMarching
 
+include("./Process.jl")
+using .Process
+
 # For problems without a body
 function Soln(dom::Systems.DualDomain)
 
@@ -220,8 +223,10 @@ function set_operators_body!(dom,params)
   α = params[2]
 
   # Set up the LGF and integrating factor tables
-  Grids.lgf_table!(dom.grid);
-  Grids.q_table!(dom.grid,α);
+  println("Setting up LGF table")
+  @time Grids.lgf_table!(dom.grid);
+  println("Setting up integrating factor table")
+  @time Grids.q_table!(dom.grid,α);
 
   # Id is identity
   Id = Grids.Id(dom.grid)
@@ -235,7 +240,8 @@ function set_operators_body!(dom,params)
 
   # Compute the body-to-grid operators
   #Systems.construct_schur!(dom)
-  Systems.construct_CᵀEᵀ!(dom)
+  println("Setting up body-to-grid operator")
+  @time Systems.construct_CᵀEᵀ!(dom)
 
   # B₁ᵀ is function that acts upon data of size s.f and returns data of size s.u
   B₁ᵀ(f) = CᵀEᵀ(dom,f)
@@ -245,8 +251,9 @@ function set_operators_body!(dom,params)
   B₂(u) = -ECL⁻¹(dom,L⁻¹,u)
 
   # Compute Schur complements and their inverses
-  S⁻¹ = Schur(dom.nbodypts,B₁ᵀ,B₂,A⁻¹)
-  S₀⁻¹ = Schur(dom.nbodypts,B₁ᵀ,B₂,Id)
+  println("Computing Schur complements and inverses")
+  @time S⁻¹ = Schur(dom.nbodypts,B₁ᵀ,B₂,A⁻¹)
+  @time S₀⁻¹ = Schur(dom.nbodypts,B₁ᵀ,B₂,Id)
 
 
   # r₁ is function that acts upon solution structure s and returns data of size s.u
@@ -416,6 +423,14 @@ evaluateFields(s::Whirl2d.SolnType,g::Grids.DualPatch,gops::Grids.GridOperators)
 
 #end
 
+average(f::Union{Vector{Vector{T}},Vector{T}},itr::UnitRange) where T =
+          mapreduce(x -> x/length(itr), +, f[itr])
 
+force(s::Whirl2d.ConstrainedSoln{T,K},g::Grids.DualPatch) where {T,K} = sum(s.f,1)*g.Δx^2
+
+function force(h::Vector{Whirl2d.ConstrainedSoln{T,K}},g::Grids.DualPatch) where {T,K}
+    fh = force.(h,g)
+    return map(s -> s.t,h), map(f -> f[1], fh), map(f -> f[2], fh)
+end
 
 end
