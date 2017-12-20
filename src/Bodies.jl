@@ -142,6 +142,49 @@ function Plate(N::Int,len,xcent::Vector{<:Real},angle::Float64)::Body
 
 end
 
+function Plate(N::Int,len,t,λ)::Body
+    # input N is the number of panels on one side only
+
+    # set up points on flat sides
+
+
+    #xtop_face = zeros(N+1,2);
+    #xtop_face(:,2) = thick/2;
+    Δϕ = π/N
+    Jϕa = [sqrt(sin(ϕ)^2+λ^2*cos(ϕ)^2) for ϕ in linspace(π-Δϕ/2,Δϕ/2,N)]
+    Jϕ = len*Jϕa/Δϕ/sum(Jϕa)
+    xtopface = -0.5*len + Δϕ*cumsum([0.0; Jϕ])
+    xtop = 0.5*(xtopface[1:N] + xtopface[2:N+1])
+
+
+    Δsₑ = Δϕ*Jϕ[1]
+    Nₑ = 2*floor(Int,0.25*π*t/Δsₑ)
+    xedgeface = [0.5*len + 0.5*t*cos(ϕ) for ϕ in linspace(π/2,-π/2,Nₑ+1)]
+    yedgeface = [          0.5*t*sin(ϕ) for ϕ in linspace(π/2,-π/2,Nₑ+1)]
+    xedge = 0.5*(xedgeface[1:Nₑ]+xedgeface[2:Nₑ+1])
+    yedge = 0.5*(yedgeface[1:Nₑ]+yedgeface[2:Nₑ+1])
+
+
+    x = [
+         [[xi,0.5*t] for xi in xtop];
+         [[xedge[i],yedge[i]] for i in 1:Nₑ];
+         [[xi,-0.5*t] for xi in xtop[end:-1:1]];
+         [[-xedge[i],yedge[i]] for i in Nₑ:-1:1]
+        ]
+
+
+    # put it at the origin, with zero angle
+    Body(length(x),x,[0.0,0.0],0.0)
+
+end
+
+function Plate(N::Int,len,t,λ,xcent::Vector{<:Real},angle::Float64)::Body
+
+    b = Plate(N,len,t,λ)
+    update_body!(b,BodyConfig(xcent,angle))
+    b
+
+end
 
 function Base.show(io::IO, b::Body)
     println(io, "Body: number of points = $(b.N), "*
