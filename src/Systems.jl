@@ -312,8 +312,9 @@ function Ubody(dom::DualDomain,t::Float64,l=1)::Array{Float64,2}
   vel = zeros(Float64,dom.nbodypts,2)
   for i = 1:dom.nbody
       for j = dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1
-        vel[j,1] = dom.body[i].U[l](t,dom.body[i].x[j-dom.firstbpt[i]+1])[1]
-        vel[j,2] = dom.body[i].U[l](t,dom.body[i].x[j-dom.firstbpt[i]+1])[2]
+        x, u, a = dom.body[i].motion[l](t,dom.body[i].xtilde[j-dom.firstbpt[i]+1])
+        vel[j,1] = real(u)
+        vel[j,2] = imag(u)
       end
   end
   vel

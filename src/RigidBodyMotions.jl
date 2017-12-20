@@ -23,25 +23,41 @@ A type to store the plate's current kinematics
 
 # Fields
 
+- `c`: current centroid position (relative to initial position)
 - `ċ`: current centroid velocity
 - `c̈`: current centroid acceleration
+- `α`: current angle (relative to initial angle)
 - `α̇`: current angular velocity
+- `α̈`: current angular acceleration
 - `kin`: a [`Kinematics`](@ref) structure
 
 The first three fields are meant as a cache of the current kinematics
 while the `kin` field can be used to find the plate kinematics at any time.
 """
 mutable struct RigidBodyMotion
+    c::Complex128
     ċ::Complex128
     c̈::Complex128
+    α::Float64
     α̇::Float64
+    α̈::Float64
 
     kin::Kinematics
 end
 
-RigidBodyMotion(ċ, α̇) = RigidBodyMotion(complex(ċ), 0.0im, float(α̇), Constant(ċ, α̇))
+RigidBodyMotion(ċ, α̇) = RigidBodyMotion(0.0im, complex(ċ), 0.0im, 0.0, float(α̇),
+                                          0.0, Constant(ċ, α̇))
 RigidBodyMotion(kin::Kinematics) = RigidBodyMotion(kin(0)..., kin)
 (m::RigidBodyMotion)(t) = m.kin(t)
+
+function (m::RigidBodyMotion)(t,xtilde::Vector{Float64})
+  z̃ = Complex128(xtilde[1],xtilde[2])
+  m.c, m.ċ, m.c̈, m.α, m.α̇, m.α̈ = m.kin(t)
+  z = exp(im*m.α)*z̃
+  return m.c + z, m.ċ + im*m.α̇*z, m.c̈ + (im*m.α̈-m.α̇^2)*z
+end
+
+
 
 function show(io::IO, m::RigidBodyMotion)
     println(io, "Rigid Body Motion:")
@@ -56,7 +72,7 @@ struct Constant{C <: Complex, A <: Real} <: Kinematics
     α̇::A
 end
 Constant(ċ, α̇) = Constant(complex(ċ), α̇)
-(c::Constant{C})(t) where C = c.ċ, zero(C), c.α̇
+(c::Constant{C})(t) where C = zero(C), c.ċ, zero(C), 0.0, c.α̇, 0.0
 show(io::IO, c::Constant) = print(io, "Constant (ċ = $(c.ċ), α̇ = $(c.α̇))")
 
 """
@@ -95,7 +111,7 @@ function Pitchup(U₀, a, K, α₀, t₀, Δα, ramp)
     p = 2K*((ramp >> t₀) - (ramp >> (t₀ + Δt)))
     ṗ = d_dt(p)
     p̈ = d_dt(ṗ)
-    Pitchup(U₀, a, K, α₀, t₀, Δα, p, ṗ, p̈)
+    Pitchup(U₀, a, K, α₀, t₀, Δα, c, ċ, c̈, p, ṗ, p̈)
 end
 
 function (p::Pitchup)(t)
@@ -103,6 +119,7 @@ function (p::Pitchup)(t)
     α̇ = p.α̇(t)
     α̈ = p.α̈(t)
 
+    c = p.U₀*t - p.a*exp(im*α)
     ċ = p.U₀ - p.a*im*α̇*exp(im*α)
     if (t - p.t₀) > p.Δα/p.K
         c̈ = 0.0im
@@ -110,8 +127,47 @@ function (p::Pitchup)(t)
         c̈ = p.a*exp(im*α)*(α̇^2 - im*α̈)
     end
 
-    return ċ, c̈, α̇
+    #return [Real(ċ),Imag(ċ)], [Real(c̈),Imag(c̈)], α̇
+    return c, ċ, c̈, α, α̇, α̈
 end
+
+
+struct XOscillation <: Kinematics
+    "Angular frequency"
+    Ω :: Float64
+
+    "Amplitude x direction"
+    A:: Float64
+
+    "Phase in x direction."
+    ϕ :: Float64
+
+    c::Profile
+    ċ::Profile
+    c̈::Profile
+end
+
+function XOscillation(Ω,A,ϕ)
+    Δt = ϕ/Ω
+    p = A*(Sinusoid(Ω) << Δt)
+    ṗ = d_dt(p)
+    p̈ = d_dt(ṗ)
+    XOscillation(Ω, A, ϕ, p, ṗ, p̈)
+end
+
+function (p::XOscillation)(t)
+    α = 0.0
+    α̇ = 0.0
+    α̈ = 0.0
+
+    c = Complex128(p.c(t))
+    ċ = Complex128(p.ċ(t))
+    c̈ = Complex128(p.c̈(t))
+    return c, ċ, c̈, α, α̇, α̈
+
+    #return [p.ċ(t),0.0], [p.c̈(t),0.0], α̇
+end
+
 
 
 struct DerivativeProfile{P} <: Profile
@@ -315,6 +371,31 @@ function (Σp::AddedProfiles)(t)
     end
     f
 end
+
+
+struct MultipliedProfiles{T <: Tuple} <: Profile
+    ps::T
+end
+function show(io::IO, Πp::MultipliedProfiles)
+    println(io, "MultipliedProfiles:")
+    for p in Πp.ps
+        println(io, "  $p")
+    end
+end
+*(p::Profile, Πp::MultipliedProfiles) = MultipliedProfiles((p, Πp.ps...))
+*(Πp::MultipliedProfiles, p::Profile) = MultipliedProfiles((Πp.ps..., p))
+function *(Πp₁::MultipliedProfiles, Πp₂::MultipliedProfiles)
+    MultipliedProfiles((Πp₁..., Πp₂...))
+end
+
+function (Πp::MultipliedProfiles)(t)
+    f = 1.0
+    for p in Πp.ps
+        f *= p(t)
+    end
+    f
+end
+
 
 struct Sinusoid <: Profile
     ω::Float64

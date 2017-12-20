@@ -43,7 +43,7 @@ function TwoLevelBodySoln(dom::Systems.DualDomain)
 end
 
 mutable struct PhysParams
-  U∞ :: Array{Float64}
+  U∞ :: Vector{Float64}
   Re :: Float64
 end
 
@@ -68,15 +68,13 @@ mutable struct StreamingParams
   "Phase in y direction."
   yϕ :: Float64
 
-  "Motion function in x and y directions"
-  X :: Function
+  #"Motion function in x and y directions"
+  #X :: Function
 end
 
 PhysParams() = PhysParams(zeros(Whirl2d.ndim),0.0)
 
-StreamingParams() = StreamingParams(0.0,0.0,0.0,0.0,0.0,0.0,(t)->[0.0,0.0])
-
-StreamingParams(Ω,ϵ,Ax,xϕ,Ay,yϕ) = StreamingParams(Ω,ϵ,Ax,xϕ,Ay,yϕ,(t)->[0.0,0.0])
+StreamingParams() = StreamingParams(0.0,0.0,0.0,0.0,0.0,0.0)
 
 function set_freestream!(p::PhysParams,U∞)
   p.U∞ = U∞
@@ -99,11 +97,11 @@ function set_Re(Re)
 end
 
 function set_oscil_motion!(b::Bodies.Body,p::StreamingParams)
-  X(t) = [p.Ax*sin(p.Ω*t+p.xϕ), p.Ay*sin(p.Ω*t+p.yϕ)]
-  U(t) = p.Ω*[p.Ax*cos(p.Ω*t+p.xϕ), p.Ay*cos(p.Ω*t+p.yϕ)]
-  Bodies.set_velocity!(b,(t,xi)->U(t),1)
-  Bodies.set_velocity!(b,(t,xi)->[0.0,0.0],2)
-  p.X = X
+  kin = Bodies.RigidBodyMotions.XOscillation(p.Ω,p.Ax,p.xϕ)
+  #X(t) = [p.Ax*sin(p.Ω*t+p.xϕ), p.Ay*sin(p.Ω*t+p.yϕ)]
+  #U(t) = p.Ω*[p.Ax*cos(p.Ω*t+p.xϕ), p.Ay*cos(p.Ω*t+p.yϕ)]
+  Bodies.set_velocity!(b,Bodies.RigidBodyMotions.RigidBodyMotion(kin),1)
+  Bodies.set_velocity!(b,Bodies.RigidBodyMotions.RigidBodyMotion(0.0,0.0),2)
 end
 
 # Set forms of the convective term
@@ -315,14 +313,23 @@ function set_operators_two_level_body!(dom,params)
   # r₂ is function that acts upon time value and returns data of size s.f
   # This specifies the body velocity (minus the free stream).
   # At the second asymptotic level, the boundary data are based on
-  #   v[2] = -X(t)⋅∇v[1]
+  #   v[2] = -ΔX(t)⋅∇v[1]
+  # where ΔX(t) is the displacement vector of the local body point from its
+  # mean position
   function r₂(s,t)
     gradv1 = ẼG̃CL⁻¹(dom,L⁻¹1,s.u[1])/dom.grid.Δx
     vel = zeros(Float64,dom.nbodypts,2)
     for i = 1:dom.nbody
-        ir = dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1
-        vel[ir,1] = -gradv1[1,1][ir]*sparams[i].X(t)[1]-gradv1[1,2][ir]*sparams[i].X(t)[2]
-        vel[ir,2] = -gradv1[2,1][ir]*sparams[i].X(t)[1]-gradv1[2,2][ir]*sparams[i].X(t)[2]
+        for ir = dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1
+          # This uses x instead of xtilde, since it is meant to be a perturbation
+          # about the current position. But this might need to be fixed.
+          # Compare with Ubody calculation.
+          x, u, a = dom.body[i].motion[1](t,dom.body[i].x[ir-dom.firstbpt[i]+1])
+          ΔX = real(x) - dom.body[i].x[ir-dom.firstbpt[i]+1][1]
+          ΔY = imag(x) - dom.body[i].x[ir-dom.firstbpt[i]+1][2]
+          vel[ir,1] = -gradv1[1,1][ir]*ΔX-gradv1[1,2][ir]*ΔY
+          vel[ir,2] = -gradv1[2,1][ir]*ΔX-gradv1[2,2][ir]*ΔY
+        end
     end
     [Systems.Ubody(dom,t,1) - transpose(repmat(physparams.U∞,1,dom.nbodypts)),
      vel]

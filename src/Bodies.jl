@@ -5,6 +5,8 @@ export Body
 import Whirl2d
 import Whirl2d.Grids
 
+include("./RigidBodyMotions.jl")
+using .RigidBodyMotions
 
 struct BodyConfig
 
@@ -40,8 +42,8 @@ mutable struct Body
     "coordinates of Lagrange points in inertial system"
     x::Array{Array{Float64,1},1}
 
-    "body velocity function(s), which takes inputs t and position on body"
-    U::Array{Function}
+    "body motion function(s), which takes inputs t and position on body"
+    motion::Vector{RigidBodyMotion}
 
     "body configuration"
     config::BodyConfig
@@ -57,13 +59,13 @@ function Body(N,xtilde)
     x = xtilde
 
     # default set the body motion function to 0 at every level
-    U = Function[]
-    push!(U,(t,xi)->[0.0,0.0])
+    motion = RigidBodyMotion[]
+    push!(motion,RigidBodyMotion(0.0,0.0))
 
     # set configuration to origin and zero angle
     config = BodyConfig([0.0,0.0],0.0);
 
-    Body(N,xtilde,x,U,config)
+    Body(N,xtilde,x,motion,config)
 end
 
 function Body(N,xtilde,config::BodyConfig)
@@ -92,11 +94,11 @@ function update_body!(body::Body,config::BodyConfig)
 end
 
 # Set the body motion function at level `l`
-function set_velocity!(body::Body,U::Function,l=1)
-  if l > length(body.U)
-    push!(body.U,U)
+function set_velocity!(body::Body,m::RigidBodyMotion,l=1)
+  if l > length(body.motion)
+    push!(body.motion,m)
   else
-    body.U[l] = U
+    body.motion[l] = m
   end
 end
 
