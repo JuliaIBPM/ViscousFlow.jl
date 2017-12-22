@@ -124,19 +124,26 @@ Circle(N::Int,rad) = Ellipse(N,rad,rad)
 
 Circle(N::Int,rad,xcent::Vector{<:Real},angle) = Ellipse(N,rad,rad,xcent,angle)
 
-function Plate(N::Int,len)::Body
+function Plate(N::Int,len,λ)::Body
 
     # set up points on plate
     x = [[len*(-0.5 + 1.0*(i-1)/(N-1)),0.0] for i=1:N]
+
+    Δϕ = π/N
+    Jϕa = [sqrt(sin(ϕ)^2+λ^2*cos(ϕ)^2) for ϕ in linspace(π-Δϕ/2,Δϕ/2,N)]
+    Jϕ = len*Jϕa/Δϕ/sum(Jϕa)
+    xtop = -0.5*len + Δϕ*cumsum([0.0; Jϕ])
+
+    x = [[xi,0.0] for xi in xtop];
 
     # put it at the origin, with zero angle
     Body(N,x,[0.0,0.0],0.0)
 
 end
 
-function Plate(N::Int,len,xcent::Vector{<:Real},angle::Float64)::Body
+function Plate(N::Int,len,λ,xcent::Vector{<:Real},angle::Float64)::Body
 
-    b = Plate(N,len)
+    b = Plate(N,len,λ)
     update_body!(b,BodyConfig(xcent,angle))
     b
 
@@ -146,10 +153,6 @@ function Plate(N::Int,len,t,λ)::Body
     # input N is the number of panels on one side only
 
     # set up points on flat sides
-
-
-    #xtop_face = zeros(N+1,2);
-    #xtop_face(:,2) = thick/2;
     Δϕ = π/N
     Jϕa = [sqrt(sin(ϕ)^2+λ^2*cos(ϕ)^2) for ϕ in linspace(π-Δϕ/2,Δϕ/2,N)]
     Jϕ = len*Jϕa/Δϕ/sum(Jϕa)
@@ -190,6 +193,9 @@ function Base.show(io::IO, b::Body)
     println(io, "Body: number of points = $(b.N), "*
     		"reference point = ($(b.config.xref[1]),$(b.config.xref[2])), "*
 		"rotation matrix = $(b.config.rot)")
+    ds = map(x -> sqrt(x[1]^2 + x[2]^2),diff(b.x))
+    println(io,"     max spacing between points = $(maximum(ds))")
+    println(io,"     min spacing between points = $(minimum(ds))")
 end
 
 

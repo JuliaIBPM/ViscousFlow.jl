@@ -113,7 +113,7 @@ function N_divwu(g::Grids.DualPatch, L⁻¹::Grids.Convolution, u::Array{Float64
   @get Grids (curl, shift, dualdiverg)
    vx, vy = shift(g,curl(g,-L⁻¹(u)))
    wx, wy = shift(g,u)
-   dualdiverg(g,(vx+U∞[1]).*wx./g.Δx,(vy+U∞[2]).*wy./g.Δx)
+   return dualdiverg(g,(vx+U∞[1]).*wx./g.Δx,(vy+U∞[2]).*wy./g.Δx)
 end
 
 # Set functions that apply body-grid operators
@@ -126,7 +126,7 @@ function ẼG̃(dom::Systems.DualDomain,qx::Array{T,2},qy::Array{T,2}) where T
   f[1,2] = dom.G̃ᵀẼᵀ[2,1]'*squeeze(reshape(qx,length(qx),1),2)
   f[2,1] = dom.G̃ᵀẼᵀ[1,2]'*squeeze(reshape(qy,length(qy),1),2)
   f[2,2] = dom.G̃ᵀẼᵀ[2,2]'*squeeze(reshape(qy,length(qy),1),2)
-  f
+  return f
 end
 
 function ECL⁻¹!(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,
@@ -134,17 +134,17 @@ function ECL⁻¹!(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,
   # This version saves the streamfunction it computes
   ψ = -L⁻¹(u)
   tmp = reshape(-ψ,length(ψ),1)
-  [dom.CᵀEᵀ[1]'*tmp dom.CᵀEᵀ[2]'*tmp]
+  return [dom.CᵀEᵀ[1]'*tmp dom.CᵀEᵀ[2]'*tmp]
 end
 
 function ECL⁻¹(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,u::Array{T,2}) where T
   tmp = reshape(L⁻¹(u),length(u),1)
-  [dom.CᵀEᵀ[1]'*tmp dom.CᵀEᵀ[2]'*tmp]
+  return [dom.CᵀEᵀ[1]'*tmp dom.CᵀEᵀ[2]'*tmp]
 end
 
 function ẼG̃CL⁻¹(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,u::Array{T,2}) where T
   qx,qy = Grids.curl(dom.grid,-L⁻¹(u))
-  ẼG̃(dom,qx,qy)
+  return ẼG̃(dom,qx,qy)
 end
 
 struct Schur{T,M}
@@ -169,7 +169,7 @@ function Schur(m,B₁ᵀ,B₂,A⁻¹::Union{Grids.Convolution,Grids.Identity})
     end
     Sfact = factorize(S)
 
-    Schur{Float64,m}(Sfact,result)
+    return Schur{Float64,m}(Sfact,result)
 end
 
 function (S⁻¹::Schur{T,M})(f::Array{T,2}) where {T,M}
@@ -177,7 +177,7 @@ function (S⁻¹::Schur{T,M})(f::Array{T,2}) where {T,M}
   copy!(S⁻¹.result,f)
   A_ldiv_B!(S⁻¹.result, S⁻¹.Sfact, reshape(f,length(f),1))
 
-  [S⁻¹.result[1:M] S⁻¹.result[M+1:2*M]]
+  return [S⁻¹.result[1:M] S⁻¹.result[M+1:2*M]]
 end
 
 
@@ -215,7 +215,7 @@ end
 #=
 set_operators_body sets up the operators for a Navier-Stokes solution with a body
 =#
-function set_operators_body!(dom,params)
+function set_operators_body!(dom,params,tmp...)
   @get Grids (curl, shift, dualdiverg)
   @get dom (grid,nbodypts)
 
@@ -223,10 +223,15 @@ function set_operators_body!(dom,params)
   α = params[2]
 
   # Set up the LGF and integrating factor tables
-  println("Setting up LGF table")
-  @time Grids.lgf_table!(dom.grid);
-  println("Setting up integrating factor table")
-  @time Grids.q_table!(dom.grid,α);
+  if length(dom.grid.lgfhat)==0
+    println("Setting up LGF table")
+    @time Grids.lgf_table!(dom.grid);
+  end
+  if length(dom.grid.qhat)==0
+    println("Setting up integrating factor table")
+    @time Grids.q_table!(dom.grid,α);
+  end
+
 
   # Id is identity
   Id = Grids.Id(dom.grid)
@@ -240,8 +245,10 @@ function set_operators_body!(dom,params)
 
   # Compute the body-to-grid operators
   #Systems.construct_schur!(dom)
-  println("Setting up body-to-grid operator")
-  @time Systems.construct_CᵀEᵀ!(dom)
+  if length(dom.CᵀEᵀ[1])==0
+    println("Setting up body-to-grid operator")
+    @time Systems.construct_CᵀEᵀ!(dom)
+  end
 
   # B₁ᵀ is function that acts upon data of size s.f and returns data of size s.u
   B₁ᵀ(f) = CᵀEᵀ(dom,f)
@@ -251,9 +258,14 @@ function set_operators_body!(dom,params)
   B₂(u) = -ECL⁻¹(dom,L⁻¹,u)
 
   # Compute Schur complements and their inverses
-  println("Computing Schur complements and inverses")
-  @time S⁻¹ = Schur(dom.nbodypts,B₁ᵀ,B₂,A⁻¹)
-  @time S₀⁻¹ = Schur(dom.nbodypts,B₁ᵀ,B₂,Id)
+  if length(tmp)==0
+    println("Computing Schur complements and inverses")
+    @time S⁻¹ = Schur(dom.nbodypts,B₁ᵀ,B₂,A⁻¹)
+    @time S₀⁻¹ = Schur(dom.nbodypts,B₁ᵀ,B₂,Id)
+  else
+    S⁻¹ = tmp[1]
+    S₀⁻¹ = tmp[2]
+  end
 
 
   # r₁ is function that acts upon solution structure s and returns data of size s.u
@@ -417,6 +429,17 @@ end
 
 evaluateFields(s::Whirl2d.SolnType,g::Grids.DualPatch,gops::Grids.GridOperators) =
       evaluateFields(s.t,s.u,g,gops)
+
+function evaluateFields(teval::Float64,h::Vector{T},g::Grids.DualPatch,gops::Grids.GridOperators) where {T<:Whirl2d.SolnType}
+  dt(y) = abs.(map(x->x.t,y)-teval)
+  imin = find(dt(h)) do x x==minimum(dt(h)) end
+  if length(imin) > 0
+    return evaluateFields(h[imin[end]],g,gops)
+  else
+    println("Time $(teval) is not present in this history")
+  end
+
+end
 
 #function evaluateFields(h::Vector{Whirl2d.SolnType},g::Grids.DualPatch,gops::Grids.GridOperators)
 

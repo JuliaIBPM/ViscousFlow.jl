@@ -127,7 +127,7 @@ function DualPatch(N,Δx,xmin)
     gqhat = Array{Complex{Float64}}(0,0)
     α = 0.0
 
-    fftop = FFTW.plan_rfft(zeros(2*N[1]+3,2*N[2]+3))
+    fftop = setFFTPlan(N)
 
     DualPatch(N,Δx,xmin,xmax,ifirst,cellint,nodeint,facexint,faceyint,
     cell,facex,facey,dualfacex,dualfacey,node,
@@ -135,6 +135,13 @@ function DualPatch(N,Δx,xmin)
 	      #cellmap,nodemap,facexmap,faceymap,
 
 
+end
+
+setFFTPlan(N) = FFTW.plan_rfft(zeros(2*N[1]+3,2*N[2]+3))
+
+function setFFTPlan!(g::DualPatch)
+  g.fftop = setFFTPlan(g.N)
+  nothing
 end
 
 xcell(g::DualPatch) = [g.xmin[1]+g.Δx*(i-g.ifirst[1]+1/2) for i=g.cellint[1]]
@@ -551,9 +558,7 @@ function q_table!(g::Grid,α::Float64,c::Float64)
   g.qhat = g.fftop * mirror(g.qtab)
 end
 
-function quadgauss(f::Function)
-    dot(weights,f(nodes))
-end
+quadgauss(f::Function) = dot(weights,f(nodes))
 
 
 function Base.show(io::IO, g::Grid)
