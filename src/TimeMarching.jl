@@ -28,6 +28,7 @@ struct ConstrainedOperators{TA,S,S0}
   A⁻¹ :: TA
   B₁ᵀ :: Function
   B₂ :: Function
+  P  :: Function  # Smoother of constraint data (or identity)
   S⁻¹ :: S
   S₀⁻¹ :: S0
   r₁ :: Function
@@ -80,7 +81,7 @@ end
 function ifherk!(s::Whirl2d.ConstrainedSoln{T,K},p::TimeParams,ops::ConstrainedOperators) where {T,K}
 # Advance the solution by one time step
 @get p (Δt,rk)
-@get ops (A⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂)
+@get ops (A⁻¹,B₁ᵀ,B₂,P,S⁻¹,S₀⁻¹,r₁,r₂)
 
 # first stage
 sᵢ = deepcopy(s)
@@ -89,7 +90,7 @@ sᵢ₊₁.t = s.t + Δt*rk.c[1]
 A⁻¹gᵢ = Δt*rk.a[1][1]*A⁻¹(r₁(sᵢ,sᵢ₊₁.t))
 qᵢ₊₁ = A⁻¹(s.u)
 sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
-sᵢ₊₁.f = -S⁻¹(B₂(sᵢ₊₁.u) - r₂(sᵢ,sᵢ₊₁.t))
+sᵢ₊₁.f = -P(S⁻¹(B₂(sᵢ₊₁.u) - r₂(sᵢ,sᵢ₊₁.t)))
 A⁻¹B₁ᵀf = A⁻¹(B₁ᵀ(sᵢ₊₁.f))
 @. sᵢ₊₁.u -= A⁻¹B₁ᵀf
 
@@ -107,7 +108,7 @@ for i = 2:rk.nstage-1
   for j = 1:i-1
     @. sᵢ₊₁.u += Δt*rk.a[i][j]*w[j]
   end
-  sᵢ₊₁.f = -S⁻¹(B₂(sᵢ₊₁.u) - r₂(sᵢ,sᵢ₊₁.t))
+  sᵢ₊₁.f = -P(S⁻¹(B₂(sᵢ₊₁.u) - r₂(sᵢ,sᵢ₊₁.t)))
   A⁻¹B₁ᵀf = A⁻¹(B₁ᵀ(sᵢ₊₁.f))
   @. sᵢ₊₁.u -= A⁻¹B₁ᵀf
 end
@@ -125,7 +126,7 @@ sᵢ₊₁.u = qᵢ₊₁ + A⁻¹gᵢ
 for j = 1:i-1
   @. sᵢ₊₁.u += Δt*rk.a[i][j]*w[j]
 end
-sᵢ₊₁.f = -S₀⁻¹(B₂(sᵢ₊₁.u) - r₂(sᵢ,sᵢ₊₁.t))
+sᵢ₊₁.f = -P(S₀⁻¹(B₂(sᵢ₊₁.u) - r₂(sᵢ,sᵢ₊₁.t)))
 A⁻¹B₁ᵀf = B₁ᵀ(sᵢ₊₁.f)
 @. sᵢ₊₁.u -= A⁻¹B₁ᵀf
 

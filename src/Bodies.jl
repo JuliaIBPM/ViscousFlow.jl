@@ -102,6 +102,42 @@ function set_velocity!(body::Body,m::RigidBodyMotion,l=1)
   end
 end
 
+# Evaluate some geometric details of a body
+function dx(b::Body)
+  x = map(x->x[1],b.x)
+  y = map(x->x[2],b.x)
+  ip1(i) = 1 + mod(i,b.N)
+  im1(i) = 1 + mod(i-2,b.N)
+  dxtmp = [0.5*(x[ip1(i)] - x[im1(i)]) for i = 1:b.N]
+  dytmp = [0.5*(y[ip1(i)] - y[im1(i)]) for i = 1:b.N]
+  return dxtmp,dytmp
+end
+
+ds(body::Body) = sqrt.(dx(body)[1].^2+dx(body)[2].^2)
+
+function normal(body::Body)
+  nx = -dx(body)[2]./ds(body)
+  ny = dx(body)[1]./ds(body)
+  return [[nx[i],ny[i]] for i in 1:body.N]
+end
+
+struct Identity{T, N, M}
+end
+
+function Base.show(io::IO, c::Identity{T,N,M}) where {T,N,M}
+    print(io, "Identity operator for $M-dimensional vector field on $N body points")
+end
+
+function Identity(f::Array{T,2}) where {T}
+  n,m = size(f)
+  res = zeros(T,n,m)
+  Identity{T,n,m}()
+end
+
+(c::Identity{T,N,M})(f) where {T,N,M} = f
+
+
+
 function Ellipse(N::Int,a,b)::Body
 
     # set up the points on the circle with radius `rad`

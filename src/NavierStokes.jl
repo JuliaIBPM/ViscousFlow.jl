@@ -147,6 +147,9 @@ function ẼG̃CL⁻¹(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,u::Arra
   return ẼG̃(dom,qx,qy)
 end
 
+EÊᵀ(dom::Systems.DualDomain,f::Array{T,2}) where T =
+      [dom.Eᵀ[1]'*dom.Êᵀ[1]*f[:,1] dom.Eᵀ[2]'*dom.Êᵀ[2]*f[:,2]]
+
 struct Schur{T,M}
     Sfact::Factorization{T}
     result::Array{T, 1}
@@ -257,6 +260,10 @@ function set_operators_body!(dom,params,tmp...)
   # data of size s.f. It also modifies the auxiliary variable in `s`
   B₂(u) = -ECL⁻¹(dom,L⁻¹,u)
 
+  # Smoother of boundary data (optional)
+  #P(f) = Systems.BodyId(dom)(f)
+  P(f) = EÊᵀ(dom,f)
+
   # Compute Schur complements and their inverses
   if length(tmp)==0
     println("Computing Schur complements and inverses")
@@ -279,7 +286,7 @@ function set_operators_body!(dom,params,tmp...)
   r₂(s,t) = Systems.Ubody(dom,t) - transpose(repmat(physparams.U∞,1,dom.nbodypts))
 
   return Grids.GridOperators(L⁻¹,curl),
-         TimeMarching.ConstrainedOperators(A⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂)
+         TimeMarching.ConstrainedOperators(A⁻¹,B₁ᵀ,B₂,P,S⁻¹,S₀⁻¹,r₁,r₂)
 end
 
 function set_operators_two_level_body!(dom,params)
@@ -291,7 +298,7 @@ function set_operators_two_level_body!(dom,params)
 
   gops1, ops1 = set_operators_body!(dom,params)
 
-  @get ops1 (A⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂) (A⁻¹1,B₁ᵀ1,B₂1,S⁻¹1,S₀⁻¹1,r₁1,r₂1)
+  @get ops1 (A⁻¹,B₁ᵀ,B₂,P,S⁻¹,S₀⁻¹,r₁,r₂) (A⁻¹1,B₁ᵀ1,B₂1,P1,S⁻¹1,S₀⁻¹1,r₁1,r₂1)
   @get gops1 (L⁻¹,curl) (L⁻¹1,curl1)
 
   A⁻¹(u) = A⁻¹1.(u)
@@ -318,6 +325,9 @@ function set_operators_two_level_body!(dom,params)
   #B₂(u) = [-ECL⁻¹(dom,L⁻¹1,u[1]), -ECL⁻¹(dom,L⁻¹1,u[2])]
   B₂(u) = -ECL⁻¹.(dom,L⁻¹1,u)
 
+  # Smoother of boundary data (optional)
+  P(f) = P1.(f)
+
   # These functions take in data of size s.f and return data of the same size.
   # They produce the inverse of the Schur complement.
   S⁻¹(f::Vector{Array{T,2}}) where T = S⁻¹1.(f)
@@ -333,7 +343,7 @@ function set_operators_two_level_body!(dom,params)
   # This specifies the body velocity (minus the free stream).
   # At the second asymptotic level, the boundary data are based on
   #   v[2] = -ΔX(t)⋅∇v[1]
-  # where ΔX(t) is the displacement vector of the local body point from its
+  # where ΔX(t) is the unit displacement vector of the body from its
   # mean position
   function r₂(s,t)
     gradv1 = ẼG̃CL⁻¹(dom,L⁻¹1,s.u[1])/dom.grid.Δx
@@ -343,9 +353,9 @@ function set_operators_two_level_body!(dom,params)
           # This uses x instead of xtilde, since it is meant to be a perturbation
           # about the current position. But this might need to be fixed.
           # Compare with Ubody calculation.
-          x, u, a = dom.body[i].motion[1](t,dom.body[i].x[ir-dom.firstbpt[i]+1])
-          ΔX = real(x) - dom.body[i].x[ir-dom.firstbpt[i]+1][1]
-          ΔY = imag(x) - dom.body[i].x[ir-dom.firstbpt[i]+1][2]
+          x, u, a = dom.body[i].motion[1](t)
+          ΔX = real(x) #- dom.body[i].x[ir-dom.firstbpt[i]+1][1]
+          ΔY = imag(x) #- dom.body[i].x[ir-dom.firstbpt[i]+1][2]
           vel[ir,1] = -gradv1[1,1][ir]*ΔX-gradv1[1,2][ir]*ΔY
           vel[ir,2] = -gradv1[2,1][ir]*ΔX-gradv1[2,2][ir]*ΔY
         end
@@ -355,7 +365,7 @@ function set_operators_two_level_body!(dom,params)
   end
 
   return Grids.GridOperators(L⁻¹,curl),
-         TimeMarching.ConstrainedOperators(A⁻¹,B₁ᵀ,B₂,S⁻¹,S₀⁻¹,r₁,r₂)
+         TimeMarching.ConstrainedOperators(A⁻¹,B₁ᵀ,B₂,EEᵀ,S⁻¹,S₀⁻¹,r₁,r₂)
 
 end
 
@@ -430,21 +440,18 @@ end
 evaluateFields(s::Whirl2d.SolnType,g::Grids.DualPatch,gops::Grids.GridOperators) =
       evaluateFields(s.t,s.u,g,gops)
 
-function evaluateFields(teval::Float64,h::Vector{T},g::Grids.DualPatch,gops::Grids.GridOperators) where {T<:Whirl2d.SolnType}
+
+# To evaluate the fields at a specific time `teval`
+function (h::Vector{T})(teval::Float64) where {T<:Whirl2d.SolnType}
   dt(y) = abs.(map(x->x.t,y)-teval)
   imin = find(dt(h)) do x x==minimum(dt(h)) end
   if length(imin) > 0
-    return evaluateFields(h[imin[end]],g,gops)
+    return h[imin[end]]
   else
     println("Time $(teval) is not present in this history")
   end
-
 end
 
-#function evaluateFields(h::Vector{Whirl2d.SolnType},g::Grids.DualPatch,gops::Grids.GridOperators)
-
-
-#end
 
 average(f::Union{Vector{Vector{T}},Vector{T}},itr::UnitRange) where T =
           mapreduce(x -> x/length(itr), +, f[itr])

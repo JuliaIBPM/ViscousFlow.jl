@@ -2,7 +2,7 @@ module DDF
 
 import Whirl2d
 
-export ddf_roma
+export ddf_roma, ddf_goza
 
 roma1(r) = (1+sqrt(-3r^2+1))/3;
 roma2(r) = (5-3r-sqrt(1-3(1-r)^2))/6;

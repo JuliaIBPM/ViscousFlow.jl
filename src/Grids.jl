@@ -85,7 +85,7 @@ function DualPatch(N,Δx,xmin)
 
     # set up grid arrays with ghosts
     cell = zeros(Float64,N[1]+2,N[2]+2)
-    node = zeros(Float64,N[1]+1,N[1]+1)
+    node = zeros(Float64,N[1]+1,N[2]+1)
     facex = zeros(Float64,N[1]+2,N[2]+1)
     facey = zeros(Float64,N[1]+1,N[2]+2)
     dualfacex = zeros(Float64,N[1]+1,N[2]+2)

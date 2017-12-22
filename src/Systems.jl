@@ -6,6 +6,8 @@ import Whirl2d.Grids
 import Whirl2d.Bodies
 import Whirl2d.DDF
 
+using ProgressMeter
+
 abstract type Domain end
 
 mutable struct DualDomain <: Domain
@@ -26,9 +28,11 @@ mutable struct DualDomain <: Domain
     cell faces
     Ẽᵀ operator, acting on body Lagrange points and returning data at cell
     centers and nodes
+    Êᵀ operator, a weighted version of Eᵀ operator
     """
     Eᵀ::Array{SparseMatrixCSC{Float64,Int},1}
     Ẽᵀ::Array{SparseMatrixCSC{Float64,Int},1}
+    Êᵀ::Array{SparseMatrixCSC{Float64,Int},1}
 
     """
     (EC)ᵀ operator, acting on body Lagrange points and returning dual grid cell data
@@ -61,18 +65,19 @@ function DualDomain()
     firstbpt = []
     Eᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
     Ẽᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
+    Êᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
     CᵀEᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
     G̃ᵀẼᵀ = [spzeros(0) for i=1:Whirl2d.ndim,j=1:Whirl2d.ndim]
 
     #S = []
     #S₀ = []
 
-    ddf_fcn = Whirl2d.DDF.ddf_roma
-    #ddf_fcn = Whirl2d.DDF.ddf_goza
+    #ddf_fcn = Whirl2d.DDF.ddf_roma
+    ddf_fcn = Whirl2d.DDF.ddf_goza
 
 
     DualDomain(xmin,xmax,grid,[],nbody,nbodypts,firstbpt,
-           ddf_fcn,Eᵀ,Ẽᵀ,CᵀEᵀ,G̃ᵀẼᵀ) #,S,S₀)
+           ddf_fcn,Eᵀ,Ẽᵀ,Êᵀ,CᵀEᵀ,G̃ᵀẼᵀ) #,S,S₀)
 
 end
 
@@ -136,6 +141,9 @@ function add_body(dom::Domain,b::Bodies.Body)
     add_body!(dom,b)
     dom
 end
+
+BodyId(dom::Domain) = Bodies.Identity(zeros(Float64,dom.nbodypts,Whirl2d.ndim))
+
 
 # Body-to-grid operations
 function construct_Eᵀ(x::Vector{Float64},g::Grids.DualPatch,ddf_fcn)
@@ -226,8 +234,9 @@ function construct_Eᵀ(b::Bodies.Body,g::Grids.DualPatch,ddf_fcn)
 
     Eᵀ = [spzeros(length(g.facex),b.N),spzeros(length(g.facey),b.N)]
     Ẽᵀ = [spzeros(length(g.cell),b.N),spzeros(length(g.node),b.N)]
+    Êᵀ = deepcopy(Eᵀ)
 
-    for i = 1:b.N
+    @showprogress 1 "Computing Eᵀ..." for i = 1:b.N
         Eᵀtmp = construct_Eᵀ(b.x[i],g,ddf_fcn)
     	  Eᵀ[1][:,i] = Eᵀtmp[1]
 	      Eᵀ[2][:,i] = Eᵀtmp[2]
@@ -237,7 +246,10 @@ function construct_Eᵀ(b::Bodies.Body,g::Grids.DualPatch,ddf_fcn)
 
     end
 
-    return Eᵀ, Ẽᵀ
+    Êᵀ[1] = Diagonal(map(x->x>0.0?1.0/x:0.0,sum(Eᵀ[1],2)[:,1]))*Eᵀ[1]
+    Êᵀ[2] = Diagonal(map(x->x>0.0?1.0/x:0.0,sum(Eᵀ[2],2)[:,1]))*Eᵀ[2]
+
+    return Eᵀ, Ẽᵀ, Êᵀ
 
 end
 
@@ -248,13 +260,18 @@ function construct_Eᵀ!(dom::DualDomain)
     dom.Ẽᵀ[1] = spzeros(length(dom.grid.cell),dom.nbodypts)
     dom.Ẽᵀ[2] = spzeros(length(dom.grid.node),dom.nbodypts)
 
+    dom.Êᵀ = deepcopy(dom.Eᵀ)
+
     for i = 1:dom.nbody
-    	Eᵀ, Ẽᵀ = construct_Eᵀ(dom.body[i],dom.grid,dom.ddf_fcn)
+    	Eᵀ, Ẽᵀ, Êᵀ = construct_Eᵀ(dom.body[i],dom.grid,dom.ddf_fcn)
 	    dom.Eᵀ[1][:,dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1] = Eᵀ[1]
 	    dom.Eᵀ[2][:,dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1] = Eᵀ[2]
 
       dom.Ẽᵀ[1][:,dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1] = Ẽᵀ[1]
 	    dom.Ẽᵀ[2][:,dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1] = Ẽᵀ[2]
+
+      dom.Êᵀ[1][:,dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1] = Êᵀ[1]
+	    dom.Êᵀ[2][:,dom.firstbpt[i]:dom.firstbpt[i]+dom.body[i].N-1] = Êᵀ[2]
 
     end
 end
@@ -272,12 +289,12 @@ function construct_CᵀEᵀ!(dom::DualDomain)
 
 
     qy = zeros(grid.facey)
-    for i = 1:m
+    @showprogress 1 "Computing CᵀEᵀx..." for i = 1:m
         qx = reshape(Eᵀ[1][:,i],size(grid.facex))
 	      dom.CᵀEᵀ[1][:,i] = sparse(reshape(Grids.curl(grid,qx,qy),length(grid.cell),1))
     end
     qx = zeros(grid.facex)
-    for i = 1:m
+    @showprogress 1 "Computing CᵀEᵀy..." for i = 1:m
         qy = reshape(Eᵀ[2][:,i],size(grid.facey))
 	      dom.CᵀEᵀ[2][:,i] = sparse(reshape(Grids.curl(grid,qx,qy),length(grid.cell),1))
     end
@@ -290,7 +307,7 @@ function construct_CᵀEᵀ!(dom::DualDomain)
     dom.G̃ᵀẼᵀ[2,2] = spzeros(length(grid.facey),m)
 
 
-    for i = 1:m
+    @showprogress 1 "Computing G̃ᵀẼᵀ..." for i = 1:m
         # Lagrange points to nodes
         facex,facey = Grids.grad(grid,reshape(Ẽᵀ[2][:,i],size(grid.node)))
 	      dom.G̃ᵀẼᵀ[1,1][:,i] = sparse(reshape(-facex,length(grid.facex),1))
