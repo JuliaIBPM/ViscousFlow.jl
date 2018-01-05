@@ -72,8 +72,8 @@ function DualDomain()
     #S = []
     #S₀ = []
 
-    #ddf_fcn = Whirl2d.DDF.ddf_roma
-    ddf_fcn = Whirl2d.DDF.ddf_goza
+    ddf_fcn = Whirl2d.DDF.ddf_roma
+    #ddf_fcn = Whirl2d.DDF.ddf_goza
 
 
     DualDomain(xmin,xmax,grid,[],nbody,nbodypts,firstbpt,
