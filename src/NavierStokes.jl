@@ -365,7 +365,7 @@ function set_operators_two_level_body!(dom,params)
   end
 
   return Grids.GridOperators(L⁻¹,curl),
-         TimeMarching.ConstrainedOperators(A⁻¹,B₁ᵀ,B₂,EEᵀ,S⁻¹,S₀⁻¹,r₁,r₂)
+         TimeMarching.ConstrainedOperators(A⁻¹,B₁ᵀ,B₂,P,S⁻¹,S₀⁻¹,r₁,r₂)
 
 end
 
