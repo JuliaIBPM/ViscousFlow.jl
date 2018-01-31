@@ -100,7 +100,7 @@ function set_Re(Re)
 end
 
 function set_oscil_motion!(b::Bodies.Body,p::StreamingParams)
-  kin = Bodies.RigidBodyMotions.XOscillation(p.Ω,p.Ax,p.xϕ)
+  kin = Bodies.RigidBodyMotions.Oscillation(p.Ω,p.Ax,p.xϕ,p.Ay,p.yϕ)
   #X(t) = [p.Ax*sin(p.Ω*t+p.xϕ), p.Ay*sin(p.Ω*t+p.yϕ)]
   #U(t) = p.Ω*[p.Ax*cos(p.Ω*t+p.xϕ), p.Ay*cos(p.Ω*t+p.yϕ)]
   Bodies.set_velocity!(b,Bodies.RigidBodyMotions.RigidBodyMotion(kin),1)
@@ -109,10 +109,10 @@ end
 
 # Set forms of the convective term
 # ∇⋅(ωu)
-function N_divwu(g::Grids.DualPatch, L⁻¹::Grids.Convolution, u::Array{Float64,2},U∞::Array{Float64,1})
+function N_divwu(g::Grids.DualPatch, L⁻¹::Grids.Convolution, w::Array{Float64,2},U∞::Array{Float64,1})
   @get Grids (curl, shift, dualdiverg)
-   vx, vy = shift(g,curl(g,-L⁻¹(u)))
-   wx, wy = shift(g,u)
+   vx, vy = shift(g,curl(g,-L⁻¹(w)))
+   wx, wy = shift(g,w)
    return dualdiverg(g,(vx+U∞[1]).*wx./g.Δx,(vy+U∞[2]).*wy./g.Δx)
 end
 
@@ -130,20 +130,20 @@ function ẼG̃(dom::Systems.DualDomain,qx::Array{T,2},qy::Array{T,2}) where T
 end
 
 function ECL⁻¹!(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,
-                u::Array{T,2},ψ::Array{T,2}) where T
+                w::Array{T,2},ψ::Array{T,2}) where T
   # This version saves the streamfunction it computes
-  ψ = -L⁻¹(u)
+  ψ = -L⁻¹(w)
   tmp = reshape(-ψ,length(ψ),1)
   return [dom.CᵀEᵀ[1]'*tmp dom.CᵀEᵀ[2]'*tmp]
 end
 
-function ECL⁻¹(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,u::Array{T,2}) where T
-  tmp = reshape(L⁻¹(u),length(u),1)
+function ECL⁻¹(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,w::Array{T,2}) where T
+  tmp = reshape(L⁻¹(w),length(w),1)
   return [dom.CᵀEᵀ[1]'*tmp dom.CᵀEᵀ[2]'*tmp]
 end
 
-function ẼG̃CL⁻¹(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,u::Array{T,2}) where T
-  qx,qy = Grids.curl(dom.grid,-L⁻¹(u))
+function ẼG̃CL⁻¹(dom::Systems.DualDomain,L⁻¹::Grids.Convolution,w::Array{T,2}) where T
+  qx,qy = Grids.curl(dom.grid,-L⁻¹(w))
   return ẼG̃(dom,qx,qy)
 end
 

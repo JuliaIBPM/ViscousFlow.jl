@@ -132,42 +132,57 @@ function (p::Pitchup)(t)
 end
 
 
-struct XOscillation <: Kinematics
+struct Oscillation <: Kinematics
     "Angular frequency"
     Ω :: Float64
 
     "Amplitude x direction"
-    A:: Float64
+    Ax:: Float64
 
     "Phase in x direction."
-    ϕ :: Float64
+    ϕx :: Float64
 
-    c::Profile
-    ċ::Profile
-    c̈::Profile
+    "Amplitude y direction"
+    Ay:: Float64
+
+    "Phase in y direction."
+    ϕy :: Float64
+
+    cx::Profile
+    ċx::Profile
+    c̈x::Profile
+
+    cy::Profile
+    ċy::Profile
+    c̈y::Profile
+
 end
 
-function XOscillation(Ω,A,ϕ)
-    Δt = ϕ/Ω
-    p = A*(Sinusoid(Ω) << Δt)
-    ṗ = d_dt(p)
-    p̈ = d_dt(ṗ)
-    XOscillation(Ω, A, ϕ, p, ṗ, p̈)
+function Oscillation(Ω,Ax,ϕx,Ay,ϕy)
+    Δtx = ϕx/Ω
+    px = Ax*(Sinusoid(Ω) << Δtx)
+    ṗx = d_dt(px)
+    p̈x = d_dt(ṗx)
+
+    Δty = ϕy/Ω
+    py = Ay*(Sinusoid(Ω) << Δty)
+    ṗy = d_dt(py)
+    p̈y = d_dt(ṗy)
+    XOscillation(Ω, Ax, ϕx, Ay, ϕy, px, ṗx, p̈x, py, ṗy, p̈y)
 end
 
-function (p::XOscillation)(t)
+function (p::Oscillation)(t)
     α = 0.0
     α̇ = 0.0
     α̈ = 0.0
 
-    c = Complex128(p.c(t))
-    ċ = Complex128(p.ċ(t))
-    c̈ = Complex128(p.c̈(t))
+    c = Complex128(px.c(t)) + im*Complex128(py.c(t))
+    ċ = Complex128(px.ċ(t)) + im*Complex128(py.ċ(t))
+    c̈ = Complex128(px.c̈(t)) + im*Complex128(py.c̈(t))
     return c, ċ, c̈, α, α̇, α̈
 
     #return [p.ċ(t),0.0], [p.c̈(t),0.0], α̇
 end
-
 
 
 struct DerivativeProfile{P} <: Profile
