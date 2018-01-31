@@ -168,7 +168,7 @@ function Oscillation(Ω,Ax,ϕx,Ay,ϕy)
     py = Ay*(Sinusoid(Ω) << Δty)
     ṗy = d_dt(py)
     p̈y = d_dt(ṗy)
-    XOscillation(Ω, Ax, ϕx, Ay, ϕy, px, ṗx, p̈x, py, ṗy, p̈y)
+    Oscillation(Ω, Ax, ϕx, Ay, ϕy, px, ṗx, p̈x, py, ṗy, p̈y)
 end
 
 function (p::Oscillation)(t)
@@ -176,9 +176,9 @@ function (p::Oscillation)(t)
     α̇ = 0.0
     α̈ = 0.0
 
-    c = Complex128(px.c(t)) + im*Complex128(py.c(t))
-    ċ = Complex128(px.ċ(t)) + im*Complex128(py.ċ(t))
-    c̈ = Complex128(px.c̈(t)) + im*Complex128(py.c̈(t))
+    c = Complex128(p.cx(t)) + im*Complex128(p.cy(t))
+    ċ = Complex128(p.ċx(t)) + im*Complex128(p.ċy(t))
+    c̈ = Complex128(p.c̈x(t)) + im*Complex128(p.c̈y(t))
     return c, ċ, c̈, α, α̇, α̈
 
     #return [p.ċ(t),0.0], [p.c̈(t),0.0], α̇
