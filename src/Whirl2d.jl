@@ -63,8 +63,8 @@ using .Systems
 include("NavierStokes.jl")
 using .NavierStokes
 
-include("RigidBodyMotions.jl")
-using .RigidBodyMotions
+#include("RigidBodyMotions.jl")
+#using .RigidBodyMotions
 
 
 function Base.show(io::IO, s::SolnType)
