@@ -7,6 +7,7 @@ import Whirl2d.Bodies
 import Whirl2d.Systems
 import Whirl2d.TimeMarching
 
+# include process here
 include("./Process.jl")
 using .Process
 
