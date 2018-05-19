@@ -1,37 +1,11 @@
-## Welcome to GitHub Pages
+## Whirl.jl
 
-You can use the [editor on GitHub](https://github.com/jdeldre/whirl2d/edit/master/README.md) to maintain and preview the content for your website in Markdown files.
+_A framework for simulating viscous incompressible flows_
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+| Documentation | Build Status |
+|:---:|:---:|
+| [![docs](https://img.shields.io/badge/docs-latest-blue.svg)](https://github.com/jdeldre/Whirl.jl) | [![Build Status](https://img.shields.io/travis/jdeldre/Whirl.jl/master.svg?label=linux)](https://travis-ci.org/jdeldre/Whirl.jl) [![Build status](https://img.shields.io/appveyor/ci/jdeldre/Whirl-jl/master.svg?label=windows)](https://ci.appveyor.com/project/jdeldre/whirl-jl/branch/master) [![codecov](https://codecov.io/gh/jdeldre/Whirl.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/jdeldre/Whirl.jl) |
 
-### Markdown
+## About the package
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
-
-```markdown
-Syntax highlighted code block
-
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/jdeldre/whirl2d/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://help.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+The purpose of this package is to enable easy setup and solution of viscous incompressible flows.
