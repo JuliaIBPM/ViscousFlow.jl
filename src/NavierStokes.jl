@@ -7,9 +7,22 @@ import Whirl2d.Bodies
 import Whirl2d.Systems
 import Whirl2d.TimeMarching
 
-# include process here
-include("./Process.jl")
-using .Process
+# include("Grids.jl")
+# using .Grids
+#
+# include("Bodies.jl")
+# using .Bodies
+#
+# include("Systems.jl")
+# using .Systems
+#
+# include("TimeMarching.jl")
+# using .TimeMarching
+
+# include("./Process.jl")
+# using .Process
+# include("Grids.jl")
+# using .Grids
 
 # For problems without a body
 function Soln(dom::Systems.DualDomain)
@@ -379,6 +392,9 @@ struct Field{T} <: FieldType
   ψ :: T
   ux :: T
   uy :: T
+  uxfull ::T
+  uyfull ::T
+  # ψcorr :: T
 
 end
 
@@ -389,25 +405,35 @@ struct ConstrainedField{T,K} <: FieldType
   ψ :: T
   ux :: T
   uy :: T
+  uxfull ::T
+  uyfull ::T
+  # ψcorr :: T
   f :: K
 
 end
 
 
-function evaluateFields(t::Float64,u::Array{Float64,2},g::Grids.DualPatch,gops::Grids.GridOperators)
+function evaluateFields(t::Float64,u::Array{Float64,2},g::Grids.DualPatch,
+    gops::Grids.GridOperators)#,nT::UnitRange{Int},Δt::Float64)
   # ω, ψ, ux, uy = evaluateFields(u,g)
 
   @get gops (L⁻¹,curl)
 
   ψtmp = -L⁻¹(u)
   utmp, vtmp = curl(ψtmp)
-
+  # ψcorr=Grids.computecorr(g,utmp,vtmp,nT,Δt)
+  # ψcorr=utmp
+  uxfull=utmp
+  uyfull=vtmp
   Field(t,u[g.cellint[1],g.cellint[2]]/g.Δx, ψtmp[g.cellint[1],g.cellint[2]]*g.Δx,
-            utmp[g.facexint[1],g.facexint[2]], vtmp[g.faceyint[1],g.faceyint[2]])
+            utmp[g.facexint[1],g.facexint[2]], vtmp[g.faceyint[1],g.faceyint[2]],uxfull,uyfull)
+  # Field(t,u[g.cellint[1],g.cellint[2]]/g.Δx, ψtmp[g.cellint[1],g.cellint[2]]*g.Δx,
+                      # utmp, vtmp)
 
 end
 
-function evaluateFields(t::Float64,u::Vector{Array{Float64,2}},g::Grids.DualPatch,gops::Grids.GridOperators)
+function evaluateFields(t::Float64,u::Vector{Array{Float64,2}},g::Grids.DualPatch,
+    gops::Grids.GridOperators)#,nT::UnitRange{Int},Δt::Float64)
 
   @get gops (L⁻¹,curl)
 
@@ -427,19 +453,138 @@ function evaluateFields(t::Float64,u::Vector{Array{Float64,2}},g::Grids.DualPatc
   ux = []
   for uxi in utmp
     push!(ux,uxi[g.facexint[1],g.facexint[2]])
+
   end
 
   uy = []
   for uyi in vtmp
     push!(uy,uyi[g.faceyint[1],g.faceyint[2]])
+
   end
 
-  Field(t, ω, ψ, ux, uy)
+  uxfull = []
+  for uxfulli in utmp
+    push!(uxfull,uxfulli)
+  end
 
+  uyfull = []
+  for uyfulli in vtmp
+    push!(uyfull,uyfulli)
+  end
+
+  # uxfull=utmp
+  # uyfull=vtmp
+  # ψcorr=computecorr(g,utmp,vtmp,nt,Δt)
+  # ψcorr=utmp
+  # Field(t, ω, ψ, ux, uy)
+  Field(t, ω, ψ, ux, uy, uxfull,uyfull)
 end
 
-evaluateFields(s::Whirl2d.SolnType,g::Grids.DualPatch,gops::Grids.GridOperators) =
+
+evaluateFields(s::Whirl2d.SolnType,g::Grids.DualPatch,gops::Grids.GridOperators)=
       evaluateFields(s.t,s.u,g,gops)
+
+
+function computecorr(g::Grids.DualPatch,ux,uy,nt::UnitRange{Int},Δt::Float64)
+      # map ux and uy to the center of the cells
+      ucellx1=[]
+      ucelly1=[]
+          for i in nt
+              push!(ucellx1,Grids.dualshiftx(g,ux[i][1]))
+              push!(ucelly1,Grids.dualshifty(g,uy[i][1]))
+          end
+      # compute the first integral
+      intucellx1=[]
+      intucelly1=[]
+
+          for  i= 1:length(nt)
+
+              ucellxtemp=ucellx1[1:i]
+
+              intucellx=average(ucellxtemp,1:i).*(i-1)*Δt
+              # intucellx=trapzavg(ucellxtemp,1:i).*(i-1)*Δt
+
+              ucellytemp=ucelly1[1:i]
+
+              intucelly=average(ucellytemp,1:i).*(i-1)*Δt
+              # intucelly=trapzavg(ucellytemp,1:i).*(i-1)*Δt
+
+              push!(intucellx1,intucellx)
+              push!(intucelly1,intucelly)
+
+            end
+
+      # compute the cross product
+      cross=[]
+          for i=1:length(nt)
+              crosstemp=(ucellx1[i].*intucelly1[i]-ucelly1[i].*intucellx1[i])
+              push!(cross,crosstemp)
+          end
+      #correction term
+
+      ψcorrtemp= 0.5.*average(cross,1:length(nt))
+      # ψcorrtemp= 0.5.*trapzavg(cross,1:length(nt)))
+
+      ψcorr=ψcorrtemp[g.cellint[1],g.cellint[2]]
+      return ψcorr
+end
+
+function computecorrtrapz(g::Grids.DualPatch,ux,uy,nt::UnitRange{Int},Δt::Float64)
+      # map ux and uy to the center of the cells
+      ucellx1=[]
+      ucelly1=[]
+          for i in nt
+              push!(ucellx1,Grids.dualshiftx(g,ux[i][1]))
+              push!(ucelly1,Grids.dualshifty(g,uy[i][1]))
+          end
+      # compute the first integral
+      intucellx1=[]
+      intucelly1=[]
+
+          for  i= 1:length(nt)
+
+              ucellxtemp=ucellx1[1:i]
+
+              # intucellx=average(ucellxtemp,1:i).*(i-1)*Δt
+              intucellx=trapzavg(ucellxtemp,1:i).*(i-1)*Δt
+
+              ucellytemp=ucelly1[1:i]
+
+              # intucelly=average(ucellytemp,1:i).*(i-1)*Δt
+              intucelly=trapzavg(ucellytemp,1:i).*(i-1)*Δt
+
+              push!(intucellx1,intucellx)
+              push!(intucelly1,intucelly)
+
+            end
+
+      # compute the cross product
+      cross=[]
+          for i=1:length(nt)
+              crosstemp=(ucellx1[i].*intucelly1[i]-ucelly1[i].*intucellx1[i])
+              push!(cross,crosstemp)
+          end
+      #correction term
+
+      # ψcorrtemp= 0.5.*average(cross,1:length(nt)
+      ψcorrtemp= 0.5.*trapzavg(cross,1:length(nt))
+
+      ψcorr=ψcorrtemp[g.cellint[1],g.cellint[2]]
+end
+
+      # function testpsilgfcorr(g::DualPatch,ux,uy,nt::UnitRange{Int},Δt::Float64,ψ)
+      # #corrected psi[t][2]
+      #     ψlgf=[]
+      #     ψcorr=computecorr(g,ux,uy,nt,Δt)[dom.grid.cellint[1],dom.grid.cellint[2]]
+      #     for i in nt
+      #         ψlgftemp=ψ[i][2]+ψcorr
+      #         push!(ψlgf,ψlgftemp)
+      #     end
+      #    ψlgf
+      # end
+
+# evaluateFields(s::Whirl2d.SolnType,g::Grids.DualPatch,gops::Grids.GridOperators,nT::UnitRange{Int},Δt::Float64) =
+#     evaluateFields(s.t,s.u,g,gops,nT,Δt)
 
 
 # To evaluate the fields at a specific time `teval`
@@ -452,10 +597,22 @@ function (h::Vector{T})(teval::Float64) where {T<:Whirl2d.SolnType}
     println("Time $(teval) is not present in this history")
   end
 end
+trapzavg(f::Union{Vector{Vector{T}},Vector{T}},itr::UnitRange) where T =
+        mapreduce(x -> x/length(itr), +,0.*f[itr.start], f[itr.start+1:itr.stop-1])+0.5.*(f[itr.start]+ f[itr.stop])/length(itr)
 
 
+#Old version of average
 average(f::Union{Vector{Vector{T}},Vector{T}},itr::UnitRange) where T =
-          mapreduce(x -> x/length(itr), +, f[itr])
+        mapreduce(x -> x/length(itr), +, f[itr])
+
+# average(f::Union{Vector{Vector{T}},Vector{T}},itr::UnitRange) where T =
+# if length(itr)==1 # if the length of the integral is 0
+# 0.*f[itr.start]
+# else
+# mapreduce(x -> x/(length(itr)-1), +,0.*f[itr.start], f[itr.start:itr.stop-1])
+# #division by N-1 instead of N,
+# # and f(N) doesn't appear in the computing of the average for a 0order approximation
+# end
 
 force(s::Whirl2d.ConstrainedSoln{T,K},g::Grids.DualPatch) where {T,K} = sum(s.f,1)*g.Δx^2
 

@@ -12,7 +12,7 @@ export DualPatch
 
 import Whirl2d
 import Whirl2d:@get, MappedVector
-
+# import Whirl2d.NavierStokes
 using FastGaussQuadrature
 
 abstract type Grid end
@@ -226,22 +226,6 @@ function shift!(vx,vy,ir::UnitRange{Int},jr::UnitRange{Int},v)
     nothing
 end
 
-
-function dualshiftx!(vx,ir::UnitRange{Int},jr::UnitRange{Int},facex)
-     irx = ir.start:ir.stop
-     jry = jr.start:jr.stop-1
-
-     @. vx[irx+1,jry+1] = 0.5(facex[irx,jry]+facex[irx,jry+1])
-     # @. vy[ir,jry] = 0.5(facey[ir,jry]+facey[ir,jry+1])
-     nothing
- end
- function dualshifty!(vy,ir::UnitRange{Int},jr::UnitRange{Int},facey)
-     irx = ir.start:ir.stop-1
-     jry = jr.start:jr.stop
-     @. vy[irx+1,jry+1] = 0.5(facey[irx,jry]+facey[irx+1,jry])
-     nothing
- end
-
 # Differential operations with grid interface
 function curl(g::DualPatch,facex,facey)
     cell = zeros(g.cell)
@@ -326,28 +310,47 @@ function shift(g::DualPatch,cell)
     cellx, celly
 end
 
-function dualshiftx(g::DualPatch,facex)
-     cellx = zeros(g.cell)
-     rangexintx=g.facexint[1].start-1:g.facexint[1].stop-1
-     rangexinty=g.facexint[2].start-1:g.facexint[2].stop-1
-     dualshiftx!(cellx,rangexintx,rangexinty,facex)
-     cellx
- end
-
- function dualshifty(g::DualPatch,facey)
-     celly = zeros(g.cell)
-     rangeyintx=g.faceyint[1].start-1:g.faceyint[1].stop-1
-     rangeyinty=g.faceyint[2].start-1:g.faceyint[2].stop-1
-     dualshiftx!(celly,rangeyintx,rangeyinty,facey)
-     celly
- end
-
 function cross(g::DualPatch,cell,facex,facey)
     vx,vy = shift(g,facex,facey)
     ux,uy = shift(g,cell)
     -uy.*vy, ux.*vx
 end
 
+function dualshiftx!(vx,ir::UnitRange{Int},jr::UnitRange{Int},facex)
+     irx = ir.start:ir.stop
+     jry = jr.start:jr.stop
+     @. vx[irx,jry] = 0.5(facex[irx,jry-1]+facex[irx,jry])
+     nothing
+ end
+ function dualshifty!(vy,ir::UnitRange{Int},jr::UnitRange{Int},facey)
+     irx = ir.start:ir.stop
+     jry = jr.start:jr.stop
+     @. vy[irx,jry] = 0.5(facey[irx-1,jry]+facey[irx,jry])
+     nothing
+ end
+
+ function dualshiftx(g::DualPatch,facex)
+     cellx = zeros(g.cell)
+     dualshiftx!(cellx,g.cellint[1],g.cellint[2],facex)
+     cellx
+ end
+
+ function dualshifty(g::DualPatch,facey)
+     celly = zeros(g.cell)
+     dualshiftx!(celly,g.cellint[1],g.cellint[2],facey)
+     celly
+ end
+function addgh!(u)
+utp=zeros(size(u,1)+2,size(u,2)+2)
+utp[2:1+size(u,1),2:1+size(u,2)]=u
+u=utp
+end
+
+function rmgh!(u)
+utp=zeros(size(u,1)-2,size(u,2)-2)
+utp=u[2:size(u,1)-1,2:size(u,2)-1]
+u=utp
+end
 # Lattice Green's function
 function lgf(n)
 

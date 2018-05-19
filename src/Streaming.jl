@@ -176,6 +176,20 @@ function Evaluate(t::Float64,p::Params,g::Grid,s₁::ComplexAmplitude{N,1},
   s
 end
 
+function Evaluate1storder(t::Float64,p::Params,g::Grid,s₁::ComplexAmplitude{N,1},
+                            s̄₂::ComplexAmplitude{N,2},s₂::ComplexAmplitude{N,2}) where {N}
+  s = p.ϵ*Evaluate(t,g,s₁)
+#   s += p.ϵ^2*(Evaluate(g,s̄₂) + Evaluate(t,g,s₂))
+  s
+end
+
+function Evaluate2ndorder(t::Float64,p::Params,g::Grid,s₁::ComplexAmplitude{N,1},
+                            s̄₂::ComplexAmplitude{N,2},s₂::ComplexAmplitude{N,2}) where {N}
+  # s = p.ϵ*Evaluate(t,g,s₁)
+  s = p.ϵ^2*(Evaluate(g,s̄₂) + Evaluate(t,g,s₂))
+  s
+end
+
 function Evaluate(tr::Range{T},p::Params,g::Grid{N},s₁::ComplexAmplitude{N,1},
                             s̄₂::ComplexAmplitude{N,2},s₂::ComplexAmplitude{N,2}) where {T,N}
 
@@ -187,6 +201,56 @@ uθ = [Float64[] for x in g.x]
 
 for (i,ti) in enumerate(tr)
   s = Evaluate(ti,p,g,s₁,s̄₂,s₂)
+  push!(t,ti)
+  for j = 1:length(g.x)
+    push!(ψ[j],s.ψ[j])
+    push!(ω[j],s.ω[j])
+    push!(ur[j],s.ur[j])
+    push!(uθ[j],s.uθ[j])
+  end
+end
+
+Soln(t,ψ,ω,ur,uθ)
+
+end
+
+
+function Evaluate1storder(tr::Range{T},p::Params,g::Grid{N},s₁::ComplexAmplitude{N,1},
+                            s̄₂::ComplexAmplitude{N,2},s₂::ComplexAmplitude{N,2}) where {T,N}
+
+t = Float64[]
+ψ = [Float64[] for x in g.x]
+ω = [Float64[] for x in g.x]
+ur = [Float64[] for x in g.x]
+uθ = [Float64[] for x in g.x]
+
+for (i,ti) in enumerate(tr)
+  s = Evaluate1storder(ti,p,g,s₁,s̄₂,s₂)
+  push!(t,ti)
+  for j = 1:length(g.x)
+    push!(ψ[j],s.ψ[j])
+    push!(ω[j],s.ω[j])
+    push!(ur[j],s.ur[j])
+    push!(uθ[j],s.uθ[j])
+  end
+end
+
+Soln(t,ψ,ω,ur,uθ)
+
+end
+
+
+function Evaluate2ndorder(tr::Range{T},p::Params,g::Grid{N},s₁::ComplexAmplitude{N,1},
+                            s̄₂::ComplexAmplitude{N,2},s₂::ComplexAmplitude{N,2}) where {T,N}
+
+t = Float64[]
+ψ = [Float64[] for x in g.x]
+ω = [Float64[] for x in g.x]
+ur = [Float64[] for x in g.x]
+uθ = [Float64[] for x in g.x]
+
+for (i,ti) in enumerate(tr)
+  s = Evaluate2ndorder(ti,p,g,s₁,s̄₂,s₂)
   push!(t,ti)
   for j = 1:length(g.x)
     push!(ψ[j],s.ψ[j])
