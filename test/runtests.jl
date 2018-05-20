@@ -1,9 +1,14 @@
+using Base.Test
+using TestSetExtensions
+
 using Whirl
-@static if VERSION < v"0.7.0-DEV.2005"
-    using Base.Test
-else
-    using Test
+
+@test isempty(detect_ambiguities(Whirl))
+
+@testset ExtendedTestSet "All tests" begin
+    @includetests ARGS
 end
 
-# write your own tests here
-@test 1 == 2
+if isempty(ARGS)
+    include("../docs/make.jl")
+end
