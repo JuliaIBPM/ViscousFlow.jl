@@ -2,3 +2,7 @@
 *.jl.*.cov
 *.jl.mem
 *.pdf
+examples/.ipynb_checkpoints
+cache
+.#*
+*.mem
