@@ -1,11 +1,11 @@
 using PkgBenchmark
 
-include(joinpath(Pkg.dir("Whirl2d"), "src/Whirl2d.jl"))
-import Whirl2d
-import Whirl2d:@get, Soln, IntFactSystems, TimeMarching, Fields
+include(joinpath(Pkg.dir("Whirl"), "src/Whirl.jl"))
+import Whirl
+import Whirl:@get, Soln, IntFactSystems, TimeMarching, Fields
 
 using IntFactSystems
-include(joinpath(Pkg.dir("Whirl2d"), "src/systems/navier_stokes.jl"))
+include(joinpath(Pkg.dir("Whirl"), "src/systems/navier_stokes.jl"))
 import TimeMarching: ifrk!, RK31
 
 @benchgroup "Navier Stokes" begin

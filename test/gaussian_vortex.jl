@@ -1,9 +1,9 @@
-import Whirl2d: IntFactSystems, TimeMarching
+import Whirl: IntFactSystems, TimeMarching
 
 using IntFactSystems
-include(joinpath(Pkg.dir("Whirl2d"), "src/systems/navier_stokes.jl"))
+include(joinpath(Pkg.dir("Whirl"), "src/systems/navier_stokes.jl"))
 import TimeMarching: ifrk!, RK31
-import Whirl2d: Soln
+import Whirl: Soln
 
 using Fields
 

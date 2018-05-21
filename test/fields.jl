@@ -1,4 +1,4 @@
-import Whirl2d: Fields
+import Whirl: Fields
 using Fields
 
 @testset "Fields" begin

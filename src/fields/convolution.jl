@@ -14,7 +14,7 @@ A preplanned, circular convolution operator on an M × N matrix.
 
 # Constructors:
 
-- `Convolution(G::Matrix{Float64})`
+- `CircularConvolution(G::Matrix{Float64})`
 
 # Example:
 ```jldoctest
