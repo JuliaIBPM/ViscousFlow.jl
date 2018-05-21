@@ -10,9 +10,9 @@ module Grids
 
 export DualPatch
 
-import Whirl2d
-import Whirl2d:@get, MappedVector
-# import Whirl2d.NavierStokes
+import Whirl
+import Whirl:@get, MappedVector
+# import Whirl.NavierStokes
 using FastGaussQuadrature
 
 abstract type Grid end
@@ -48,29 +48,29 @@ mutable struct DualPatch <: Grid
 =#
 
     "cell center variable"
-    cell::Array{Float64,Whirl2d.ndim}
+    cell::Array{Float64,Whirl.ndim}
 
     "face variable components"
-    facex::Array{Float64,Whirl2d.ndim}
-    facey::Array{Float64,Whirl2d.ndim}
+    facex::Array{Float64,Whirl.ndim}
+    facey::Array{Float64,Whirl.ndim}
 
     "dual velocity field components"
-    dualfacex::Array{Float64,Whirl2d.ndim}
-    dualfacey::Array{Float64,Whirl2d.ndim}
+    dualfacex::Array{Float64,Whirl.ndim}
+    dualfacey::Array{Float64,Whirl.ndim}
 
     "cell node variable"
-    node::Array{Float64,Whirl2d.ndim}
+    node::Array{Float64,Whirl.ndim}
 
     "LGF table"
-    lgftab::Array{Float64,Whirl2d.ndim}
-    lgfhat::Array{Complex{Float64},Whirl2d.ndim}
+    lgftab::Array{Float64,Whirl.ndim}
+    lgfhat::Array{Complex{Float64},Whirl.ndim}
 
     "integrating factor table"
-    qtab::Array{Float64,Whirl2d.ndim}
-    qhat::Array{Complex{Float64},Whirl2d.ndim}
+    qtab::Array{Float64,Whirl.ndim}
+    qhat::Array{Complex{Float64},Whirl.ndim}
 
     "LGF*Q"
-    gqhat::Array{Complex{Float64},Whirl2d.ndim}
+    gqhat::Array{Complex{Float64},Whirl.ndim}
     α::Float64
 
     "preplanned fft"
@@ -337,7 +337,7 @@ function dualshiftx!(vx,ir::UnitRange{Int},jr::UnitRange{Int},facex)
 
  function dualshifty(g::DualPatch,facey)
      celly = zeros(g.cell)
-     dualshiftx!(celly,g.cellint[1],g.cellint[2],facey)
+     dualshifty!(celly,g.cellint[1],g.cellint[2],facey)
      celly
  end
 function addgh!(u)

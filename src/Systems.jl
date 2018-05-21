@@ -1,10 +1,10 @@
 module Systems
 
-import Whirl2d
-import Whirl2d:@get
-import Whirl2d.Grids
-import Whirl2d.Bodies
-import Whirl2d.DDF
+import Whirl
+import Whirl:@get
+import Whirl.Grids
+import Whirl.Bodies
+import Whirl.DDF
 
 using ProgressMeter
 
@@ -57,23 +57,23 @@ mutable struct DualDomain <: Domain
 end
 
 function DualDomain()
-    xmin = zeros(Whirl2d.ndim)
-    xmax = ones(Whirl2d.ndim)
-    grid = Grids.DualPatch(zeros(Int,Whirl2d.ndim),0.0,xmin)
+    xmin = zeros(Whirl.ndim)
+    xmax = ones(Whirl.ndim)
+    grid = Grids.DualPatch(zeros(Int,Whirl.ndim),0.0,xmin)
     nbody = 0
     nbodypts = 0
     firstbpt = []
-    Eᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
-    Ẽᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
-    Êᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
-    CᵀEᵀ = [spzeros(0) for i=1:Whirl2d.ndim]
-    G̃ᵀẼᵀ = [spzeros(0) for i=1:Whirl2d.ndim,j=1:Whirl2d.ndim]
+    Eᵀ = [spzeros(0) for i=1:Whirl.ndim]
+    Ẽᵀ = [spzeros(0) for i=1:Whirl.ndim]
+    Êᵀ = [spzeros(0) for i=1:Whirl.ndim]
+    CᵀEᵀ = [spzeros(0) for i=1:Whirl.ndim]
+    G̃ᵀẼᵀ = [spzeros(0) for i=1:Whirl.ndim,j=1:Whirl.ndim]
 
     #S = []
     #S₀ = []
 
-    ddf_fcn = Whirl2d.DDF.ddf_roma
-    #ddf_fcn = Whirl2d.DDF.ddf_goza
+    ddf_fcn = Whirl.DDF.ddf_roma
+    #ddf_fcn = Whirl.DDF.ddf_goza
 
 
     DualDomain(xmin,xmax,grid,[],nbody,nbodypts,firstbpt,
@@ -102,8 +102,8 @@ function add_grid!(dom::T,g::K) where {T<:Domain,K<:Grids.Grid}
     dom.grid = g
 
     # resize the domain dimensions to allow the grid to fit
-    xmin = [min(dom.xmin[j],g.xmin[j]) for j = 1:Whirl2d.ndim]
-    xmax = [max(dom.xmax[j],g.xmax[j]) for j = 1:Whirl2d.ndim]
+    xmin = [min(dom.xmin[j],g.xmin[j]) for j = 1:Whirl.ndim]
+    xmax = [max(dom.xmax[j],g.xmax[j]) for j = 1:Whirl.ndim]
     set_dims!(dom,xmin,xmax)
 
 end
@@ -132,8 +132,8 @@ function add_body!(dom::Domain,b::Bodies.Body)
 
     # resize the domain dimensions to allow the body to fit, with a buffer
     bmin, bmax = Bodies.dims(b)
-    xmin = [min(dom.xmin[j],bmin[j]-buff) for j = 1:Whirl2d.ndim]
-    xmax = [max(dom.xmax[j],bmax[j]+buff) for j = 1:Whirl2d.ndim]
+    xmin = [min(dom.xmin[j],bmin[j]-buff) for j = 1:Whirl.ndim]
+    xmax = [max(dom.xmax[j],bmax[j]+buff) for j = 1:Whirl.ndim]
     set_dims!(dom,xmin,xmax)
 end
 
@@ -142,7 +142,7 @@ function add_body(dom::Domain,b::Bodies.Body)
     dom
 end
 
-BodyId(dom::Domain) = Bodies.Identity(zeros(Float64,dom.nbodypts,Whirl2d.ndim))
+BodyId(dom::Domain) = Bodies.Identity(zeros(Float64,dom.nbodypts,Whirl.ndim))
 
 
 # Body-to-grid operations
@@ -285,7 +285,7 @@ function construct_CᵀEᵀ!(dom::DualDomain)
 
     m = dom.nbodypts
 
-    dom.CᵀEᵀ = [spzeros(length(grid.cell),m) for i = 1:Whirl2d.ndim]
+    dom.CᵀEᵀ = [spzeros(length(grid.cell),m) for i = 1:Whirl.ndim]
 
 
     qy = zeros(grid.facey)

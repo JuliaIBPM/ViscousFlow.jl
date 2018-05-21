@@ -1,10 +1,10 @@
 module Process
 
-import Whirl2d
-import Whirl2d:@get
-#import Whirl2d.Grids
-#import Whirl2d.Bodies
-#import Whirl2d.Systems
+import Whirl
+import Whirl:@get
+#import Whirl.Grids
+#import Whirl.Bodies
+#import Whirl.Systems
 
 using Interpolations
 

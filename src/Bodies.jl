@@ -2,8 +2,8 @@ module Bodies
 
 export Body
 
-import Whirl2d
-import Whirl2d.Grids
+import Whirl
+import Whirl.Grids
 
 include("./RigidBodyMotions.jl")
 using .RigidBodyMotions
@@ -79,11 +79,11 @@ end
 Body(N,xtilde,xref::Vector{Float64},angle::Float64) = Body(N,xtilde,BodyConfig(xref,angle))
 
 function dims(body::Body)
-    xmin = Inf*ones(Whirl2d.ndim)
-    xmax = -Inf*ones(Whirl2d.ndim)
+    xmin = Inf*ones(Whirl.ndim)
+    xmax = -Inf*ones(Whirl.ndim)
     for x in body.x
-        xmin = [min(xmin[j],x[j]) for j = 1:Whirl2d.ndim]
-        xmax = [max(xmax[j],x[j]) for j = 1:Whirl2d.ndim]
+        xmin = [min(xmin[j],x[j]) for j = 1:Whirl.ndim]
+        xmax = [max(xmax[j],x[j]) for j = 1:Whirl.ndim]
     end
     xmin, xmax
 end

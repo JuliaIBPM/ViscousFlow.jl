@@ -1,7 +1,7 @@
 module TimeMarching
 
-import Whirl2d
-import Whirl2d:@get
+import Whirl
+import Whirl:@get
 
 struct RKparams
   nstage::Int
@@ -78,7 +78,7 @@ end
   r₁ is function that acts upon solution structure s and returns data of size s.u
   r₂ is function that acts upon time value and returns data of size s.f
 =#
-function ifherk!(s::Whirl2d.ConstrainedSoln{T,K},p::TimeParams,ops::ConstrainedOperators) where {T,K}
+function ifherk!(s::Whirl.ConstrainedSoln{T,K},p::TimeParams,ops::ConstrainedOperators) where {T,K}
 # Advance the solution by one time step
 @get p (Δt,rk)
 @get ops (A⁻¹,B₁ᵀ,B₂,P,S⁻¹,S₀⁻¹,r₁,r₂)
@@ -138,7 +138,7 @@ return s
 
 end
 
-function ifrk!(s::Whirl2d.Soln{T},p::TimeParams,ops::Operators) where {T}
+function ifrk!(s::Whirl.Soln{T},p::TimeParams,ops::Operators) where {T}
 # Advance the solution by one time step
 @get p (Δt,rk)
 @get ops (A⁻¹,r₁)

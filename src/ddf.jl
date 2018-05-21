@@ -1,6 +1,6 @@
 module DDF
 
-import Whirl2d
+import Whirl
 
 export ddf_roma, ddf_goza
 

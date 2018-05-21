@@ -1,11 +1,11 @@
 module NavierStokes
 
-import Whirl2d
-import Whirl2d:@get
-import Whirl2d.Grids
-import Whirl2d.Bodies
-import Whirl2d.Systems
-import Whirl2d.TimeMarching
+import Whirl
+import Whirl:@get
+import Whirl.Grids
+import Whirl.Bodies
+import Whirl.Systems
+import Whirl.TimeMarching
 
 # include("Grids.jl")
 # using .Grids
@@ -35,7 +35,7 @@ function Soln(dom::Systems.DualDomain)
   # Auxiliary data. In this case, streamfunction on dual grid
   #ψ = zeros(dom.grid.cell)
 
-  Whirl2d.Soln(w)
+  Whirl.Soln(w)
 end
 
 # For Navier-Stokes problems with a body
@@ -45,18 +45,18 @@ function BodySoln(dom::Systems.DualDomain)
   w = zeros(dom.grid.cell)
 
   # Constraint force. In this case, Lagrange forces at body points
-  f = zeros(dom.nbodypts,Whirl2d.ndim)
+  f = zeros(dom.nbodypts,Whirl.ndim)
 
-  Whirl2d.ConstrainedSoln(w,f)
+  Whirl.ConstrainedSoln(w,f)
 end
 
 # Designated for two-level asymptotic solutions
 function TwoLevelBodySoln(dom::Systems.DualDomain)
 
   w = [zeros(dom.grid.cell), zeros(dom.grid.cell)]
-  f = [zeros(dom.nbodypts,Whirl2d.ndim),zeros(dom.nbodypts,Whirl2d.ndim)]
+  f = [zeros(dom.nbodypts,Whirl.ndim),zeros(dom.nbodypts,Whirl.ndim)]
 
-  Whirl2d.ConstrainedSoln(w,f)
+  Whirl.ConstrainedSoln(w,f)
 end
 
 mutable struct PhysParams
@@ -89,7 +89,7 @@ mutable struct StreamingParams
   #X :: Function
 end
 
-PhysParams() = PhysParams(zeros(Whirl2d.ndim),0.0)
+PhysParams() = PhysParams(zeros(Whirl.ndim),0.0)
 
 StreamingParams() = StreamingParams(0.0,0.0,0.0,0.0,0.0,0.0)
 
@@ -135,7 +135,7 @@ CᵀEᵀ(dom::Systems.DualDomain,f::Array{T,2}) where T =
       reshape(dom.CᵀEᵀ[1]*f[:,1]+dom.CᵀEᵀ[2]*f[:,2],size(dom.grid.cell))
 
 function ẼG̃(dom::Systems.DualDomain,qx::Array{T,2},qy::Array{T,2}) where T
-  f = [zeros(dom.nbodypts) for i=1:Whirl2d.ndim, j = 1:Whirl2d.ndim]
+  f = [zeros(dom.nbodypts) for i=1:Whirl.ndim, j = 1:Whirl.ndim]
   f[1,1] = dom.G̃ᵀẼᵀ[1,1]'*squeeze(reshape(qx,length(qx),1),2)
   f[1,2] = dom.G̃ᵀẼᵀ[2,1]'*squeeze(reshape(qx,length(qx),1),2)
   f[2,1] = dom.G̃ᵀẼᵀ[1,2]'*squeeze(reshape(qy,length(qy),1),2)
@@ -335,7 +335,7 @@ function set_operators_two_level_body!(dom,params)
 
   # B₂! is function that takes solution array `s` (and acts upon s.u) and returns
   # data of size s.f. It also modifies the auxiliary variables in `s`
-  #B₂!(s::Whirl2d.SolnType) = [-ECL⁻¹!(dom,L⁻¹1,s.u[1],s.ψ[1]), -ECL⁻¹!(dom,L⁻¹1,s.u[2],s.ψ[2])]
+  #B₂!(s::Whirl.SolnType) = [-ECL⁻¹!(dom,L⁻¹1,s.u[1],s.ψ[1]), -ECL⁻¹!(dom,L⁻¹1,s.u[2],s.ψ[2])]
   #B₂(u) = [-ECL⁻¹(dom,L⁻¹1,u[1]), -ECL⁻¹(dom,L⁻¹1,u[2])]
   B₂(u) = -ECL⁻¹.(dom,L⁻¹1,u)
 
@@ -481,7 +481,7 @@ function evaluateFields(t::Float64,u::Vector{Array{Float64,2}},g::Grids.DualPatc
 end
 
 
-evaluateFields(s::Whirl2d.SolnType,g::Grids.DualPatch,gops::Grids.GridOperators)=
+evaluateFields(s::Whirl.SolnType,g::Grids.DualPatch,gops::Grids.GridOperators)=
       evaluateFields(s.t,s.u,g,gops)
 
 
@@ -583,12 +583,12 @@ end
       #    ψlgf
       # end
 
-# evaluateFields(s::Whirl2d.SolnType,g::Grids.DualPatch,gops::Grids.GridOperators,nT::UnitRange{Int},Δt::Float64) =
+# evaluateFields(s::Whirl.SolnType,g::Grids.DualPatch,gops::Grids.GridOperators,nT::UnitRange{Int},Δt::Float64) =
 #     evaluateFields(s.t,s.u,g,gops,nT,Δt)
 
 
 # To evaluate the fields at a specific time `teval`
-function (h::Vector{T})(teval::Float64) where {T<:Whirl2d.SolnType}
+function (h::Vector{T})(teval::Float64) where {T<:Whirl.SolnType}
   dt(y) = abs.(map(x->x.t,y)-teval)
   imin = find(dt(h)) do x x==minimum(dt(h)) end
   if length(imin) > 0
@@ -614,9 +614,9 @@ average(f::Union{Vector{Vector{T}},Vector{T}},itr::UnitRange) where T =
 # # and f(N) doesn't appear in the computing of the average for a 0order approximation
 # end
 
-force(s::Whirl2d.ConstrainedSoln{T,K},g::Grids.DualPatch) where {T,K} = sum(s.f,1)*g.Δx^2
+force(s::Whirl.ConstrainedSoln{T,K},g::Grids.DualPatch) where {T,K} = sum(s.f,1)*g.Δx^2
 
-function force(h::Vector{Whirl2d.ConstrainedSoln{T,K}},g::Grids.DualPatch) where {T,K}
+function force(h::Vector{Whirl.ConstrainedSoln{T,K}},g::Grids.DualPatch) where {T,K}
     fh = force.(h,g)
     return map(s -> s.t,h), map(f -> f[1], fh), map(f -> f[2], fh)
 end

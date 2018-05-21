@@ -1,8 +1,8 @@
 """
-The `Whirl2d` module is here
+The `Whirl` module is here
 
 """
-module Whirl2d
+module Whirl
 
 #== Imports/Exports ==#
 
