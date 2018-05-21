@@ -337,7 +337,7 @@ function dualshiftx!(vx,ir::UnitRange{Int},jr::UnitRange{Int},facex)
 
  function dualshifty(g::DualPatch,facey)
      celly = zeros(g.cell)
-     dualshiftx!(celly,g.cellint[1],g.cellint[2],facey)
+     dualshifty!(celly,g.cellint[1],g.cellint[2],facey)
      celly
  end
 function addgh!(u)
