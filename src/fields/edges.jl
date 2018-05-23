@@ -5,6 +5,7 @@ struct Edges{C <: CellType, NX, NY}
     v::Matrix{Float64}
 end
 
+# Based on number of dual nodes, return the number of edges
 edge_inds(::Type{Dual},   nodedims) = (nodedims[1]-1, nodedims[2]-2), (nodedims[1]-2, nodedims[2]-1)
 edge_inds(::Type{Primal}, nodedims) = (nodedims[1], nodedims[2]-1), (nodedims[1]-1, nodedims[2])
 

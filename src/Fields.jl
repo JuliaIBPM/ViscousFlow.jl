@@ -1,7 +1,25 @@
+#=
+Philosophy and convention:
+A node is defined as the center of a grid cell. Grid cells may be those
+in a primary grid or those in a dual grid.
+
+The definitions "dual" and "primal" are made based on their conventional use
+in holding fluid dynamic data. For example, pressure is held in primal nodes,
+vorticity and streamfunction at dual nodes.
+
+The definitions here are made with a "dual grid" in mind. That is, the grid is
+defined by an integer number of dual cells in each direction. If a "primal grid"
+is needed, then all of the defintions can be swapped (primal -> dual, dual -> primal).
+
+Also, note that there might be dual cells that are "ghosts" (i.e. lie outside
+the grid), but these are not distinguished in these basic definitions and operators.
+=#
+
+
 module Fields
 
 import Base: @propagate_inbounds
-export Primal, Dual, Edges, DualNodes,
+export Primal, Dual, Edges, DualNodes, Nodes, othertype,
        curl, curl!, divergence, divergence!,
        laplacian, laplacian!, Laplacian,
        product, product!, ∘,
@@ -27,6 +45,18 @@ macro wraparray(wrapper, field)
         @propagate_inbounds Base.setindex!(A::$wrapper, v, I::Vararg{Int, $N}) = A.$field[I...] = convert($el_type, v)
     end
 end
+
+function othertype end
+
+macro othertype(celltype, k)
+    esc(quote
+        Fields.othertype(::$celltype) = $k
+        Fields.othertype(::Type{$celltype}) = $k
+    end)
+end
+
+@othertype Primal Dual
+@othertype Dual Primal
 
 include("fields/nodes.jl")
 include("fields/edges.jl")

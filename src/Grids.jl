@@ -144,6 +144,13 @@ function setFFTPlan!(g::DualPatch)
   nothing
 end
 
+######## Grid data types
+
+
+
+
+########
+
 xcell(g::DualPatch) = [g.xmin[1]+g.Δx*(i-g.ifirst[1]+1/2) for i=g.cellint[1]]
 ycell(g::DualPatch) = [g.xmin[2]+g.Δx*(j-g.ifirst[2]+1/2) for j=g.cellint[2]]
 xnode(g::DualPatch) = [g.xmin[1]+g.Δx*(i-g.ifirst[1]+1) for i=g.nodeint[1]]
