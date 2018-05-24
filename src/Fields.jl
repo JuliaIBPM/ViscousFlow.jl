@@ -90,12 +90,12 @@ include("fields/operators.jl")
 
 
 function shift!(dual::Edges{Dual, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
-    @inbounds for y in 1:NY-2, x in 1:NX-1
-        dual.u[x,y] = (w[x,y+1] + w[x+1,y+1])/2
+    @inbounds for y in 2:NY-1, x in 1:NX-1
+        dual.u[x,y] = (w[x,y] + w[x+1,y])/2
     end
 
-    @inbounds for y in 1:NY-1, x in 1:NX-2
-        dual.v[x,y] = (w[x+1,y] + w[x+1,y+1])/2
+    @inbounds for y in 1:NY-1, x in 2:NX-1
+        dual.v[x,y] = (w[x,y] + w[x,y+1])/2
     end
     dual
 end
