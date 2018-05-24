@@ -19,7 +19,7 @@ the grid), but these are not distinguished in these basic definitions and operat
 module Fields
 
 import Base: @propagate_inbounds
-export Primal, Dual, Edges, DualNodes, Nodes, othertype,
+export Primal, Dual, Edges, Nodes, DualNodes, othertype,
        curl, curl!, divergence, divergence!,
        laplacian, laplacian!, Laplacian,
        product, product!, ∘,
@@ -38,6 +38,11 @@ macro wraparray(wrapper, field)
         Base.parent(A::$wrapper) = A.$field
         Base.size(A::$wrapper) = size(A.$field)
         Base.indices(A::$wrapper) = indices(A.$field)
+
+        function Base.show(io::IO, ::MIME"text/plain", A::$wrapper)
+          println(io,"Printing in grid orientation (lower left is (1,1)):")
+          show(io,"text/plain",flipdim(transpose(A.$field),1))
+        end
 
         @propagate_inbounds Base.getindex(A::$wrapper, i::Int) = A.$field[i]
         @propagate_inbounds Base.getindex(A::$wrapper, I::Vararg{Int, $N}) = A.$field[I...]

@@ -3,16 +3,29 @@ include("convolution.jl")
 
 import Base: *, \, A_mul_B!, A_ldiv_B!
 
-function laplacian!(out::DualNodes{NX, NY}, w::DualNodes{NX, NY}) where {NX, NY}
+function laplacian!(out::Nodes{Dual,NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
     @inbounds for y in 2:NY-1, x in 2:NX-1
         out[x,y] = w[x,y-1] + w[x-1,y] - 4w[x,y] + w[x+1,y] + w[x,y+1]
     end
     out
 end
 
+function laplacian!(out::Nodes{Primal,NX, NY}, w::Nodes{Primal,NX, NY}) where {NX, NY}
+    @inbounds for y in 2:NY-2, x in 2:NX-2
+        out[x,y] = w[x,y-1] + w[x-1,y] - 4w[x,y] + w[x+1,y] + w[x,y+1]
+    end
+    out
+end
+
+function laplacian(w::Nodes{T,NX,NY}) where {T<:CellType,NX,NY}
+  laplacian!(Nodes(T,(NX,NY)), w)
+end
+
+###
 function laplacian(w::DualNodes{NX, NY}) where {NX, NY}
     laplacian!(DualNodes(NX, NY), w)
 end
+###
 
 struct Laplacian{NX, NY, R}
     conv::Nullable{CircularConvolution{NX, NY}}

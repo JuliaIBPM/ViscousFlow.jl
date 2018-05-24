@@ -6,17 +6,17 @@ struct Edges{C <: CellType, NX, NY}
 end
 
 # Based on number of dual nodes, return the number of edges
-edge_inds(::Type{Dual},   nodedims) = (nodedims[1]-1, nodedims[2]-2), (nodedims[1]-2, nodedims[2]-1)
-edge_inds(::Type{Primal}, nodedims) = (nodedims[1], nodedims[2]-1), (nodedims[1]-1, nodedims[2])
+edge_inds(::Type{Dual},   dualnodedims) = (dualnodedims[1]-1, dualnodedims[2]-2), (dualnodedims[1]-2, dualnodedims[2]-1)
+edge_inds(::Type{Primal}, dualnodedims) = (dualnodedims[1], dualnodedims[2]-1), (dualnodedims[1]-1, dualnodedims[2])
 
-function Edges(T::Type{C}, nodedims::Tuple{Int, Int}) where {C <: CellType}
-    udims, vdims = edge_inds(T, nodedims)
+function Edges(T::Type{C}, dualnodedims::Tuple{Int, Int}) where {C <: CellType}
+    udims, vdims = edge_inds(T, dualnodedims)
     u = zeros(udims)
     v = zeros(vdims)
-    Edges{T, nodedims...}(u, v)
+    Edges{T, dualnodedims...}(u, v)
 end
 
-Edges(T, nodes::DualNodes) = Edges(T, size(nodes))
+Edges(T, nodes::Nodes{Dual,NX,NY}) where {NX,NY} = Edges(T, size(nodes))
 (::Type{Edges{T,NX,NY}})() where {T,NX,NY} = Edges(T, (NX, NY))
 
 function fill!(edges::Edges, s::Number)
@@ -24,6 +24,9 @@ function fill!(edges::Edges, s::Number)
     fill!(edges.v, s)
     edges
 end
+
+Edges(T, nodes::DualNodes) = Edges(T, size(nodes))
+
 
 function shift!(dual::Edges{Dual, NX, NY},
                 primal::Edges{Primal, NX, NY}) where {NX, NY}
