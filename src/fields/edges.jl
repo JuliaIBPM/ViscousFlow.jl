@@ -6,7 +6,7 @@ struct Edges{C <: CellType, NX, NY}
 end
 
 # Based on number of dual nodes, return the number of edges
-edge_inds(::Type{Dual},   dualnodedims) = (dualnodedims[1]-1, dualnodedims[2]-2), (dualnodedims[1]-2, dualnodedims[2]-1)
+edge_inds(::Type{Dual},   dualnodedims) = (dualnodedims[1]-1, dualnodedims[2]), (dualnodedims[1], dualnodedims[2]-1)
 edge_inds(::Type{Primal}, dualnodedims) = (dualnodedims[1], dualnodedims[2]-1), (dualnodedims[1]-1, dualnodedims[2])
 
 function Edges(T::Type{C}, dualnodedims::Tuple{Int, Int}) where {C <: CellType}
@@ -31,13 +31,13 @@ Edges(T, nodes::DualNodes) = Edges(T, size(nodes))
 function shift!(dual::Edges{Dual, NX, NY},
                 primal::Edges{Primal, NX, NY}) where {NX, NY}
     uₚ = primal.u
-    @inbounds for y in 1:NY-2, x in 1:NX-1
-        dual.u[x,y] = (uₚ[x,y] + uₚ[x+1,y] + uₚ[x,y+1] + uₚ[x+1,y+1])/4
+    @inbounds for y in 2:NY-1, x in 1:NX-1
+        dual.u[x,y] = (uₚ[x,y] + uₚ[x+1,y] + uₚ[x,y-1] + uₚ[x+1,y-1])/4
     end
 
     vₚ = primal.v
-    @inbounds for y in 1:NY-1, x in 1:NX-2
-        dual.v[x,y] = (vₚ[x,y] + vₚ[x+1,y] + vₚ[x,y+1] + vₚ[x+1,y+1])/4
+    @inbounds for y in 1:NY-1, x in 2:NX-1
+        dual.v[x,y] = (vₚ[x,y] + vₚ[x-1,y] + vₚ[x,y+1] + vₚ[x-1,y+1])/4
     end
     dual
 end

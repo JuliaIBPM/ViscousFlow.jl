@@ -165,6 +165,39 @@ function gradient(p::Nodes{Primal, NX, NY}) where {NX, NY}
   gradient!(Edges(Primal,(NX,NY)),p)
 end
 
+
+function gradient!(d::EdgeGradient{Primal, Dual, NX, NY},
+                     edges::Edges{Primal, NX, NY}) where {NX, NY}
+
+    @inbounds for y in 1:NY-1, x in 1:NX-1
+        d.dudx[x,y] = - edges.u[x,y] + edges.u[x+1,y]
+        d.dvdy[x,y] = - edges.v[x,y] + edges.v[x,y+1]
+    end
+    @inbounds for y in 2:NY-1, x in 2:NX-1
+        d.dudy[x,y] = - edges.u[x,y-1] + edges.u[x,y]
+        d.dvdx[x,y] = - edges.v[x-1,y] + edges.v[x,y]
+    end
+    d
+end
+
+function gradient!(d::EdgeGradient{Dual, Primal, NX, NY},
+                     edges::Edges{Dual, NX, NY}) where {NX, NY}
+
+    @inbounds for y in 2:NY-1, x in 2:NX-1
+        d.dudx[x,y] = - edges.u[x-1,y] + edges.u[x,y]
+        d.dvdy[x,y] = - edges.v[x,y-1] + edges.v[x,y]
+    end
+    @inbounds for y in 1:NY-1, x in 1:NX-1
+        d.dudy[x,y] = - edges.u[x,y] + edges.u[x,y+1]
+        d.dvdx[x,y] = - edges.v[x,y] + edges.v[x+1,y]
+    end
+    d
+end
+
+function gradient(edges::Edges{C, NX, NY}) where {C<:CellType,NX,NY}
+  gradient!(EdgeGradient(C,(NX,NY)),edges)
+end
+
 #### to be removed
 function curl!(edges::Edges{Primal, NX, NY},
                s::DualNodes{NX, NY}) where {NX, NY}

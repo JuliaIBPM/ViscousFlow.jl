@@ -63,9 +63,29 @@ end
 
 @othertype Primal Dual
 @othertype Dual Primal
+@othertype CellType CellType
 
 include("fields/nodes.jl")
 include("fields/edges.jl")
+
+
+struct EdgeGradient{C <: CellType,D <: CellType, NX,NY}
+  dudx :: Nodes{C,NX,NY}
+  dvdy :: Nodes{C,NX,NY}
+  dudy :: Nodes{D,NX,NY}
+  dvdx :: Nodes{D,NX,NY}
+end
+
+function EdgeGradient(T::Type{C}, dualnodedims::Tuple{Int, Int}) where {C <: CellType}
+    dudxdims = node_inds(T, dualnodedims)
+    dudydims = node_inds(othertype(C), dualnodedims)
+
+    EdgeGradient{T, othertype(T), dualnodedims...}(
+            Nodes(T,dualnodedims),Nodes(T,dualnodedims),
+            Nodes(othertype(T),dualnodedims),Nodes(othertype(T),dualnodedims)
+            )
+end
+
 include("fields/operators.jl")
 
 
