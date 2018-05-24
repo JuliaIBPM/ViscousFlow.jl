@@ -17,7 +17,7 @@ using Fields
     end
 
     @testset "Discrete Laplacian" begin
-        s = DualNodes{30, 40}()
+        s = Nodes{Dual, 30, 40}()
         s[3:end-2, 3:end-2] .= rand(26, 36)
 
         L = Laplacian(30, 40)
@@ -31,29 +31,29 @@ using Fields
     end
 
     @testset "Discrete Divergence" begin
-        s = DualNodes{5, 4}()
+        s = Nodes{Dual, 5, 4}()
         s .= rand(5, 4)
 
-        @test iszero(divergence(Fields.shift(curl(s))))
+        @test iszero(divergence(curl(s)))
 
-        q′ = Edges{Dual, 5, 4}()
-        q′.u .= reshape(1:8, 4, 2)
-        q′.v .= reshape(1:9, 3, 3)
+        s = Nodes{Primal, 5, 4}()
+        q′ = Edges{Primal, 5, 4}()
+        q′.u .= reshape(1:15, 5, 3)
+        q′.v .= reshape(1:16, 4, 4)
 
         # Not sure if this is the behavior we want yet
         # Currently, the ghost cells are not affected
         # by the divergence operator
-        s .= 1.0
+        #s .= 1.0
         divergence!(s, q′)
-        @test s == [ 1.0  1.0  1.0  1.0
-                     1.0  4.0  4.0  1.0
-                     1.0  4.0  4.0  1.0
-                     1.0  4.0  4.0  1.0
-                     1.0  1.0  1.0  1.0 ]
+        @test s == [ 5.0  5.0  5.0
+                     5.0  5.0  5.0
+                     5.0  5.0  5.0
+                     5.0  5.0  5.0 ]
     end
 
     @testset "Discrete Curl" begin
-        s = DualNodes{5, 4}()
+        s = Nodes{Dual, 5, 4}()
         s .= reshape(1:20, 4, 5)'
 
         q = curl(s)
@@ -90,7 +90,7 @@ using Fields
 
     @testset "Shifting Dual Nodes to Dual Edges" begin
 
-        w = DualNodes{5, 4}()
+        w = Nodes{Dual, 5, 4}()
         w .= reshape(1:20, 5, 4)
 
         Ww = Fields.shift(w)

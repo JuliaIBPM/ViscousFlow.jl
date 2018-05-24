@@ -19,7 +19,7 @@ end
 
 Nodes(T, nodes::Nodes{Dual,NX,NY}) where {NX, NY} = Nodes(T, size(nodes))
 
-Nodes(T, nx::Int, ny::Int) = Nodes{T,nx,ny}(zeros(nx,ny))
+Nodes(T, nx::Int, ny::Int) = Nodes(T,(nx,ny))
 (::Type{Nodes{T,NX,NY}})() where {T,NX,NY} = Nodes(T, (NX, NY))
 
 function Base.show(io::IO, nodes::Nodes{T, NX, NY}) where {T, NX, NY}

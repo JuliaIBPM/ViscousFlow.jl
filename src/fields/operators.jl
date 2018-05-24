@@ -78,17 +78,17 @@ function Base.show(io::IO, L::Laplacian{NX, NY, R}) where {NX, NY, R}
     print(io, "Discrete Laplacian$inverse on a $nodedims grid")
 end
 
-A_mul_B!(out::DualNodes, L::Laplacian, s::DualNodes) = laplacian!(out, s)
-L::Laplacian * s::DualNodes = laplacian(s)
+A_mul_B!(out::Nodes{Dual,NX,NY}, L::Laplacian, s::Nodes{Dual,NX,NY}) where {NX,NY} = laplacian!(out, s)
+L::Laplacian * s::Nodes{Dual,NX,NY} where {NX,NY} = laplacian(s)
 
-function A_ldiv_B!(out::DualNodes{NX, NY},
+function A_ldiv_B!(out::Nodes{Dual,NX, NY},
                    L::Laplacian{NX, NY, true},
-                   s::DualNodes{NX, NY}) where {NX, NY}
+                   s::Nodes{Dual, NX, NY}) where {NX, NY}
 
     A_mul_B!(out.data, get(L.conv), s.data)
     out
 end
-L::Laplacian \ s::DualNodes = A_ldiv_B!(DualNodes(size(s)), L, s)
+L::Laplacian \ s::Nodes{Dual,NX,NY} where {NX,NY} = A_ldiv_B!(Nodes(Dual,size(s)), L, s)
 
 # curl
 function curl!(edges::Edges{Primal, NX, NY},
