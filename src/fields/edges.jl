@@ -77,3 +77,12 @@ function Base.show(io::IO, edges::Edges{T, NX, NY}) where {T, NX, NY}
     println(io, "  Internal u-faces: $udims")
     print(io, "  Internal v-faces: $vdims")
 end
+
+function Base.show(io::IO, ::MIME"text/plain", edges::Edges{T, NX, NY}) where {T, NX, NY}
+    println(io,"$T edge data")
+    println(io,"u (in grid orientation):")
+    show(io,"text/plain",flipdim(transpose(edges.u),1))
+    println(io)
+    println(io,"v (in grid orientation):")
+    show(io,"text/plain",flipdim(transpose(edges.v),1))
+end

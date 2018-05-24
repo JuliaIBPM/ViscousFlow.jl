@@ -5,6 +5,7 @@ struct Nodes{C <: CellType, NX, NY} <: AbstractMatrix{Float64}
     data::Matrix{Float64}
 end
 
+# This macro allows us to access Nodes.data via just the wrapper itself
 @wraparray Nodes data
 
 # Based on number of dual nodes, return the number of nodes

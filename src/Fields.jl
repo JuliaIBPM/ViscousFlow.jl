@@ -20,7 +20,7 @@ module Fields
 
 import Base: @propagate_inbounds
 export Primal, Dual, Edges, Nodes, DualNodes, othertype,
-       curl, curl!, divergence, divergence!,
+       curl, curl!, divergence, divergence!, gradient, gradient!,
        laplacian, laplacian!, Laplacian,
        product, product!, ∘,
        CircularConvolution
@@ -40,6 +40,7 @@ macro wraparray(wrapper, field)
         Base.indices(A::$wrapper) = indices(A.$field)
 
         function Base.show(io::IO, ::MIME"text/plain", A::$wrapper)
+          println(io,"$(typeof(A)) data")
           println(io,"Printing in grid orientation (lower left is (1,1)):")
           show(io,"text/plain",flipdim(transpose(A.$field),1))
         end
@@ -66,6 +67,37 @@ end
 include("fields/nodes.jl")
 include("fields/edges.jl")
 include("fields/operators.jl")
+
+
+function shift!(dual::Edges{Dual, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
+    @inbounds for y in 1:NY-2, x in 1:NX-1
+        dual.u[x,y] = (w[x,y+1] + w[x+1,y+1])/2
+    end
+
+    @inbounds for y in 1:NY-1, x in 1:NX-2
+        dual.v[x,y] = (w[x+1,y] + w[x+1,y+1])/2
+    end
+    dual
+end
+
+shift(nodes::Nodes{Dual,NX,NY}) where {NX,NY} = shift!(Edges(Dual, nodes), nodes)
+
+function shift!(dual::Tuple{Nodes{Dual, NX, NY},Nodes{Dual, NX, NY}}, w::Edges{Primal,NX, NY}) where {NX, NY}
+    @inbounds for y in 2:NY-1, x in 1:NX
+        dual[1][x,y] = (w.u[x,y-1] + w.u[x,y])/2
+    end
+
+    @inbounds for y in 1:NY, x in 2:NX-1
+        dual[2][x,y] = (w.v[x-1,y] + w.v[x,y])/2
+    end
+    dual
+end
+
+nodeshift(edges::Edges{Primal,NX,NY}) where {NX,NY} = shift!((Nodes(Dual, (NX,NY)),Nodes(Dual, (NX,NY))),edges)
+
+
+
+#### to be removed
 
 function shift!(dual::Edges{Dual, NX, NY}, w::DualNodes{NX, NY}) where {NX, NY}
     @inbounds for y in 1:NY-2, x in 1:NX-1
