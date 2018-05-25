@@ -19,13 +19,13 @@ A preplanned, circular convolution operator on an M × N matrix.
 # Example:
 ```jldoctest
 julia> G = repmat(1.0:3,1,4)
-3×4 Array{Int64,2}:
- 1  1  1  1
- 2  2  2  2
- 3  3  3  3
+3×4 Array{Float64,2}:
+ 1.0  1.0  1.0  1.0
+ 2.0  2.0  2.0  2.0
+ 3.0  3.0  3.0  3.0
 
 julia> C = CircularConvolution(G)
-Zero-padded convolution for a 3 × 4 matrix
+Circular convolution on a 3 × 4 matrix
 
 julia> C*reshape(1:12, 3, 4)
 3×4 Array{Int64,2}:

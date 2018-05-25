@@ -77,10 +77,10 @@ function Base.show(io::IO, edges::Edges{T, NX, NY}) where {T, NX, NY}
 end
 
 function Base.show(io::IO, ::MIME"text/plain", edges::Edges{T, NX, NY}) where {T, NX, NY}
-    println(io,"$T edge data")
+    println(io,"$(typeof(edges)) data")
     println(io,"u (in grid orientation):")
-    show(io,"text/plain",flipdim(transpose(edges.u),1))
+    Base.showarray(io,flipdim(transpose(edges.u),1),false;header=false)
     println(io)
     println(io,"v (in grid orientation):")
-    show(io,"text/plain",flipdim(transpose(edges.v),1))
+    Base.showarray(io,flipdim(transpose(edges.v),1),false;header=false)
 end

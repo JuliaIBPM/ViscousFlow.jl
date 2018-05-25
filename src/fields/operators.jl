@@ -5,6 +5,32 @@ import Base: *, \, A_mul_B!, A_ldiv_B!
 
 # laplacian
 
+"""
+    laplacian!(v,w)
+
+Evaluate the discrete Laplacian of `w` and return it as `v`. The data `w` can be
+of type dual/primary nodes or edges; `v` must be of the same type.
+
+# Example
+
+```jldoctest
+julia> w = Nodes(Dual,(8,6));
+
+julia> v = deepcopy(w);
+
+julia> w[4,3] = 1.0;
+
+julia> laplacian!(v,w)
+Whirl.Fields.Nodes{Whirl.Fields.Dual,8,6} data
+Printing in grid orientation (lower left is (1,1)):
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0   1.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  1.0  -4.0  1.0  0.0  0.0  0.0
+ 0.0  0.0  0.0   1.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
+```
+"""
 function laplacian!(out::Nodes{Dual,NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
     @inbounds for y in 2:NY-1, x in 2:NX-1
         out[x,y] = w[x,y-1] + w[x-1,y] - 4w[x,y] + w[x+1,y] + w[x,y+1]
@@ -20,10 +46,10 @@ function laplacian!(out::Nodes{Primal,NX, NY}, w::Nodes{Primal,NX, NY}) where {N
 end
 
 function laplacian!(out::Edges{Dual,NX, NY}, w::Edges{Dual,NX, NY}) where {NX, NY}
-  @inbounds for y in 2:NY-3, x in 2:NX-2
+  @inbounds for y in 2:NY-1, x in 2:NX-2
       out.u[x,y] = w.u[x,y-1] + w.u[x-1,y] - 4w.u[x,y] + w.u[x+1,y] + w.u[x,y+1]
   end
-  @inbounds for y in 2:NY-2, x in 2:NX-3
+  @inbounds for y in 2:NY-2, x in 2:NX-1
       out.v[x,y] = w.v[x,y-1] + w.v[x-1,y] - 4w.v[x,y] + w.v[x+1,y] + w.v[x,y+1]
   end
   out
@@ -39,6 +65,36 @@ function laplacian!(out::Edges{Primal,NX, NY}, w::Edges{Primal,NX, NY}) where {N
   out
 end
 
+"""
+    laplacian(w)
+
+Evaluate the discrete Laplacian of `w`. The data `w` can be of type dual/primary
+nodes or edges. The returned result is of the same type as `w`.
+
+# Example
+
+```jldoctest
+julia> q = Edges(Primal,(8,6));
+
+julia> q.u[2,2] = 1.0;
+
+julia> laplacian(q)
+Whirl.Fields.Edges{Whirl.Fields.Primal,8,6} data
+u (in grid orientation):
+ 0.0   0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0   0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0   1.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  -4.0  1.0  0.0  0.0  0.0  0.0  0.0
+ 0.0   0.0  0.0  0.0  0.0  0.0  0.0  0.0
+v (in grid orientation):
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ ```
+"""
 function laplacian(w::Nodes{T,NX,NY}) where {T<:CellType,NX,NY}
   laplacian!(Nodes(T,(NX,NY)), w)
 end

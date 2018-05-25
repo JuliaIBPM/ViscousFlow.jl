@@ -42,7 +42,7 @@ macro wraparray(wrapper, field)
         function Base.show(io::IO, ::MIME"text/plain", A::$wrapper)
           println(io,"$(typeof(A)) data")
           println(io,"Printing in grid orientation (lower left is (1,1)):")
-          show(io,"text/plain",flipdim(transpose(A.$field),1))
+          Base.showarray(io,flipdim(transpose(A.$field),1),false;header=false)
         end
 
         @propagate_inbounds Base.getindex(A::$wrapper, i::Int) = A.$field[i]

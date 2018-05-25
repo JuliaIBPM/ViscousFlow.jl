@@ -4,10 +4,16 @@ The `Whirl` module is here
 """
 module Whirl
 
+using Reexport
+
+
 #== Imports/Exports ==#
 
 include("Utils.jl")
-using .Utils
+include("Fields.jl")
+#using .Utils
+
+@reexport using .Fields
 
 
 #== Type Definitions ==#
@@ -43,6 +49,7 @@ ConstrainedSoln(u::T,f::K) where {T,K} = ConstrainedSoln{T,K}(0.0,u,f)
 
 #ConstrainedSoln(u::Vector{Array{T,2}},f::Vector{Array{T,2}}) where {T} = ConstrainedSoln{Vector{Array{T,2}},Vector{Array{T,2}}}(0.0,u,f)
 
+#=
 include("Fields.jl")
 import .Fields
 
@@ -69,6 +76,8 @@ using .Systems
 
 include("NavierStokes.jl")
 using .NavierStokes
+
+=#
 
 # include("RigidBodyMotions.jl")
 # using .RigidBodyMotions
