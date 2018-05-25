@@ -19,8 +19,8 @@ the grid), but these are not distinguished in these basic definitions and operat
 module Fields
 
 import Base: @propagate_inbounds
-export Primal, Dual, Edges, Nodes, EdgeGradient, DualNodes, othertype,
-       curl, curl!, divergence, divergence!, gradient, gradient!,
+export Primal, Dual, Edges, Nodes, EdgeGradient, othertype,
+       curl, curl!, divergence, divergence!, grad, grad!,
        laplacian, laplacian!, Laplacian,
        product, product!, ∘,
        CircularConvolution
@@ -115,21 +115,5 @@ end
 
 nodeshift(edges::Edges{Primal,NX,NY}) where {NX,NY} = shift!((Nodes(Dual, (NX,NY)),Nodes(Dual, (NX,NY))),edges)
 
-
-
-#### to be removed
-
-function shift!(dual::Edges{Dual, NX, NY}, w::DualNodes{NX, NY}) where {NX, NY}
-    @inbounds for y in 1:NY-2, x in 1:NX-1
-        dual.u[x,y] = (w[x,y+1] + w[x+1,y+1])/2
-    end
-
-    @inbounds for y in 1:NY-1, x in 1:NX-2
-        dual.v[x,y] = (w[x+1,y] + w[x+1,y+1])/2
-    end
-    dual
-end
-
-shift(nodes::DualNodes) = shift!(Edges(Dual, nodes), nodes)
 
 end

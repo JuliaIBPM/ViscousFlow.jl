@@ -23,10 +23,10 @@ struct NavierStokes{NX, NY} <: System{Unconstrained}
     # Scratch space
 
     ## Required structures for time marching
-    A⁻¹g::DualNodes{NX, NY}
-    Ñ::DualNodes{NX, NY}
-    q::DualNodes{NX, NY}
-    w::Vector{DualNodes{NX, NY}}
+    A⁻¹g::Nodes{Dual,NX, NY}
+    Ñ::Nodes{Dual,NX, NY}
+    q::Nodes{Dual,NX, NY}
+    w::Vector{Nodes{Dual,NX, NY}}
 
     ## Pre-allocated space for intermediate values
     Cs::Edges{Primal, NX, NY}
@@ -43,10 +43,10 @@ function NavierStokes(dims::Tuple{Int, Int}, Re, Δx, Δt, U∞ = (0.0, 0.0), nw
     E = CircularConvolution(qtab, FFTW.PATIENT)
     invlap = CircularConvolution(view(Fields.LGF_TABLE, 1:NX, 1:NY), FFTW.PATIENT)
 
-    A⁻¹g = DualNodes{NX, NY}()
-    Ñ    = DualNodes{NX, NY}()
-    q = DualNodes{NX, NY}()
-    w = [DualNodes{NX, NY}() for i in 1:nw]
+    A⁻¹g = Nodes{Dual,NX, NY}()
+    Ñ    = Nodes{Dual,NX, NY}()
+    q = Nodes{Dual,NX, NY}()
+    w = [Nodes{Dual,NX, NY}() for i in 1:nw]
 
     Cs   = Edges{Primal, NX, NY}()
     Ww   = Edges{Dual, NX, NY}()
@@ -56,7 +56,7 @@ function NavierStokes(dims::Tuple{Int, Int}, Re, Δx, Δt, U∞ = (0.0, 0.0), nw
     NavierStokes{NX, NY}(Re, U∞, Δx, Δt, E, invlap, A⁻¹g, Ñ, q, w, Cs, Ww, QCs)
 end
 
-function r₁(Ñ::DualNodes{NX, NY}, w, t, sys::NavierStokes{NX, NY}) where {NX, NY}
+function r₁(Ñ::Nodes{Dual,NX, NY}, w, t, sys::NavierStokes{NX, NY}) where {NX, NY}
     Cs           = sys.Cs
     Ww = Ww_QCs  = sys.Ww
     QCs          = sys.QCs
@@ -71,7 +71,7 @@ function r₁(Ñ::DualNodes{NX, NY}, w, t, sys::NavierStokes{NX, NY}) where {NX,
     Fields.shift!(Ww, w)
     Ww.u[:,1] = 0; Ww.u[:,end] = 0
     Ww.v[1,:] = 0; Ww.v[end,:] = 0
-    
+
     #fill!(Ñ, 0)
     Ñ[:,1] = 0; Ñ[:,end] = 0
     Ñ[1,:] = 0; Ñ[end,:] = 0

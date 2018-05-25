@@ -25,8 +25,6 @@ function fill!(edges::Edges, s::Number)
     edges
 end
 
-Edges(T, nodes::DualNodes) = Edges(T, size(nodes))
-
 
 function shift!(dual::Edges{Dual, NX, NY},
                 primal::Edges{Primal, NX, NY}) where {NX, NY}

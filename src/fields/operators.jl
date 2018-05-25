@@ -47,12 +47,6 @@ function laplacian(w::Edges{T,NX,NY}) where {T<:CellType,NX,NY}
   laplacian!(Edges(T,(NX,NY)), w)
 end
 
-### To be removed
-function laplacian(w::DualNodes{NX, NY}) where {NX, NY}
-    laplacian!(DualNodes(NX, NY), w)
-end
-###
-
 struct Laplacian{NX, NY, R}
     conv::Nullable{CircularConvolution{NX, NY}}
 end
@@ -139,7 +133,7 @@ function divergence!(nodes::Nodes{Dual, NX, NY},
     u, v = edges.u, edges.v
 
     @inbounds for y in 2:NY-1, x in 2:NX-1
-        nodes[x,y] = - u[x-1,y-1] + u[x,y-1] - v[x-1,y-1] + v[x-1,y]
+        nodes[x,y] = - u[x-1,y] + u[x,y] - v[x,y-1] + v[x,y]
     end
     nodes
 end
@@ -149,7 +143,7 @@ function divergence(edges::Edges{T, NX, NY}) where {T <: CellType, NX, NY}
 end
 
 # grad
-function gradient!(edges::Edges{Primal, NX, NY},
+function grad!(edges::Edges{Primal, NX, NY},
                      p::Nodes{Primal, NX, NY}) where {NX, NY}
 
     @inbounds for y in 1:NY-1, x in 2:NX-1
@@ -161,12 +155,12 @@ function gradient!(edges::Edges{Primal, NX, NY},
     edges
 end
 
-function gradient(p::Nodes{Primal, NX, NY}) where {NX, NY}
-  gradient!(Edges(Primal,(NX,NY)),p)
+function grad(p::Nodes{Primal, NX, NY}) where {NX, NY}
+  grad!(Edges(Primal,(NX,NY)),p)
 end
 
 
-function gradient!(d::EdgeGradient{Primal, Dual, NX, NY},
+function grad!(d::EdgeGradient{Primal, Dual, NX, NY},
                      edges::Edges{Primal, NX, NY}) where {NX, NY}
 
     @inbounds for y in 1:NY-1, x in 1:NX-1
@@ -180,7 +174,7 @@ function gradient!(d::EdgeGradient{Primal, Dual, NX, NY},
     d
 end
 
-function gradient!(d::EdgeGradient{Dual, Primal, NX, NY},
+function grad!(d::EdgeGradient{Dual, Primal, NX, NY},
                      edges::Edges{Dual, NX, NY}) where {NX, NY}
 
     @inbounds for y in 2:NY-1, x in 2:NX-1
@@ -194,54 +188,6 @@ function gradient!(d::EdgeGradient{Dual, Primal, NX, NY},
     d
 end
 
-function gradient(edges::Edges{C, NX, NY}) where {C<:CellType,NX,NY}
-  gradient!(EdgeGradient(C,(NX,NY)),edges)
+function grad(edges::Edges{C, NX, NY}) where {C<:CellType,NX,NY}
+  grad!(EdgeGradient(C,(NX,NY)),edges)
 end
-
-#### to be removed
-function curl!(edges::Edges{Primal, NX, NY},
-               s::DualNodes{NX, NY}) where {NX, NY}
-
-    @inbounds for y in 1:NY-1, x in 1:NX
-        edges.u[x,y] = s[x,y+1] - s[x,y]
-    end
-
-    @inbounds for y in 1:NY, x in 1:NX-1
-        edges.v[x,y] = s[x,y] - s[x+1,y]
-    end
-    edges
-end
-
-curl(nodes::DualNodes) = curl!(Edges(Primal, nodes), nodes)
-
-function curl!(nodes::DualNodes{NX, NY},
-               edges::Edges{Primal, NX, NY}) where {NX, NY}
-
-    u, v = edges.u, edges.v
-    @inbounds for y in 2:NY-1, x in 2:NX-1
-        nodes[x,y] = u[x,y-1] - u[x,y] - v[x-1,y] + v[x,y]
-    end
-    nodes
-end
-
-#function curl(edges::Edges{Primal, NX, NY}) where {NX, NY}
-#    curl!(DualNodes(NX, NY), edges)
-#end
-
-
-function divergence!(nodes::DualNodes{NX, NY},
-                     edges::Edges{Dual, NX, NY}) where {NX, NY}
-
-    u, v = edges.u, edges.v
-
-    @inbounds for y in 2:NY-1, x in 2:NX-1
-        nodes[x,y] = - u[x-1,y-1] + u[x,y-1] - v[x-1,y-1] + v[x-1,y]
-    end
-    nodes
-end
-
-#function divergence(edges::Edges{Dual, NX, NY}) where {NX, NY}
-#    divergence!(DualNodes(NX, NY), edges)
-#end
-
-#####

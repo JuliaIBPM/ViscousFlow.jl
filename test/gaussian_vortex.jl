@@ -1,4 +1,4 @@
-import Whirl: IntFactSystems, TimeMarching
+import Whirl: IntFactSystems, TimeMarching, Fields
 
 using IntFactSystems
 include(joinpath(Pkg.dir("Whirl"), "src/systems/navier_stokes.jl"))
@@ -21,9 +21,9 @@ using Fields
     σ = 0.2 + 0.05randn()
 
     ns = NavierStokes(dims, Re, Δx, Δt, (U, 0.0))
-    s = Soln(0.0, Fields.DualNodes(dims));
+    s = Soln(0.0, Fields.Nodes(Fields.Dual,dims));
     s.u .= [wexact(xᵢ, yᵢ, 0, Re, σ, U, Δx) for xᵢ in x, yᵢ in y]
-    s₊ = Soln(0.0, Fields.DualNodes(dims));
+    s₊ = Soln(0.0, Fields.Nodes(Fields.Dual,dims));
 
     for i in 1:10
         ifrk!(s₊, s, Δt, RK31, ns)
