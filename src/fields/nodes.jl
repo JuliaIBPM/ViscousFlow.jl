@@ -17,7 +17,10 @@ function Nodes(T::Type{C}, dualnodedims::Tuple{Int, Int}) where {C <: CellType}
     Nodes{T, dualnodedims...}(zeros(dims))
 end
 
-Nodes(T, nodes::Nodes{Dual,NX,NY}) where {NX, NY} = Nodes(T, size(nodes))
+# This allows easy construction of nodes of either type from existing nodes of either
+# type on the same grid.
+Nodes(T, nodes::Nodes{S,NX,NY}) where {S <: CellType, NX, NY} = Nodes(T, (NX, NY) )
+
 
 Nodes(T, nx::Int, ny::Int) = Nodes(T,(nx,ny))
 (::Type{Nodes{T,NX,NY}})() where {T,NX,NY} = Nodes(T, (NX, NY))

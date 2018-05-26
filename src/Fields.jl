@@ -20,7 +20,8 @@ module Fields
 
 import Base: @propagate_inbounds
 export Primal, Dual, Edges, Nodes, EdgeGradient, othertype,
-       curl, curl!, divergence, divergence!, grad, grad!,
+       curl, curl!, Curl, divergence, divergence!, Divergence,
+       grad, grad!, Grad,
        laplacian, laplacian!, Laplacian,
        product, product!, ∘,
        CircularConvolution

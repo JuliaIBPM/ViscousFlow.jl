@@ -93,7 +93,7 @@ v (in grid orientation):
  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0
- ```
+```
 """
 function laplacian(w::Nodes{T,NX,NY}) where {T<:CellType,NX,NY}
   laplacian!(Nodes(T,(NX,NY)), w)
@@ -103,10 +103,45 @@ function laplacian(w::Edges{T,NX,NY}) where {T<:CellType,NX,NY}
   laplacian!(Edges(T,(NX,NY)), w)
 end
 
+
 struct Laplacian{NX, NY, R}
     conv::Nullable{CircularConvolution{NX, NY}}
 end
 
+"""
+    Laplacian(dims::Tuple,[with_inverse=false],[fftw_flags=FFTW.ESTIMATE])
+
+Constructor to set up an operator for evaluating the discrete Laplacian on
+dual or primal nodal data of dimension `dims`. If the optional keyword
+`with_inverse` is set to `true`, then it also sets up the inverse Laplacian
+(the lattice Green's function). These can then be applied, respectively, with
+`*` and `\\` operations on data of the appropriate size.
+
+# Example
+
+```jldoctest
+julia> w = Nodes(Dual,(7,7));
+
+julia> w[4,4] = 1.0;
+
+julia> L = Laplacian(7,7;with_inverse=true)
+Discrete Laplacian (and inverse) on a (nx = 7, ny = 7) grid
+
+julia> s = L\\w
+Whirl.Fields.Nodes{Whirl.Fields.Dual,7,7} data
+Printing in grid orientation (lower left is (1,1)):
+ 0.488075  0.462207  0.440376   0.430281     0.440376  0.462207  0.488075
+ 0.462207  0.424413  0.38662    0.36338      0.38662   0.424413  0.462207
+ 0.440376  0.38662   0.31831    0.25         0.31831   0.38662   0.440376
+ 0.430281  0.36338   0.25      -1.26132e-16  0.25      0.36338   0.430281
+ 0.440376  0.38662   0.31831    0.25         0.31831   0.38662   0.440376
+ 0.462207  0.424413  0.38662    0.36338      0.38662   0.424413  0.462207
+ 0.488075  0.462207  0.440376   0.430281     0.440376  0.462207  0.488075
+
+julia> L*s ≈ w
+true
+```
+"""
 function Laplacian(dims::Tuple{Int,Int};
                    with_inverse = false, fftw_flags = FFTW.ESTIMATE)
     NX, NY = dims
@@ -122,25 +157,68 @@ function Laplacian(nx::Int, ny::Int; with_inverse = false, fftw_flags = FFTW.EST
     Laplacian((nx, ny), with_inverse = with_inverse, fftw_flags = fftw_flags)
 end
 
+"""
+    Laplacian(w::Nodes,[with_inverse=false],[fftw_flags=FFTW.ESTIMATE])
+
+Construct the Laplacian operator with size appropriate for nodal data `w`.
+"""
+function Laplacian(nodes::Nodes{T,NX,NY}; with_inverse = false, fftw_flags = FFTW.ESTIMATE) where {T<:CellType,NX,NY}
+    Laplacian(node_inds(T,(NX,NY)), with_inverse = with_inverse, fftw_flags = fftw_flags)
+end
+
+
 function Base.show(io::IO, L::Laplacian{NX, NY, R}) where {NX, NY, R}
     nodedims = "(nx = $NX, ny = $NY)"
     inverse = R ? " (and inverse)" : ""
     print(io, "Discrete Laplacian$inverse on a $nodedims grid")
 end
 
-A_mul_B!(out::Nodes{Dual,NX,NY}, L::Laplacian, s::Nodes{Dual,NX,NY}) where {NX,NY} = laplacian!(out, s)
-L::Laplacian * s::Nodes{Dual,NX,NY} where {NX,NY} = laplacian(s)
+A_mul_B!(out::Nodes{T,NX,NY}, L::Laplacian, s::Nodes{T,NX,NY}) where {T<:CellType,NX,NY} = laplacian!(out, s)
+L::Laplacian * s::Nodes{T,NX,NY} where {T <: CellType, NX,NY} = laplacian(s)
 
-function A_ldiv_B!(out::Nodes{Dual,NX, NY},
-                   L::Laplacian{NX, NY, true},
-                   s::Nodes{Dual, NX, NY}) where {NX, NY}
+function A_ldiv_B!(out::Nodes{T,NX, NY},
+                   L::Laplacian{MX, MY, true},
+                   s::Nodes{T, NX, NY}) where {T <: CellType, NX, NY, MX, MY}
 
     A_mul_B!(out.data, get(L.conv), s.data)
     out
 end
-L::Laplacian \ s::Nodes{Dual,NX,NY} where {NX,NY} = A_ldiv_B!(Nodes(Dual,size(s)), L, s)
 
-# curl
+function (\)(L::Laplacian,s::Nodes{T,NX,NY}) where {T <: CellType, NX,NY}
+  A_ldiv_B!(Nodes(T,s), L, s)
+end
+
+"""
+    curl!(q::Edges{Primal},w::Nodes{Dual})
+
+Evaluate the discrete curl of `w` and return it as `q`.
+
+# Example
+
+```jldoctest
+julia> w = Nodes(Dual,(8,6));
+
+julia> w[3,4] = 1.0;
+
+julia> q = Edges(Primal,w);
+
+julia> curl!(q,w)
+Whirl.Fields.Edges{Whirl.Fields.Primal,8,6} data
+u (in grid orientation):
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  -1.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0   1.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0  0.0
+v (in grid orientation):
+ 0.0   0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0   0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  -1.0  1.0  0.0  0.0  0.0  0.0
+ 0.0   0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0   0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0   0.0  0.0  0.0  0.0  0.0  0.0
+```
+"""
 function curl!(edges::Edges{Primal, NX, NY},
                s::Nodes{Dual,NX, NY}) where {NX, NY}
 
@@ -154,6 +232,38 @@ function curl!(edges::Edges{Primal, NX, NY},
     edges
 end
 
+"""
+    curl(w::Nodes{Dual}) --> Edges{Primal}
+
+Evaluate the discrete curl of `w`. Another way to perform this operation is
+to construct a `Curl` object and apply it with `*`.
+
+# Example
+
+```jldoctest
+julia> C = Curl();
+
+julia> w = Nodes(Dual,(8,6));
+
+julia> w[3,4] = 1.0;
+
+julia> C*w
+Whirl.Fields.Edges{Whirl.Fields.Primal,8,6} data
+u (in grid orientation):
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  -1.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0   1.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0  0.0
+v (in grid orientation):
+ 0.0   0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0   0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  -1.0  1.0  0.0  0.0  0.0  0.0
+ 0.0   0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0   0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0   0.0  0.0  0.0  0.0  0.0  0.0
+```
+"""
 curl(nodes::Nodes{Dual,NX,NY}) where {NX,NY} = curl!(Edges(Primal, nodes), nodes)
 
 function curl!(nodes::Nodes{Dual,NX, NY},
@@ -170,8 +280,36 @@ function curl(edges::Edges{Primal, NX, NY}) where {NX, NY}
     curl!(Nodes(Dual,(NX, NY)), edges)
 end
 
-# divergence
+struct Curl end
 
+(*)(::Curl,w::Union{Nodes{Dual,NX,NY},Edges{Primal,NX,NY}}) where {NX,NY} = curl(w)
+
+"""
+    divergence!(w::Nodes,q::Edges)
+
+Evaluate the discrete divergence of edge data `q` and return it as nodal data `w`.
+Note that `q` can be either primal or dual edge data, but `w` must be of the same
+cell type.
+
+# Example
+
+```jldoctest
+julia> q = Edges(Primal,(8,6));
+
+julia> q.u[3,2] = 1.0;
+
+julia> w = Nodes(Primal,(8,6));
+
+julia> divergence!(w,q)
+Whirl.Fields.Nodes{Whirl.Fields.Primal,8,6} data
+Printing in grid orientation (lower left is (1,1)):
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0
+ 0.0  1.0  -1.0  0.0  0.0  0.0  0.0
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0
+```
+"""
 function divergence!(nodes::Nodes{Primal, NX, NY},
                      edges::Edges{Primal, NX, NY}) where {NX, NY}
 
@@ -194,11 +332,72 @@ function divergence!(nodes::Nodes{Dual, NX, NY},
     nodes
 end
 
+"""
+    divergence(q::Edges) --> Nodes
+
+Evaluate the discrete divergence of edge data `q`. Can also perform this operation
+by creating an object of Divergence type and applying it with `*`.
+
+# Example
+
+```jldoctest
+julia> D = Divergence();
+
+julia> q = Edges(Primal,(8,6));
+
+julia> q.u[3,2] = 1.0;
+
+julia> D*q
+Whirl.Fields.Nodes{Whirl.Fields.Primal,8,6} data
+Printing in grid orientation (lower left is (1,1)):
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0
+ 0.0  1.0  -1.0  0.0  0.0  0.0  0.0
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0
+```
+"""
 function divergence(edges::Edges{T, NX, NY}) where {T <: CellType, NX, NY}
     divergence!(Nodes(T, NX, NY), edges)
 end
 
-# grad
+struct Divergence end
+
+(*)(::Divergence,w::Edges{T,NX,NY}) where {T<:CellType,NX,NY} = divergence(w)
+
+
+"""
+    grad!(q::Edges{Primal},w::Nodes{Primal})
+
+Evaluate the discrete gradient of primal nodal data `w` and return it as primal
+edge data `q`.
+
+# Example
+
+```jldoctest
+julia> w = Nodes(Primal,(8,6));
+
+julia> w[3,4] = 1.0;
+
+julia> q = Edges(Primal,(8,6));
+
+julia> grad!(q,w)
+Whirl.Fields.Edges{Whirl.Fields.Primal,8,6} data
+u (in grid orientation):
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  1.0  -1.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
+v (in grid orientation):
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  -1.0  0.0  0.0  0.0  0.0
+ 0.0  0.0   1.0  0.0  0.0  0.0  0.0
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0
+```
+"""
 function grad!(edges::Edges{Primal, NX, NY},
                      p::Nodes{Primal, NX, NY}) where {NX, NY}
 
@@ -211,6 +410,38 @@ function grad!(edges::Edges{Primal, NX, NY},
     edges
 end
 
+"""
+    grad(w::Nodes{Primal}) --> Edges{Primal}
+
+Evaluate the discrete gradient of primal nodal data `w`. Can also perform this
+operation by creating an object of Grad type and applying it with `*`.
+
+# Example
+
+```jldoctest
+julia> w = Nodes(Primal,(8,6));
+
+julia> w[3,4] = 1.0;
+
+julia> G = Grad();
+
+julia> G*w
+Whirl.Fields.Edges{Whirl.Fields.Primal,8,6} data
+u (in grid orientation):
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  1.0  -1.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
+v (in grid orientation):
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  -1.0  0.0  0.0  0.0  0.0
+ 0.0  0.0   1.0  0.0  0.0  0.0  0.0
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0   0.0  0.0  0.0  0.0  0.0
+```
+"""
 function grad(p::Nodes{Primal, NX, NY}) where {NX, NY}
   grad!(Edges(Primal,(NX,NY)),p)
 end
@@ -247,3 +478,7 @@ end
 function grad(edges::Edges{C, NX, NY}) where {C<:CellType,NX,NY}
   grad!(EdgeGradient(C,(NX,NY)),edges)
 end
+
+struct Grad end
+
+(*)(::Grad,w::Union{Nodes{Primal, NX, NY},Edges{Dual,NX,NY},Edges{Primal,NX,NY}}) where {NX,NY} = grad(w)
