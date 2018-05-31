@@ -1,5 +1,20 @@
 import Base: fill!, ∘
 
+"""
+    Edges{Dual/Primal}
+
+`Edges` is a wrapper for vector-valued data that lie at the faces of either dual cells or
+primary cells. `Edges` type data have fields `u` and `v` for the components of the
+vector field. These are the normal components of the vector field on the vertical
+and horizontal faces of the corresponding cell.
+
+# Constructors
+- `Edges(C,dims)` creates a vector field of zeros in cells of type `C` (where `C` is
+  either `Dual` or `Primal`), on a grid of dimensions `dims`. Note that `dims`
+  represent the number of dual cells on the grid.
+- `Edges(C,w)` performs the same construction, but uses existing field data `w`
+  of `Nodes` type to determine the size of the grid.
+"""
 struct Edges{C <: CellType, NX, NY}
     u::Matrix{Float64}
     v::Matrix{Float64}
@@ -16,7 +31,7 @@ function Edges(T::Type{C}, dualnodedims::Tuple{Int, Int}) where {C <: CellType}
     Edges{T, dualnodedims...}(u, v)
 end
 
-Edges(T, nodes::Nodes{Dual,NX,NY}) where {NX,NY} = Edges(T, size(nodes))
+Edges(T, nodes::Nodes{S,NX,NY}) where {S <: CellType, NX,NY} = Edges(T, (NX, NY))
 (::Type{Edges{T,NX,NY}})() where {T,NX,NY} = Edges(T, (NX, NY))
 
 function fill!(edges::Edges, s::Number)
@@ -25,7 +40,38 @@ function fill!(edges::Edges, s::Number)
     edges
 end
 
+"""
+    shift!(v::Edges{Dual/Primal},q::Edges{Primal/Dual})
 
+Shift (by linear interpolation) the primal (resp. dual) edge data `q` to the
+edges of the dual (resp. primal) cells, and return the result in `v`.
+
+# Example
+
+```jldoctest
+julia> q = Edges(Primal,(8,6));
+
+julia> q.u[3,2] = 1.0;
+
+julia> v = Edges(Dual,(8,6));
+
+julia> Fields.shift!(v,q)
+Whirl.Fields.Edges{Whirl.Fields.Dual,8,6} data
+u (in grid orientation):
+ 0.0  0.0   0.0   0.0  0.0  0.0  0.0
+ 0.0  0.0   0.0   0.0  0.0  0.0  0.0
+ 0.0  0.0   0.0   0.0  0.0  0.0  0.0
+ 0.0  0.25  0.25  0.0  0.0  0.0  0.0
+ 0.0  0.25  0.25  0.0  0.0  0.0  0.0
+ 0.0  0.0   0.0   0.0  0.0  0.0  0.0
+v (in grid orientation):
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+```
+"""
 function shift!(dual::Edges{Dual, NX, NY},
                 primal::Edges{Primal, NX, NY}) where {NX, NY}
     uₚ = primal.u
@@ -42,6 +88,24 @@ end
 
 function shift(primal::Edges{Primal, NX, NY}) where {NX, NY}
     shift!(Edges(Dual, (NX, NY)), primal)
+end
+
+function shift!(primal::Edges{Primal, NX, NY},
+                dual::Edges{Dual, NX, NY}) where {NX, NY}
+    uₚ = dual.u
+    @inbounds for y in 1:NY-1, x in 2:NX-1
+        primal.u[x,y] = (uₚ[x,y] + uₚ[x-1,y] + uₚ[x,y+1] + uₚ[x-1,y+1])/4
+    end
+
+    vₚ = dual.v
+    @inbounds for y in 2:NY-1, x in 1:NX-1
+        primal.v[x,y] = (vₚ[x,y] + vₚ[x+1,y] + vₚ[x,y-1] + vₚ[x+1,y-1])/4
+    end
+    primal
+end
+
+function shift(dual::Edges{Dual, NX, NY}) where {NX, NY}
+    shift!(Edges(Primal, (NX, NY)), dual)
 end
 
 function product!(out::Edges{T, NX, NY},

@@ -18,7 +18,7 @@ the grid), but these are not distinguished in these basic definitions and operat
 
 module Fields
 
-import Base: @propagate_inbounds
+import Base: @propagate_inbounds, shift!
 export Primal, Dual, Edges, Nodes, EdgeGradient, othertype,
        curl, curl!, Curl, divergence, divergence!, Divergence,
        grad, grad!, Grad,
@@ -90,6 +90,38 @@ end
 include("fields/operators.jl")
 
 
+"""
+    shift!(q::Edges{Dual},w::Nodes{Dual})
+
+Shift (by linear interpolation) the dual nodal data `w` to the edges of the dual
+cells, and return the result in `q`.
+
+# Example
+
+```jldoctest
+julia> w = Nodes(Dual,(8,6));
+
+julia> w[3,4] = 1.0;
+
+julia> q = Edges(Dual,w);
+
+julia> shift!(q,w)
+Whirl.Fields.Edges{Whirl.Fields.Dual,8,6} data
+u (in grid orientation):
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.5  0.5  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0
+v (in grid orientation):
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.5  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.5  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+```
+"""
 function shift!(dual::Edges{Dual, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
     @inbounds for y in 2:NY-1, x in 1:NX-1
         dual.u[x,y] = (w[x,y] + w[x+1,y])/2
@@ -101,8 +133,48 @@ function shift!(dual::Edges{Dual, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
     dual
 end
 
+
 shift(nodes::Nodes{Dual,NX,NY}) where {NX,NY} = shift!(Edges(Dual, nodes), nodes)
 
+"""
+    shift!((wx::Nodes{Dual},wy::Nodes{Dual}),q::Edges{Primal})
+
+Shift (by linear interpolation) the primal edge data `q` to the nodes of the dual
+cells, and return the result in `wx` and `wy`. `wx` holds the shifted `q.u` data
+and `wy` the shifted `q.v` data.
+
+# Example
+
+```jldoctest
+julia> q = Edges(Primal,(8,6));
+
+julia> q.u[3,2] = 1.0;
+
+julia> wx = Nodes(Dual,(8,6)); wy = deepcopy(wx);
+
+julia> Fields.shift!((wx,wy),q);
+
+julia> wx
+Whirl.Fields.Nodes{Whirl.Fields.Dual,8,6} data
+Printing in grid orientation (lower left is (1,1)):
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.5  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.5  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+
+julia> wy
+Whirl.Fields.Nodes{Whirl.Fields.Dual,8,6} data
+Printing in grid orientation (lower left is (1,1)):
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+```
+"""
 function shift!(dual::Tuple{Nodes{Dual, NX, NY},Nodes{Dual, NX, NY}}, w::Edges{Primal,NX, NY}) where {NX, NY}
     @inbounds for y in 2:NY-1, x in 1:NX
         dual[1][x,y] = (w.u[x,y-1] + w.u[x,y])/2
@@ -114,6 +186,7 @@ function shift!(dual::Tuple{Nodes{Dual, NX, NY},Nodes{Dual, NX, NY}}, w::Edges{P
     dual
 end
 
+# I don't like this one. It is ambiguous what type of nodes are being shifted to.
 nodeshift(edges::Edges{Primal,NX,NY}) where {NX,NY} = shift!((Nodes(Dual, (NX,NY)),Nodes(Dual, (NX,NY))),edges)
 
 

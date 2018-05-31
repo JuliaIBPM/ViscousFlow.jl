@@ -120,12 +120,14 @@ import Base: to_indices, uncolon, tail, _maybetail
   end
 
   @testset "Face data shift to dual face" begin
-    shiftx = Fields.shift(facexunit)
+    shiftx = Edges(Dual,cellzero)
+    shift!(shiftx,facexunit)
     @test shiftx.u[i,j] == shiftx.u[i-1,j] == shiftx.u[i,j+1] == shiftx.u[i-1,j+1] == 0.25
     shiftx.u[i,j] = shiftx.u[i-1,j] = shiftx.u[i,j+1] = shiftx.u[i-1,j+1] = 0.0
     @test iszero(shiftx.u)
     @test iszero(shiftx.v)
-    shifty = Fields.shift(faceyunit)
+    shifty = Edges(Dual,cellzero)
+    shift!(shifty,faceyunit)
     @test shifty.v[i,j] == shifty.v[i,j-1] == shifty.v[i+1,j] == shifty.v[i+1,j-1] == 0.25
     shifty.v[i,j] = shifty.v[i,j-1] = shifty.v[i+1,j] = shifty.v[i+1,j-1] = 0.0
     @test iszero(shifty.u)
@@ -133,7 +135,8 @@ import Base: to_indices, uncolon, tail, _maybetail
   end
 
   @testset "Dual cell center data shift to dual face" begin
-    w = Fields.shift(cellunit)
+    w = Edges(Dual,cellzero)
+    shift!(w,cellunit)
     @test w.u[i,j] == w.u[i-1,j] == 0.5
     w.u[i,j] = w.u[i-1,j] = 0.0
     @test iszero(w.u)
@@ -143,14 +146,17 @@ import Base: to_indices, uncolon, tail, _maybetail
   end
 
   @testset "Face data shift to dual cell center" begin
-    cellx, celly = Fields.nodeshift(facexunit)
+    cellx = Nodes(Dual,cellzero)
+    celly = Nodes(Dual,cellzero)
+    shift!((cellx,celly),facexunit)
     @test cellx[i,j] == 0.5 && cellx[i,j+1] == 0.5
     cellx[i,j] = cellx[i,j+1] = 0.0
     @test iszero(cellx)
     @test iszero(celly)
 
-
-    cellx, celly = Fields.nodeshift(faceyunit)
+    cellx = Nodes(Dual,cellzero)
+    celly = Nodes(Dual,cellzero)
+    shift!((cellx,celly),faceyunit)
     @test celly[i,j] == 0.5 && celly[i+1,j] == 0.5
     celly[i,j] = celly[i+1,j] = 0.0
     @test iszero(cellx)
@@ -248,8 +254,9 @@ end
         q = Edges{Primal, 5, 4}()
         q.u .= reshape(1:15, 5, 3)
         q.v .= reshape(1:16, 4, 4)
+        Qq = Edges{Dual, 5, 4}()
 
-        Qq = Fields.shift(q)
+        shift!(Qq,q)
         @test Qq.u == [ 0.0  4.0  9.0  0.0
                         0.0  5.0  10.0 0.0
                         0.0  6.0  11.0 0.0
@@ -263,12 +270,34 @@ end
 
     end
 
+    @testset "Shifting Dual Edges to Primal Edges" begin
+
+        q = Edges{Dual, 5, 4}()
+        q.u .= reshape(1:16, 4, 4)
+        q.v .= reshape(1:15, 5, 3)
+        v = Edges{Primal, 5, 4}()
+        shift!(v,q)
+
+        @test v.u == [ 0.0  0.0   0.0
+                       3.5  7.5  11.5
+                       4.5  8.5  12.5
+                       5.5  9.5  13.5
+                       0.0  0.0   0.0 ]
+
+        @test v.v == [ 0.0  4.0   9.0  0.0
+                        0.0  5.0  10.0  0.0
+                        0.0  6.0  11.0  0.0
+                        0.0  7.0  12.0  0.0 ]
+
+    end
+
     @testset "Shifting Dual Nodes to Dual Edges" begin
 
         w = Nodes{Dual, 5, 4}()
         w .= reshape(1:20, 5, 4)
 
-        Ww = Fields.shift(w)
+        Ww = Edges{Dual, 5, 4}()
+        shift!(Ww,w)
 
         @test Ww.u == [ 0.0  6.5  11.5  0.0
                         0.0  7.5  12.5  0.0

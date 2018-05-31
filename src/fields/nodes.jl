@@ -1,6 +1,19 @@
 import Base: size
 
+"""
+    Nodes{Dual/Primal}
 
+`Nodes` is a wrapper for scalar-valued data that lie at the centers of either dual cells or
+primary cells. A `Nodes` type can be accessed by indexing like any other array,
+and allows the use of [size].
+
+# Constructors
+- `Nodes(C,dims)` creates a field of zeros in cells of type `C` (where `C` is
+  either `Dual` or `Primal`), on a grid of dimensions `dims`. Note that `dims`
+  represent the number of dual cells on the grid, even if `C` is `Primal`.
+- `Nodes(C,w)` performs the same construction, but uses existing field data `w`
+  of `Nodes` type to determine the size of the grid.
+"""
 struct Nodes{C <: CellType, NX, NY} <: AbstractMatrix{Float64}
     data::Matrix{Float64}
 end
