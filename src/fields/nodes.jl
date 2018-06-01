@@ -1,4 +1,4 @@
-import Base: size
+import Base: size, ∘
 
 """
     Nodes{Dual/Primal}
@@ -43,4 +43,23 @@ function Base.show(io::IO, nodes::Nodes{T, NX, NY}) where {T, NX, NY}
     dims = "(nx = $(size(nodes,1)), ny = $(size(nodes,2)))"
     println(io, "$T nodes in a $nodedims cell grid")
     print(io, "  Number of $T nodes: $dims")
+end
+
+function product!(out::Nodes{T, NX, NY},
+                  p::Nodes{T, NX, NY},
+                  q::Nodes{T, NX, NY}) where {T, NX, NY}
+
+    inds = node_inds(T, (NX, NY))
+    @inbounds for y in 1:inds[2], x in 1:inds[1]
+        out[x,y] = p[x,y] * q[x,y]
+    end
+    out
+end
+
+function product(p::Nodes{T, NX, NY}, q::Nodes{T, NX, NY}) where {T, NX, NY}
+    product!(Nodes(T, (NX, NY)), p, q)
+end
+
+function (∘)(p::Nodes{T, NX, NY}, q::Nodes) where {T, NX, NY}
+    product!(Nodes(T, (NX, NY)), p, q)
 end

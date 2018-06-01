@@ -108,6 +108,40 @@ function shift(dual::Edges{Dual, NX, NY}) where {NX, NY}
     shift!(Edges(Primal, (NX, NY)), dual)
 end
 
+"""
+    product!(out::Edges/Nodes,p::Edges/Nodes,q::Edges/Nodes)
+
+Compute the Hadamard (i.e. element by element) product of edge or nodal
+(primal or dual) data `p` and `q` and return the result in `out`.
+
+# Example
+
+```jldoctest
+julia> q = Edges(Dual,(8,6));
+
+julia> out = p = deepcopy(q);
+
+julia> q.u[3,2] = 0.3;
+
+julia> p.u[3,2] = 0.2;
+
+julia> product!(out,p,q)
+Whirl.Fields.Edges{Whirl.Fields.Dual,8,6} data
+u (in grid orientation):
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0
+ 0.0  0.0  0.06  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0
+v (in grid orientation):
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+```
+"""
 function product!(out::Edges{T, NX, NY},
                   p::Edges{T, NX, NY},
                   q::Edges{T, NX, NY}) where {T, NX, NY}
@@ -123,6 +157,40 @@ function product!(out::Edges{T, NX, NY},
     out
 end
 
+"""
+    product(p::Edges/Nodes,q::Edges/Nodes) --> Edges/Nodes
+
+Compute the Hadamard product of edge or nodal (primal or dual) data `p` and `q` and return
+the result. This operation can also be carried out with the `∘` operator:
+
+# Example
+
+```jldoctest
+julia> q = Edges(Dual,(8,6));
+
+julia> p = deepcopy(q);
+
+julia> q.u[3,2] = 0.3;
+
+julia> p.u[3,2] = 0.2;
+
+julia> p∘q
+Whirl.Fields.Edges{Whirl.Fields.Dual,8,6} data
+u (in grid orientation):
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0
+ 0.0  0.0  0.06  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0   0.0  0.0  0.0  0.0
+v (in grid orientation):
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+```
+"""
 function product(p::Edges{T, NX, NY}, q::Edges{T, NX, NY}) where {T, NX, NY}
     product!(Edges(T, (NX, NY)), p, q)
 end
