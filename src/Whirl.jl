@@ -83,6 +83,10 @@ using .NavierStokes
 # using .RigidBodyMotions
 
 
+#== Plot Recipes ==#
+
+include("plot_recipes.jl")
+
 function Base.show(io::IO, s::SolnType)
     println(io, "Solution: t = $(s.t)")
 end

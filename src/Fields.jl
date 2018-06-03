@@ -23,6 +23,7 @@ export Primal, Dual, Edges, Nodes, EdgeGradient, othertype,
        curl, curl!, Curl, divergence, divergence!, Divergence,
        grad, grad!, Grad,
        laplacian, laplacian!, Laplacian,
+       IntFact,
        product, product!, ∘,
        CircularConvolution
 

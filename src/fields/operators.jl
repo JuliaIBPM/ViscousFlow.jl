@@ -1,5 +1,6 @@
-include("lgf.jl")
 include("convolution.jl")
+include("lgf.jl")
+include("intfact.jl")
 
 import Base: *, \, A_mul_B!, A_ldiv_B!
 
@@ -186,6 +187,78 @@ end
 
 function (\)(L::Laplacian,s::Nodes{T,NX,NY}) where {T <: CellType, NX,NY}
   A_ldiv_B!(Nodes(T,s), L, s)
+end
+
+# Integrating factor
+
+struct IntFact{NX, NY, a}
+    conv::Nullable{CircularConvolution{NX, NY}}
+end
+
+"""
+    IntFact(a::Real,dims::Tuple,[fftw_flags=FFTW.ESTIMATE])
+
+Constructor to set up an operator for evaluating the integrating factor with
+real-valued parameter `a`. This can then be applied with the `*` operation on
+data of the appropriate size.
+
+# Example
+
+```jldoctest
+julia> w = Nodes(Dual,(6,6));
+
+julia> w[4,4] = 1.0;
+
+julia> E = IntFact(1.0,(6,6))
+Integrating factor with parameter 1.0 on a (nx = 6, ny = 6) grid
+
+julia> E*w
+Whirl.Fields.Nodes{Whirl.Fields.Dual,6,6} data
+Printing in grid orientation (lower left is (1,1)):
+ 0.00268447   0.00869352  0.0200715   0.028765    0.0200715   0.00869352
+ 0.00619787   0.0200715   0.0463409   0.0664124   0.0463409   0.0200715
+ 0.00888233   0.028765    0.0664124   0.0951774   0.0664124   0.028765
+ 0.00619787   0.0200715   0.0463409   0.0664124   0.0463409   0.0200715
+ 0.00268447   0.00869352  0.0200715   0.028765    0.0200715   0.00869352
+ 0.000828935  0.00268447  0.00619787  0.00888233  0.00619787  0.00268447
+```
+"""
+function IntFact(a::Real,dims::Tuple{Int,Int};fftw_flags = FFTW.ESTIMATE)
+    NX, NY = dims
+
+    #qtab = [intfact(x, y, a) for x in 0:NX-1, y in 0:NY-1]
+    Nmax = 0
+    while intfact(Nmax,0,a) > eps(Float64)
+      Nmax += 1
+    end
+    qtab = [max(x,y) <= Nmax ? intfact(x, y, a) : 0.0 for x in 0:NX-1, y in 0:NY-1]
+    IntFact{NX, NY, a}(Nullable(CircularConvolution(qtab, fftw_flags)))
+end
+
+"""
+    IntFact(a::Real,w::Nodes,[fftw_flags=FFTW.ESTIMATE])
+
+Construct the integrating factor operator with size appropriate for nodal data `w`.
+"""
+function IntFact(a::Real,nodes::Nodes{T,NX,NY}; fftw_flags = FFTW.ESTIMATE) where {T<:CellType,NX,NY}
+    IntFact(a,node_inds(T,(NX,NY)), fftw_flags = fftw_flags)
+end
+
+function Base.show(io::IO, E::IntFact{NX, NY, a}) where {NX, NY, a}
+    nodedims = "(nx = $NX, ny = $NY)"
+    print(io, "Integrating factor with parameter $a on a $nodedims grid")
+end
+
+function A_mul_B!(out::Nodes{T,NX, NY},
+                   E::IntFact{MX, MY, a},
+                   s::Nodes{T, NX, NY}) where {T <: CellType, NX, NY, MX, MY, a}
+
+    A_mul_B!(out.data, get(E.conv), s.data)
+    out
+end
+
+function (*)(E::IntFact,s::Nodes{T,NX,NY}) where {T <: CellType, NX,NY}
+  A_mul_B!(Nodes(T,s), E, s)
 end
 
 """

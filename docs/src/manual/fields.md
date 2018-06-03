@@ -7,8 +7,22 @@ srand(1)
 end
 ```
 
+```math
+\def\ddt#1{\frac{\mathrm{d}#1}{\mathrm{d}t}}
+
+\renewcommand{\vec}{\boldsymbol}
+\newcommand{\uvec}[1]{\vec{\hat{#1}}}
+\newcommand{\utangent}{\uvec{\tau}}
+\newcommand{\unormal}{\uvec{n}}
+
+\renewcommand{\d}{\,\mathrm{d}}
+```
+
+
 ```@setup create
 using Whirl
+using Plots
+pyplot()
 ```
 In `Whirl`, field data, such as velocity, vorticity and pressure, are stored on
 a staggered uniform grid. Such a grid is divided into *cells*, with *edges* (which,
@@ -118,9 +132,56 @@ operation associated with `L` is significantly faster than a matrix inversion.
 Internally, it carries out a fast convolution between the data in `w` and the
 lattice Green's function, via fast Fourier transform. The lattice Green's function
 (LGF) table is pre-computed and pre-transformed in the original construction of `L`.
-(In fact, because this table is not dependent on the size of the grid, it only
-needs to be computed once for all time and stored in a file; subsequent uses
-of it just load it in and use the portion of it necessary for a certain grid.
+(In fact, because this table is not dependent on the size of the grid, it is
+actually computed once for all time and stored in a file; subsequent applications
+of it just load it in and use the portion of it necessary for a certain grid.)
+
+## The integrating factor
+
+An operator related to the lattice Green's function is the *integrating factor*.
+Suppose we have the system of ODEs
+
+$$\ddt u = L u + f(u,t), \quad u(0) = u_0,$$
+
+where $L$ is the discrete Laplacian (on an infinite uniform grid), and $u$ are
+nodal data (and $f$ is a nodal-valued function acting on this nodal data). The
+exact solution of this problem is
+
+$$u(t) = E(t)u_0 + \int_0^t E(t-\tau) f(u(\tau),\tau)\,\mathrm{d}\tau,$$
+
+where $E(t)$ is the integrating factor (or matrix exponential) for the system. The
+easiest way to understand the role of $E(t)$ is to consider its behavior when $f$
+is zero and $u_0$ contains a field of zeros except for a single $1$ entry at one
+cell. Let's set up this initial data:
+```@repl create
+w = Nodes(Dual,(100,100));
+w[40,50] = 1.0
+plot(w)
+savefig("w1.svg"); nothing # hide
+```
+![](w1.svg)
+
+Then, $E(t)u_0$ diffuses this initial unit perturbation in each direction. Here, we apply it
+with $t = 5$:
+
+```@repl create
+E = IntFact(5,w)
+plot(E*w)
+savefig("Ew1.svg"); nothing # hide
+```
+![](Ew1.svg)
+
+Note that $E(0) = I$, where $I$ is the identity. Also, the integrating factor has the useful property that $E(t+\tau) = E(t)E(\tau)$. From these properties, it
+follows that $E^{-1}(t) = E(-t)$. Let's suppose we wish to advance $u$ from time
+$t = \tau-h$ to time $t = \tau$. Then we can define an auxiliary quantity,
+$v(t;\tau) = E(\tau-t)u(t)$, and this new quantity satisfies the modified set
+of ODEs
+
+$$\ddt v = E(\tau-t) f\left[ E(t-\tau) v(t;\tau),t\right],\quad v(\tau-h;\tau) = E(h)u(\tau-h)$$    
+
+The result of integrating this set of ODEs to $t = \tau$ is $v(\tau;\tau) = u(\tau)$. In
+other words, the integrating factor allows us to solve a somewhat reduced set
+of ODEs.
 
 ## Other field operations
 
