@@ -226,6 +226,10 @@ Printing in grid orientation (lower left is (1,1)):
 function IntFact(a::Real,dims::Tuple{Int,Int};fftw_flags = FFTW.ESTIMATE)
     NX, NY = dims
 
+    if a == 0
+      return Identity()
+    end
+
     #qtab = [intfact(x, y, a) for x in 0:NX-1, y in 0:NY-1]
     Nmax = 0
     while intfact(Nmax,0,a) > eps(Float64)
@@ -260,6 +264,14 @@ end
 function (*)(E::IntFact,s::Nodes{T,NX,NY}) where {T <: CellType, NX,NY}
   A_mul_B!(Nodes(T,s), E, s)
 end
+
+# Identity
+
+struct Identity end
+
+
+(*)(::Identity,s::Union{Nodes,Edges}) = s
+
 
 """
     curl!(q::Edges{Primal},w::Nodes{Dual})

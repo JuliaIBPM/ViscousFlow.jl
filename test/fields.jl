@@ -209,6 +209,17 @@ end
         @test L \ (L*s) ≈ s
     end
 
+    @testset "Integrating factor" begin
+        s = Nodes{Dual, 30, 40}()
+        s[15,15] .= 1.0
+
+        E2 = IntFact(2,s)
+        E4 = IntFact(4,s)
+
+        @test E2*(E2*s) ≈ E4*s
+
+    end
+
     @testset "Discrete Divergence" begin
         s = Nodes{Dual, 5, 4}()
         s .= rand(5, 4)
