@@ -53,12 +53,23 @@ edges in each direction on this dual grid. These values always correspond to the
 number of dual cells on the grid, for any data type. This makes it clear the
 grid is shared by all data.
 
+## Setting up field data
+
 Let's see an example of creating a blank set of dual node data and filling it with
 something:
 
 ```@repl create
 w = Nodes(Dual,(5,4))
 w .= reshape(1:20,5,4)
+```
+
+Other data types on the same grid can be set up in similar fashion. To ensure
+that they have a size that is consistent with the dual node data `w`, we can use
+this in place of the size:
+```@repl create
+q = Edges(Primal,w);
+q.u[2,3] = 1;
+q
 ```
 
 ## Field differencing operations
@@ -106,28 +117,45 @@ D*(C*w)
 
 ## The Laplacian and its inverse
 
-There is also a Laplacian operator, `Laplacian`, which acts upon data of any type
-and returns the 5-point (in 2-d) discrete Laplacian. Let's apply this to the
-original data:
+`Whirl` also makes heavy use of the discrete Laplacian operator, $L$. This mimics the
+continuous operator, $\nabla^2$, and acts upon data of any type. Let's apply
+this to the original data:
 ```@repl create
 laplacian(w)
 ```
 
-Importantly, this operator can also be outfitted with an *inverse* operation, based
-on the lattice Green's function. This inverse operation is carried out with the
-backslash (`\`), as though it were the solution of a matrix-vector product; the
-Laplacian operation is performed with `*`.
+As with the other operators, we can also construct a shorthand of the discrete
+Laplacian operator,
+```@repl create
+L = Laplacian(size(w))
+L*w
+```
+
+An important part of `whirl` is the *inverse* of this operator. That is, we need
+the ability to solve the discrete Poisson system
+
+$$Ls = w$$
+
+for $s$, for given data $w$. We achieve this in `whirl` with the *lattice Green's
+function*. To outfit the operator with its inverse, we simply set the optional
+flag:
 ```@repl create
 L = Laplacian(size(w),with_inverse=true)
+```
+
+Then, the Poisson system is solved with the backslash (`\`),
+```@repl create
 s = L\w
 L*s
 ```
+
 It should be observed that the cells on the perimeter have not recovered the original values
 of `w`. These are the ghost cells, and the Laplacian operation does not apply
 to these.
 
-Note: Although it looks as though we've constructed a matrix `L` and performed various
-matrix-vector operations with it, this is not actually the case. In fact, the `\`
+It is also important to note that, although it looks as though we've constructed a
+matrix `L` and performed various matrix-vector operations with it, this is not
+actually the case. In fact, the `\`
 operation associated with `L` is significantly faster than a matrix inversion.
 Internally, it carries out a fast convolution between the data in `w` and the
 lattice Green's function, via fast Fourier transform. The lattice Green's function
@@ -135,6 +163,23 @@ lattice Green's function, via fast Fourier transform. The lattice Green's functi
 (In fact, because this table is not dependent on the size of the grid, it is
 actually computed once for all time and stored in a file; subsequent applications
 of it just load it in and use the portion of it necessary for a certain grid.)
+
+The lattice Green's function has the advantage that it is independent of the grid
+size. Let's solve the Poisson system when $w$ is a unit field, i.e. a field
+of zeros, except for a single $1$ entry at one node. The solution $s$ represents
+the influence of this point on all nodes. To see that the LGF does
+not depend on the grid size, let's use a grid that is long and skinny and plot
+the solution on it
+```@repl create
+w = Nodes(Dual,(50,10));
+w[20,5] = 1.0
+L = Laplacian(w,with_inverse=true)
+plot(L\w)
+savefig("Linvw.svg"); nothing # hide
+```
+![](Linvw.svg)
+
+The influence is not affected by the narrow grid dimensions.
 
 ## The integrating factor
 
@@ -190,7 +235,9 @@ another. These operations are all called `shift!`, and they require that the
 target data be preallocated. For example, to shift dual node data to the dual edges,
 
 ```@repl create
-Ww = Edges(Dual,w)
+w = Nodes(Dual,(5,4));
+w .= reshape(1:20,5,4)
+Ww = Edges(Dual,w);
 shift!(Ww,w)
 ```
 Note that the edges in the ghost cells are 0; these edges are not assigned any
@@ -198,7 +245,7 @@ values in the shift operation.
 
 We can then shift this to primal edges:
 ```@repl create
-q = Edges(Primal,w)
+q = Edges(Primal,w);
 shift!(q,Ww)
 ```
 
