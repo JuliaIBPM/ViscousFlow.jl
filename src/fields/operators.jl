@@ -1,6 +1,7 @@
 include("convolution.jl")
 include("lgf.jl")
 include("intfact.jl")
+include("ddf.jl")
 
 import Base: *, \, A_mul_B!, A_ldiv_B!
 
@@ -567,3 +568,59 @@ end
 struct Grad end
 
 (*)(::Grad,w::Union{Nodes{Primal, NX, NY},Edges{Dual,NX,NY},Edges{Primal,NX,NY}}) where {NX,NY} = grad(w)
+
+
+struct Regularize{N,DX}
+
+  "x values of points, normalized to grid index space"
+  x :: Vector{Float64}
+
+  "y values of points, normalized to grid index space"
+  y :: Vector{Float64}
+
+  "Discrete Delta function"
+  ddf :: DDF
+end
+
+function Regularize(x::Vector{T},y::Vector{T},dx::T;
+                    ddftype=Roma,
+                    I0::Tuple{Int,Int}=(1,1)) where {T<:Real}
+  @assert length(x)==length(y)
+  Regularize{length(x),dx}(x/dx+I0[1],y/dx+I0[2],DDF(ddftype=ddftype,dx=1.0))
+end
+
+Regularize(x::VectorData,a...;b...) = Regularize(x.u,x.v,a...;b...)
+
+function Base.show(io::IO, H::Regularize{N}) where {N}
+    print(io, "Regularization operator with $N points")
+end
+
+function (H::Regularize{N})(out::Edges{Primal,NX,NY},f::VectorData{N}) where {N,NX,NY}
+  @inbounds for y in 1:NY-1, x in 1:NX
+    out.u[x,y] = dot(H.ddf.(x-0.5-H.x,y-H.y),f.u)
+    out.v[x,y] = dot(H.ddf.(x-H.x,y-0.5-H.y),f.v)
+  end
+  out
+end
+
+function (H::Regularize{N})(out::Edges{Dual,NX,NY},f::VectorData{N}) where {N,NX,NY}
+  @inbounds for y in 1:NY, x in 1:NX-1
+    out.u[x,y] = dot(H.ddf.(x-H.x,y-0.5-H.y),f.u)
+    out.v[x,y] = dot(H.ddf.(x-0.5-H.x,y-H.y),f.v)
+  end
+  out
+end
+
+function (H::Regularize{N})(out::Nodes{Primal,NX,NY},f::ScalarData{N}) where {N,NX,NY}
+  @inbounds for y in 1:NY-1, x in 1:NX-1
+    out[x,y] = dot(H.ddf.(x-H.x,y-H.y),f.data)
+  end
+  out
+end
+
+function (H::Regularize{N})(out::Nodes{Dual,NX,NY},f::ScalarData{N}) where {N,NX,NY}
+  @inbounds for y in 1:NY, x in 1:NX
+    out[x,y] = dot(H.ddf.(x-0.5-H.x,y-0.5-H.y),f.data)
+  end
+  out
+end

@@ -19,12 +19,14 @@ the grid), but these are not distinguished in these basic definitions and operat
 module Fields
 
 import Base: @propagate_inbounds, shift!
-export Primal, Dual, Edges, Nodes, EdgeGradient, othertype,
+export Primal, Dual, Edges, Nodes, EdgeGradient,
+       Points, ScalarData, VectorData,
        curl, curl!, Curl, divergence, divergence!, Divergence,
        grad, grad!, Grad,
        laplacian, laplacian!, Laplacian,
        IntFact,Identity,
        product, product!, ∘,
+       Regularize,
        CircularConvolution
 
 abstract type CellType end
@@ -69,6 +71,7 @@ end
 
 include("fields/nodes.jl")
 include("fields/edges.jl")
+include("fields/points.jl")
 
 
 struct EdgeGradient{C <: CellType,D <: CellType, NX,NY}
@@ -138,11 +141,11 @@ end
 shift(nodes::Nodes{Dual,NX,NY}) where {NX,NY} = shift!(Edges(Dual, nodes), nodes)
 
 """
-    shift!((wx::Nodes{Dual},wy::Nodes{Dual}),q::Edges{Primal})
+    shift!((wx::Nodes,wy::Nodes),q::Edges)
 
-Shift (by linear interpolation) the primal edge data `q` to the nodes of the dual
-cells, and return the result in `wx` and `wy`. `wx` holds the shifted `q.u` data
-and `wy` the shifted `q.v` data.
+Shift (by linear interpolation) the edge data `q` (of either dual or primal
+type) to the dual or primal nodes, and return the result in `wx` and `wy`. `wx`
+holds the shifted `q.u` data and `wy` the shifted `q.v` data.
 
 # Example
 
@@ -187,8 +190,41 @@ function shift!(dual::Tuple{Nodes{Dual, NX, NY},Nodes{Dual, NX, NY}}, w::Edges{P
     dual
 end
 
+function shift!(dual::Tuple{Nodes{Dual, NX, NY},Nodes{Dual, NX, NY}}, w::Edges{Dual,NX, NY}) where {NX, NY}
+    @inbounds for y in 1:NY, x in 2:NX-1
+        dual[1][x,y] = (w.u[x-1,y] + w.u[x,y])/2
+    end
+
+    @inbounds for y in 2:NY-1, x in 1:NX
+        dual[2][x,y] = (w.v[x,y-1] + w.v[x,y])/2
+    end
+    dual
+end
+
+function shift!(primal::Tuple{Nodes{Primal, NX, NY},Nodes{Primal, NX, NY}}, w::Edges{Primal,NX, NY}) where {NX, NY}
+    @inbounds for y in 1:NY-1, x in 1:NX-1
+        primal[1][x,y] = (w.u[x,y] + w.u[x+1,y])/2
+    end
+
+    @inbounds for y in 1:NY-1, x in 1:NX-1
+        primal[2][x,y] = (w.v[x,y] + w.v[x,y+1])/2
+    end
+    primal
+end
+
+function shift!(primal::Tuple{Nodes{Primal, NX, NY},Nodes{Primal, NX, NY}}, w::Edges{Dual,NX, NY}) where {NX, NY}
+    @inbounds for y in 1:NY-1, x in 1:NX-1
+        primal[1][x,y] = (w.u[x,y] + w.u[x,y+1])/2
+    end
+
+    @inbounds for y in 1:NY-1, x in 1:NX-1
+        primal[2][x,y] = (w.v[x,y] + w.v[x+1,y])/2
+    end
+    primal
+end
+
+
 # I don't like this one. It is ambiguous what type of nodes are being shifted to.
 nodeshift(edges::Edges{Primal,NX,NY}) where {NX,NY} = shift!((Nodes(Dual, (NX,NY)),Nodes(Dual, (NX,NY))),edges)
-
 
 end
