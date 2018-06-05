@@ -24,7 +24,7 @@ using Whirl
 using Plots
 pyplot()
 ```
-In `Whirl`, field data, such as velocity, vorticity and pressure, are stored on
+In `whirl`, field data, such as velocity, vorticity and pressure, are stored on
 a staggered uniform grid. Such a grid is divided into *cells*, with *edges* (which,
 on a two-dimensional grid, are the same as *faces*) and *nodes* (cell centers).
 Nodes hold scalar-valued data. Edges, on the other hand, hold the components of
@@ -42,7 +42,7 @@ associated with where the data are held on the grid:
 - dual edges,
 - primal nodes, and
 - primal edges.
-In `Whirl`, these are each distinct data types. Furthermore, the relationships between these types are
+In `whirl`, these are each distinct data types. Furthermore, the relationships between these types are
 defined by an underlying grid shared by all. By convention, this grid is defined by
 the number of dual cells `NX` and `NY` in each direction; we will often refer to it
 as the *dual grid*. For example, `Nodes{Dual,NX,NY}` is the type for dual node data
@@ -228,6 +228,7 @@ The result of integrating this set of ODEs to $t = \tau$ is $v(\tau;\tau) = u(\t
 other words, the integrating factor allows us to solve a somewhat reduced set
 of ODEs.
 
+
 ## Other field operations
 
 Other field operations shift the data, by local averaging, from one data type to
@@ -255,6 +256,157 @@ of the same type, e.g.,
 q∘q
 ```
 
+## The grid in physical space
+
+Thus far, we have not had to consider the relationship between the grid's index space
+and some physical space.
+All of the operations act on the entries in the discrete fields, based only on their
+relative indices, and not on their physical coordinates. In this section, we will
+discuss the relationship between the grid's index space and physical space, and then
+in the next section we'll discuss how we can transfer data between these spaces.
+
+Generically, we can write the relationship between the physical coordinate $x$ and
+the index $i$ of any grid point as
+
+$$x(i) = (i - \Delta i - i_0)\Delta x, \quad y(j) = (j - \Delta j - j_0)\Delta x$$
+
+The scaling between these spaces is controlled by $\Delta x$, which represents the
+uniform size of each grid cell; note that grid cells are presumed to be square in `whirl`.
+The indices $I_0 = (i_0,j_0)$ represent the location of the origin *in the index space for primal nodes*.
+Why primal nodes? Since the underlying grid is composed of dual cells, then primal nodes
+sit at the corners of the domain, so it is the most convenient for anchoring the grid to a specific
+point. But, since some field data of the same index are shifted by half a cell in one or both
+directions, then $\Delta i$ and $\Delta j$ are included for such purposes; these are either $0$ or $1/2$,
+depending on the field type. For example, for a primal node, $\Delta i = 0$, so that $x(i_0) = 0$;
+for a dual node, $\Delta i = 1/2$, so that $x(i_0) = -\Delta x/2$.
+
+In particular, for our four different data types and their components
+
+- Primal nodes: $\Delta i = 0$, $\Delta j = 0$
+- Dual nodes: $\Delta i = 1/2$, $\Delta j = 1/2$
+- Primal edges u: $\Delta i = 1/2$, $\Delta j = 0$
+- Primal edges v: $\Delta i = 0$, $\Delta j = 1/2$
+- Dual edges u: $\Delta i = 0$, $\Delta j = 1/2$
+- Dual edges v: $\Delta i = 1/2$, $\Delta j = 0$
+
+## Regularization and interpolation
+
+Based on this relationship between the physical space and the index space, we
+can now construct a means of transferring data between a point $(x,y)$ in the
+physical space and the grid points in its immediate vicinity. We say that such a
+point is *immersed* in the grid. The process of transferring from the point to the
+ grid is called *regularization*, since we
+are effectively smearing this data over some extended neighborhood; the
+opposite operation, transferring grid field data to an arbitrary point, is
+ *interpolation*. In `whirl`, both operations are carried out with the *discrete
+ delta function* (DDF). Such a function generally has compact support, so that
+ it only interacts with a small number of grid points in the vicinity of a
+ given physical location. Since each of the different field types reside at
+ slightly different locations, the range of indices invoked in this interaction
+ will be different for each field type.
+
+ Let's see the regularization and interpolation in action. We will set up a ring
+ of 100 points on a circle of radius $1/4$ centered at $(1/2,1/2)$. On these, we will
+ set vector-valued data in which the $x$ component is uniformly equal to 1.0,
+ while the $y$ component is set equal to the vertical position relative to the
+ circle center. We will regularize these vector data to a primal
+ edge field on the grid in which these points are immersed.
+
+```@repl create
+n = 100;
+θ = linspace(0,2π,n+1);
+x = 0.5 + 0.25*cos.(θ[1:n]);
+y = 0.5 + 0.25*sin.(θ[1:n]);
+X = VectorData(x,y);
+```
+
+The variable `X` now holds the coordinates of the immersed points. Now we will set
+up the vector-valued data on these points
+
+```@repl create
+f = VectorData(X);
+fill!(f.u,1.0);
+f.v .= X.v.-0.5;
+```
+
+Note that we have ensured that `f` has the correct dimensions by supplying the
+coordinate data `X`. This first step also initializes the data to zeros.
+
+Now, let's set up the grid. The physical domain will be of size $1.0 \times 1.0$,
+and we will use $100$ dual grid cells in each direction. Allowing a single layer of ghost
+cells surrounding the domain, we use $102$ cells, and set the cell size to 0.01.
+Also, we will set the $(x,y)$ origin to coincide with the lower left corner of
+the domain.
+
+```@repl create
+nx = 102; ny = 102;
+q = Edges(Primal,(nx,ny));
+Lx = 1.0;
+dx = Lx/(nx-2)
+```
+
+Now we set up the regularization operator. This set it up, it only needs to know
+the coordinate data of the set of immersed points and the grid cell size:
+
+```@repl create
+H = Regularize(X,dx)
+```
+
+We have omitted some optional arguments. For example, it chooses a default DDF
+kernel (the Roma kernel); this can be changed with the `ddftype` argument. Also,
+the lower left corner, where we've set the origin, is the location of the $(1,1)$
+primal node; this is the default choice for `I0` (the tuple $I_0$ of coordinates in index
+space discussed in the previous section).
+
+Now we can apply the regularization operator. We supply the target field `q` as the
+first argument and the source data `f` as the second argument:
+```@repl create
+H(q,f);
+plot(q)
+savefig("regq.svg"); nothing # hide
+```
+![](regq.svg)
+
+We could also regularize this to a field of dual edges.
+```@repl create
+p = Edges(Dual,(nx,ny));
+H(p,f);
+plot(p)
+savefig("regp.svg"); nothing # hide
+```
+![](regp.svg)
+
+Scalar-valued data on the immersed points can only be regularized to nodal fields;
+the syntax is similar, and the regularization operator does not need to be
+reconstructed:
+
+```@repl create
+g = ScalarData(X);
+fill!(g,1.0);
+w = Nodes(Dual,(nx,ny));
+H(w,g);
+plot(w)
+savefig("regw.svg"); nothing # hide
+```
+![](regw.svg)
+
+For a given regularization operator, $H$, the interpolation operator, $E$, is
+the transpose of this, $H^T$. In `whirl`, this interpolation is also carried out
+with the same constructed operator, but with the arguments reversed: the grid field
+data are the source and the immersed points are the target. Let's interpolate our
+regularized field back onto the immersed points.
+
+```@repl create
+f2 = VectorData(X);
+H(f2,q);
+plot(f2.u,lab="u")
+plot!(f2.v,lab="v")
+savefig("interpf.svg"); nothing # hide
+```
+![](interpf.svg)
+
+Note that $H^T$ is *not* the inverse of $H$; we don't recover the original data
+when we regularize and then interpolate.
 
 ## Methods
 

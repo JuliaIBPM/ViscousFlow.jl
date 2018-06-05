@@ -43,16 +43,20 @@ macro wraparray(wrapper, field)
         Base.size(A::$wrapper) = size(A.$field)
         Base.indices(A::$wrapper) = indices(A.$field)
 
-        function Base.show(io::IO, ::MIME"text/plain", A::$wrapper)
-          println(io,"$(typeof(A)) data")
-          println(io,"Printing in grid orientation (lower left is (1,1)):")
-          Base.showarray(io,flipdim(transpose(A.$field),1),false;header=false)
+        if $N > 1
+          function Base.show(io::IO, ::MIME"text/plain", A::$wrapper)
+            println(io,"$(typeof(A)) data")
+            println(io,"Printing in grid orientation (lower left is (1,1)):")
+            Base.showarray(io,flipdim(transpose(A.$field),1),false;header=false)
+          end
         end
 
         @propagate_inbounds Base.getindex(A::$wrapper, i::Int) = A.$field[i]
-        @propagate_inbounds Base.getindex(A::$wrapper, I::Vararg{Int, $N}) = A.$field[I...]
         @propagate_inbounds Base.setindex!(A::$wrapper, v, i::Int) = A.$field[i] = convert($el_type, v)
-        @propagate_inbounds Base.setindex!(A::$wrapper, v, I::Vararg{Int, $N}) = A.$field[I...] = convert($el_type, v)
+        if $N > 1
+          @propagate_inbounds Base.getindex(A::$wrapper, I::Vararg{Int, $N}) = A.$field[I...]
+          @propagate_inbounds Base.setindex!(A::$wrapper, v, I::Vararg{Int, $N}) = A.$field[I...] = convert($el_type, v)
+        end
     end
 end
 
