@@ -570,7 +570,7 @@ struct Grad end
 (*)(::Grad,w::Union{Nodes{Primal, NX, NY},Edges{Dual,NX,NY},Edges{Primal,NX,NY}}) where {NX,NY} = grad(w)
 
 
-struct Regularize{N,DX}
+struct Regularize{N,DV}
 
   "x values of points, normalized to grid index space"
   x :: Vector{Float64}
@@ -607,7 +607,7 @@ the *source* (the entity to regularize/interpolate from).
 
 In the example below, we set up a 12 x 12 grid. Using the default value for `I0`
 and setting `dx = 0.1`, the physical dimensions of the non-ghost part of the grid
-is 1.0 x 1.0. Three points are set up in the interior, and a vector field is assigned
+are 1.0 x 1.0. Three points are set up in the interior, and a vector field is assigned
 to them, with the x component of each of them set to 1.0. These data are regularized
 to a field of primal edges on the grid.
 
@@ -630,17 +630,17 @@ julia> fill!(f.u,1.0);
 julia> H(q,f)
 Whirl.Fields.Edges{Whirl.Fields.Primal,12,12} data
 u (in grid orientation):
- 0.0  0.0  0.0        0.0       0.0        …  0.0       0.0        0.0  0.0
- 0.0  0.0  0.0        0.0       0.0           0.0       0.0        0.0  0.0
- 0.0  0.0  0.0833333  0.333333  0.0833333     0.0       0.0        0.0  0.0
- 0.0  0.0  0.0833333  0.333333  0.0833333     0.0       0.0        0.0  0.0
- 0.0  0.0  0.0        0.0       0.0           0.0       0.0        0.0  0.0
- 0.0  0.0  0.0        0.0       0.0        …  0.0       0.0        0.0  0.0
- 0.0  0.0  0.0        0.0       0.0           0.0       0.0        0.0  0.0
- 0.0  0.0  0.0833333  0.333333  0.0833333     0.333333  0.0833333  0.0  0.0
- 0.0  0.0  0.0833333  0.333333  0.0833333     0.333333  0.0833333  0.0  0.0
- 0.0  0.0  0.0        0.0       0.0           0.0       0.0        0.0  0.0
- 0.0  0.0  0.0        0.0       0.0        …  0.0       0.0        0.0  0.0
+ 0.0  0.0  0.0       0.0     0.0      …  0.0       0.0     0.0      0.0  0.0
+ 0.0  0.0  0.0       0.0     0.0         0.0       0.0     0.0      0.0  0.0
+ 0.0  0.0  8.33333  33.3333  8.33333     0.0       0.0     0.0      0.0  0.0
+ 0.0  0.0  8.33333  33.3333  8.33333     0.0       0.0     0.0      0.0  0.0
+ 0.0  0.0  0.0       0.0     0.0         0.0       0.0     0.0      0.0  0.0
+ 0.0  0.0  0.0       0.0     0.0      …  0.0       0.0     0.0      0.0  0.0
+ 0.0  0.0  0.0       0.0     0.0         0.0       0.0     0.0      0.0  0.0
+ 0.0  0.0  8.33333  33.3333  8.33333     8.33333  33.3333  8.33333  0.0  0.0
+ 0.0  0.0  8.33333  33.3333  8.33333     8.33333  33.3333  8.33333  0.0  0.0
+ 0.0  0.0  0.0       0.0     0.0         0.0       0.0     0.0      0.0  0.0
+ 0.0  0.0  0.0       0.0     0.0      …  0.0       0.0     0.0      0.0  0.0
 v (in grid orientation):
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
@@ -660,7 +660,7 @@ function Regularize(x::Vector{T},y::Vector{T},dx::T;
                     ddftype=Roma,
                     I0::Tuple{Int,Int}=(1,1)) where {T<:Real}
   @assert length(x)==length(y)
-  Regularize{length(x),dx}(x/dx+I0[1],y/dx+I0[2],DDF(ddftype=ddftype,dx=1.0))
+  Regularize{length(x),dx*dx}(x/dx+I0[1],y/dx+I0[2],DDF(ddftype=ddftype,dx=1.0))
 end
 
 Regularize(x::T,y::T,a...;b...) where {T<:Real} = Regularize([x],[y],a...;b...)
@@ -673,35 +673,69 @@ end
 
 # These regularization operations should be easy to macro-generate
 
-function (H::Regularize{N})(out::Edges{Primal,NX,NY},f::VectorData{N}) where {N,NX,NY}
+function (H::Regularize{N,DV})(out::Edges{Primal,NX,NY},f::VectorData{N}) where {N,DV,NX,NY}
   @inbounds for y in 1:NY-1, x in 1:NX
-    out.u[x,y] = dot(H.ddf.(x-0.5-H.x,y-H.y),f.u)
-    out.v[x,y] = dot(H.ddf.(x-H.x,y-0.5-H.y),f.v)
+    out.u[x,y] = dot(H.ddf.(x-0.5-H.x,y-H.y),f.u)/DV
+    out.v[x,y] = dot(H.ddf.(x-H.x,y-0.5-H.y),f.v)/DV
   end
   out
 end
 
-function (H::Regularize{N})(out::Edges{Dual,NX,NY},f::VectorData{N}) where {N,NX,NY}
+function (H::Regularize{N,DV})(out::Edges{Dual,NX,NY},f::VectorData{N}) where {N,DV,NX,NY}
   @inbounds for y in 1:NY, x in 1:NX-1
-    out.u[x,y] = dot(H.ddf.(x-H.x,y-0.5-H.y),f.u)
-    out.v[x,y] = dot(H.ddf.(x-0.5-H.x,y-H.y),f.v)
+    out.u[x,y] = dot(H.ddf.(x-H.x,y-0.5-H.y),f.u)/DV
+    out.v[x,y] = dot(H.ddf.(x-0.5-H.x,y-H.y),f.v)/DV
   end
   out
 end
 
-function (H::Regularize{N})(out::Nodes{Primal,NX,NY},f::ScalarData{N}) where {N,NX,NY}
-  @inbounds for y in 1:NY-1, x in 1:NX-1
-    out[x,y] = dot(H.ddf.(x-H.x,y-H.y),f.data)
-  end
-  out
-end
-
-function (H::Regularize{N})(out::Nodes{Dual,NX,NY},f::ScalarData{N}) where {N,NX,NY}
+function (H::Regularize{N,DV})(out::Tuple{Nodes{Dual,NX,NY},Nodes{Primal,NX,NY}},f::VectorData{N}) where {N,DV,NX,NY}
   @inbounds for y in 1:NY, x in 1:NX
-    out[x,y] = dot(H.ddf.(x-0.5-H.x,y-0.5-H.y),f.data)
+    out[1][x,y] = dot(H.ddf.(x-0.5-H.x,y-0.5-H.y),f.u)/DV
+  end
+  @inbounds for y in 1:NY-1, x in 1:NX-1
+    out[2][x,y] = dot(H.ddf.(x-H.x,y-H.y),f.v)/DV
   end
   out
 end
+
+function (H::Regularize{N,DV})(out::Tuple{Nodes{Primal,NX,NY},Nodes{Dual,NX,NY}},f::VectorData{N}) where {N,DV,NX,NY}
+  @inbounds for y in 1:NY-1, x in 1:NX-1
+    out[1][x,y] = dot(H.ddf.(x-H.x,y-H.y),f.u)/DV
+  end
+  @inbounds for y in 1:NY, x in 1:NX
+    out[2][x,y] = dot(H.ddf.(x-0.5-H.x,y-0.5-H.y),f.v)/DV
+  end
+  out
+end
+
+function (H::Regularize{N,DV})(out::Nodes{Primal,NX,NY},f::ScalarData{N}) where {N,DV,NX,NY}
+  @inbounds for y in 1:NY-1, x in 1:NX-1
+    out[x,y] = dot(H.ddf.(x-H.x,y-H.y),f.data)/DV
+  end
+  out
+end
+
+function (H::Regularize{N,DV})(out::Nodes{Dual,NX,NY},f::ScalarData{N}) where {N,DV,NX,NY}
+  @inbounds for y in 1:NY, x in 1:NX
+    out[x,y] = dot(H.ddf.(x-0.5-H.x,y-0.5-H.y),f.data)/DV
+  end
+  out
+end
+
+function (H::Regularize)(out,f::VectorData,ds::Union{Float64,Vector{Float64}})
+  fds = deepcopy(f)
+  fds.u .*= ds
+  fds.v .*= ds
+  H(out,fds)
+end
+
+function (H::Regularize)(out,f::ScalarData,ds::Union{Float64,Vector{Float64}})
+  fds = deepcopy(f)
+  fds .*= ds
+  H(out,fds)
+end
+
 
 function (H::Regularize{N})(f::VectorData{N},out::Edges{Primal,NX,NY}) where {N,NX,NY}
   @inbounds for y in 1:NY-1, x in 1:NX
@@ -718,6 +752,27 @@ function (H::Regularize{N})(f::VectorData{N},out::Edges{Dual,NX,NY}) where {N,NX
   end
   f
 end
+
+function (H::Regularize{N})(f::VectorData{N},out::Tuple{Nodes{Dual,NX,NY},Nodes{Primal,NX,NY}}) where {N,NX,NY}
+  @inbounds for y in 1:NY, x in 1:NX
+    f.u .+= H.ddf.(x-0.5-H.x,y-0.5-H.y)*out[1][x,y]
+  end
+  @inbounds for y in 1:NY-1, x in 1:NX-1
+    f.v .+= H.ddf.(x-H.x,y-H.y)*out[2][x,y]
+  end
+  f
+end
+
+function (H::Regularize{N})(f::VectorData{N},out::Tuple{Nodes{Primal,NX,NY},Nodes{Dual,NX,NY}}) where {N,NX,NY}
+  @inbounds for y in 1:NY-1, x in 1:NX-1
+    f.u .+= H.ddf.(x-H.x,y-H.y)*out[1][x,y]
+  end
+  @inbounds for y in 1:NY, x in 1:NX
+    f.v .+= H.ddf.(x-0.5-H.x,y-0.5-H.y)*out[2][x,y]
+  end
+  f
+end
+
 
 function (H::Regularize{N})(f::ScalarData{N},out::Nodes{Primal,NX,NY}) where {N,NX,NY}
   @inbounds for y in 1:NY-1, x in 1:NX-1

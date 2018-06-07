@@ -299,31 +299,62 @@ point is *immersed* in the grid. The process of transferring from the point to t
 are effectively smearing this data over some extended neighborhood; the
 opposite operation, transferring grid field data to an arbitrary point, is
  *interpolation*. In `whirl`, both operations are carried out with the *discrete
- delta function* (DDF). Such a function generally has compact support, so that
+ delta function* (DDF), which is a discrete analog of the Dirac delta function. The
+ DDF function generally has compact support, so that
  it only interacts with a small number of grid points in the vicinity of a
  given physical location. Since each of the different field types reside at
  slightly different locations, the range of indices invoked in this interaction
  will be different for each field type.
 
+Regularization can actually take different forms. It can be a simple point-wise
+interpolation, the discrete analog of simply multiplying by the Dirac delta function:
+
+$$f_i \delta(\mathbf{x} - \mathbf{x}_i)$$
+
+to immerse a value $f_i$ based at point $\mathbf{x}_i = (x_i,y_i)$.
+
+Alternatively, regularization can be carried out over a curve $\mathbf{X}(s)$, the analog of
+
+$$\int f(s) \delta(\mathbf{x} - \mathbf{X}(s))\mathrm{d}s$$
+
+or it can be performed volumetrically, corresponding to
+
+$$\int f(\mathbf{y}) \delta(\mathbf{x} - \mathbf{y})\mathrm{d}\mathbf{y}$$
+
+In this case, the function $f$ is distributed over some region of space. In each of
+these cases, the discrete version is simply a sum over data at a finite number of
+discrete points, and the type of regularization is specified by providing an
+optional argument specifying the arclength, area or volume associated
+with each discrete point. These arguments are used to weight the sum.
+
  Let's see the regularization and interpolation in action. We will set up a ring
- of 100 points on a circle of radius $1/4$ centered at $(1/2,1/2)$. On these, we will
+ of 100 points on a circle of radius $1/4$ centered at $(1/2,1/2)$. This curve-
+ type regularization will be weighted by the arclength, $ds$, associated with each 100 points.
+ On these points, we will
  set vector-valued data in which the $x$ component is uniformly equal to 1.0,
  while the $y$ component is set equal to the vertical position relative to the
  circle center. We will regularize these vector data to a primal
  edge field on the grid in which these points are immersed.
 
-```@repl create
+```@setup regularize
+using Whirl
+using Plots
+pyplot()
+```
+
+```@repl regularize
 n = 100;
 θ = linspace(0,2π,n+1);
 x = 0.5 + 0.25*cos.(θ[1:n]);
 y = 0.5 + 0.25*sin.(θ[1:n]);
+ds = 2π/n*0.25;
 X = VectorData(x,y);
 ```
 
 The variable `X` now holds the coordinates of the immersed points. Now we will set
 up the vector-valued data on these points
 
-```@repl create
+```@repl regularize
 f = VectorData(X);
 fill!(f.u,1.0);
 f.v .= X.v.-0.5;
@@ -338,7 +369,7 @@ cells surrounding the domain, we use $102$ cells, and set the cell size to 0.01.
 Also, we will set the $(x,y)$ origin to coincide with the lower left corner of
 the domain.
 
-```@repl create
+```@repl regularize
 nx = 102; ny = 102;
 q = Edges(Primal,(nx,ny));
 Lx = 1.0;
@@ -348,7 +379,7 @@ dx = Lx/(nx-2)
 Now we set up the regularization operator. This set it up, it only needs to know
 the coordinate data of the set of immersed points and the grid cell size:
 
-```@repl create
+```@repl regularize
 H = Regularize(X,dx)
 ```
 
@@ -359,18 +390,22 @@ primal node; this is the default choice for `I0` (the tuple $I_0$ of coordinates
 space discussed in the previous section).
 
 Now we can apply the regularization operator. We supply the target field `q` as the
-first argument and the source data `f` as the second argument:
-```@repl create
-H(q,f);
+first argument, the source data `f` as the second argument, and the arclength `ds`
+of each point on the circle as the third argument. (This last argument is supplied
+  as a scalar, since it is uniform.)
+
+```@repl regularize
+H(q,f,ds);
 plot(q)
 savefig("regq.svg"); nothing # hide
 ```
 ![](regq.svg)
 
 We could also regularize this to a field of dual edges.
-```@repl create
+
+```@repl regularize
 p = Edges(Dual,(nx,ny));
-H(p,f);
+H(p,f,ds);
 plot(p)
 savefig("regp.svg"); nothing # hide
 ```
@@ -380,11 +415,11 @@ Scalar-valued data on the immersed points can only be regularized to nodal field
 the syntax is similar, and the regularization operator does not need to be
 reconstructed:
 
-```@repl create
+```@repl regularize
 g = ScalarData(X);
 fill!(g,1.0);
 w = Nodes(Dual,(nx,ny));
-H(w,g);
+H(w,g,ds);
 plot(w)
 savefig("regw.svg"); nothing # hide
 ```
@@ -393,10 +428,11 @@ savefig("regw.svg"); nothing # hide
 For a given regularization operator, $H$, the interpolation operator, $E$, is
 the transpose of this, $H^T$. In `whirl`, this interpolation is also carried out
 with the same constructed operator, but with the arguments reversed: the grid field
-data are the source and the immersed points are the target. Let's interpolate our
-regularized field back onto the immersed points.
+data are the source and the immersed points are the target. Note that interpolation
+is always a volumetric operation and the weighting is automatically built in,
+so there is no third argument. Let's interpolate our regularized field back onto the immersed points.
 
-```@repl create
+```@repl regularize
 f2 = VectorData(X);
 H(f2,q);
 plot(f2.u,lab="u")
