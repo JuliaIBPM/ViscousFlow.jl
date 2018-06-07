@@ -1,8 +1,5 @@
 abstract type DDFType end
 
-abstract type Roma <: DDFType end
-abstract type Goza <: DDFType end
-
 struct DDF{C <: DDFType,DX} end
 
 function DDF(;dx::Real=1.0,ddftype=Roma)
@@ -12,12 +9,13 @@ end
 macro ddffunc(ddftype)
     fname = Symbol("ddf_",lowercase(string(ddftype)))
     return esc(quote
+            abstract type $ddftype <: DDFType end
             (::DDF{$ddftype,DX})(x::T) where {DX,T <: Real} =
-                  $fname(abs(x)/DX)
+                  $fname(abs(x)/DX)/DX
             (::DDF{$ddftype,DX})(x::T,y::T) where {DX,T <: Real} =
-                          $fname(abs(x)/DX)*$fname(abs(y)/DX)
+                          $fname(abs(x)/DX)/DX*$fname(abs(y)/DX)/DX
             (::DDF{$ddftype,DX})(x::T,y::T,z::T) where {DX,T <: Real} =
-                          $fname(abs(x)/DX)*$fname(abs(y)/DX)*$fname(abs(z)/DX)
+                          $fname(abs(x)/DX)/DX*$fname(abs(y)/DX)/DX*$fname(abs(z)/DX)/DX
             #=
             (::DDF{$ddftype,DX})(x::AbstractVector{T}) where {DX,T <: Real} =
                           $fname.(abs.(x)/DX)
@@ -28,7 +26,7 @@ macro ddffunc(ddftype)
                                  y::AbstractVector{T},
                                  z::AbstractVector{T}) where {DX,T <: Real} =
                           $fname.(abs.(x)/DX).*$fname.(abs.(y)/DX).*$fname.(abs.(z)/DX)
-            =#                            
+            =#
             end)
 end
 
@@ -73,10 +71,7 @@ goza(r) = exp(-π^2/36 * r^2)*sqrt(π/36);
 
 function ddf_goza(r::Real)
   rr = abs(r)
-  if rr > 14
-    return 0.0
-  end
-  goza(rr)
+  return rr > 14 ? 0.0 : goza(rr)
 end
 
 #=
@@ -90,3 +85,12 @@ function ddf_goza(r::Array{Float64,1})
   f
 end
 =#
+
+@ddffunc Tophat
+
+tophat(r) = 1-r;
+
+function ddf_tophat(r::Real)
+  rr = abs(r)
+  return rr > 1 ? 0.0 : tophat(rr)
+end
