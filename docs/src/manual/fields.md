@@ -376,11 +376,14 @@ Lx = 1.0;
 dx = Lx/(nx-2)
 ```
 
-Now we set up the regularization operator. This set it up, it only needs to know
-the coordinate data of the set of immersed points and the grid cell size:
+Now we set up the regularization operator. To set it up, it needs to know
+the coordinate data of the set of immersed points, the grid cell size, and the
+weight to apply to each immersed point. Since this is a regularization of a curve,
+this weight is the differential arc length `ds` associated with each point.
+(This last argument is supplied as a scalar, since it is uniform.)
 
 ```@repl regularize
-H = Regularize(X,dx)
+H = Regularize(X,dx,weights=ds)
 ```
 
 We have omitted some optional arguments. For example, it chooses a default DDF
@@ -390,12 +393,10 @@ primal node; this is the default choice for `I0` (the tuple $I_0$ of coordinates
 space discussed in the previous section).
 
 Now we can apply the regularization operator. We supply the target field `q` as the
-first argument, the source data `f` as the second argument, and the arclength `ds`
-of each point on the circle as the third argument. (This last argument is supplied
-  as a scalar, since it is uniform.)
+first argument and the source data `f` as the second argument.
 
 ```@repl regularize
-H(q,f,ds);
+H(q,f);
 plot(q)
 savefig("regq.svg"); nothing # hide
 ```
@@ -405,7 +406,7 @@ We could also regularize this to a field of dual edges.
 
 ```@repl regularize
 p = Edges(Dual,(nx,ny));
-H(p,f,ds);
+H(p,f);
 plot(p)
 savefig("regp.svg"); nothing # hide
 ```
@@ -419,7 +420,7 @@ reconstructed:
 g = ScalarData(X);
 fill!(g,1.0);
 w = Nodes(Dual,(nx,ny));
-H(w,g,ds);
+H(w,g);
 plot(w)
 savefig("regw.svg"); nothing # hide
 ```
