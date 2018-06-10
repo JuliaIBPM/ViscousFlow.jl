@@ -54,4 +54,4 @@ function lgf(i, j)
 
 end
 
-const LGF_TABLE = load_lgf(500)
+const LGF_TABLE = load_lgf(1000)

@@ -106,18 +106,21 @@ function laplacian(w::Edges{T,NX,NY}) where {T<:CellType,NX,NY}
 end
 
 
-struct Laplacian{NX, NY, R}
+struct Laplacian{NX, NY, R, DX}
     conv::Nullable{CircularConvolution{NX, NY}}
 end
 
 """
-    Laplacian(dims::Tuple,[with_inverse=false],[fftw_flags=FFTW.ESTIMATE])
+    Laplacian(dims::Tuple,[with_inverse=false],[fftw_flags=FFTW.ESTIMATE],
+                          [dx=1.0])
 
 Constructor to set up an operator for evaluating the discrete Laplacian on
 dual or primal nodal data of dimension `dims`. If the optional keyword
 `with_inverse` is set to `true`, then it also sets up the inverse Laplacian
-(the lattice Green's function). These can then be applied, respectively, with
-`*` and `\\` operations on data of the appropriate size.
+(the lattice Green's function, LGF). These can then be applied, respectively, with
+`*` and `\\` operations on data of the appropriate size. The optional parameter
+`dx` is used in adjusting the uniform value of the LGF to match the behavior
+of the continuous analog at large distances; this is set to 1.0 by default.
 
 # Example
 
@@ -145,44 +148,49 @@ true
 ```
 """
 function Laplacian(dims::Tuple{Int,Int};
-                   with_inverse = false, fftw_flags = FFTW.ESTIMATE)
+                   with_inverse = false, fftw_flags = FFTW.ESTIMATE, dx = 1.0)
     NX, NY = dims
     if !with_inverse
-        return Laplacian{NX, NY, false}(Nullable())
+        return Laplacian{NX, NY, false, dx}(Nullable())
     end
 
     G = view(LGF_TABLE, 1:NX, 1:NY)
-    Laplacian{NX, NY, true}(Nullable(CircularConvolution(G, fftw_flags)))
+    Laplacian{NX, NY, true, dx}(Nullable(CircularConvolution(G, fftw_flags)))
 end
 
-function Laplacian(nx::Int, ny::Int; with_inverse = false, fftw_flags = FFTW.ESTIMATE)
-    Laplacian((nx, ny), with_inverse = with_inverse, fftw_flags = fftw_flags)
+function Laplacian(nx::Int, ny::Int;
+    with_inverse = false, fftw_flags = FFTW.ESTIMATE, dx = 1.0)
+    Laplacian((nx, ny), with_inverse = with_inverse, fftw_flags = fftw_flags, dx = dx)
 end
 
 """
-    Laplacian(w::Nodes,[with_inverse=false],[fftw_flags=FFTW.ESTIMATE])
+    Laplacian(w::Nodes,[with_inverse=false],[fftw_flags=FFTW.ESTIMATE],[dx=1.0])
 
 Construct the Laplacian operator with size appropriate for nodal data `w`.
 """
-function Laplacian(nodes::Nodes{T,NX,NY}; with_inverse = false, fftw_flags = FFTW.ESTIMATE) where {T<:CellType,NX,NY}
-    Laplacian(node_inds(T,(NX,NY)), with_inverse = with_inverse, fftw_flags = fftw_flags)
+function Laplacian(nodes::Nodes{T,NX,NY};
+    with_inverse = false, fftw_flags = FFTW.ESTIMATE, dx = 1.0) where {T<:CellType,NX,NY}
+    Laplacian(node_inds(T,(NX,NY)), with_inverse = with_inverse, fftw_flags = fftw_flags, dx = dx)
 end
 
 
-function Base.show(io::IO, L::Laplacian{NX, NY, R}) where {NX, NY, R}
+function Base.show(io::IO, L::Laplacian{NX, NY, R, DX}) where {NX, NY, R, DX}
     nodedims = "(nx = $NX, ny = $NY)"
     inverse = R ? " (and inverse)" : ""
-    print(io, "Discrete Laplacian$inverse on a $nodedims grid")
+    print(io, "Discrete Laplacian$inverse on a $nodedims grid with spacing $DX")
 end
 
 A_mul_B!(out::Nodes{T,NX,NY}, L::Laplacian, s::Nodes{T,NX,NY}) where {T<:CellType,NX,NY} = laplacian!(out, s)
 L::Laplacian * s::Nodes{T,NX,NY} where {T <: CellType, NX,NY} = laplacian(s)
 
 function A_ldiv_B!(out::Nodes{T,NX, NY},
-                   L::Laplacian{MX, MY, true},
-                   s::Nodes{T, NX, NY}) where {T <: CellType, NX, NY, MX, MY}
+                   L::Laplacian{MX, MY, true, DX},
+                   s::Nodes{T, NX, NY}) where {T <: CellType, NX, NY, MX, MY, DX}
 
     A_mul_B!(out.data, get(L.conv), s.data)
+
+    # Adjust the behavior at large distance to match continuous kernel
+    out.data .-= (sum(s.data)/2π)*(γ+log(8)/2-log(DX))
     out
 end
 
