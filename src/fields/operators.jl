@@ -125,23 +125,21 @@ of the continuous analog at large distances; this is set to 1.0 by default.
 # Example
 
 ```jldoctest
-julia> w = Nodes(Dual,(7,7));
+julia> w = Nodes(Dual,(5,5));
 
-julia> w[4,4] = 1.0;
+julia> w[3,3] = 1.0;
 
-julia> L = Laplacian(7,7;with_inverse=true)
-Discrete Laplacian (and inverse) on a (nx = 7, ny = 7) grid
+julia> L = Laplacian(5,5;with_inverse=true)
+Discrete Laplacian (and inverse) on a (nx = 5, ny = 5) grid with spacing 1.0
 
 julia> s = L\\w
-Whirl.Fields.Nodes{Whirl.Fields.Dual,7,7} data
+Whirl.Fields.Nodes{Whirl.Fields.Dual,5,5} data
 Printing in grid orientation (lower left is (1,1)):
- 0.488075  0.462207  0.440376   0.430281     0.440376  0.462207  0.488075
- 0.462207  0.424413  0.38662    0.36338      0.38662   0.424413  0.462207
- 0.440376  0.38662   0.31831    0.25         0.31831   0.38662   0.440376
- 0.430281  0.36338   0.25      -1.26132e-16  0.25      0.36338   0.430281
- 0.440376  0.38662   0.31831    0.25         0.31831   0.38662   0.440376
- 0.462207  0.424413  0.38662    0.36338      0.38662   0.424413  0.462207
- 0.488075  0.462207  0.440376   0.430281     0.440376  0.462207  0.488075
+ 0.16707    0.129276     0.106037     0.129276    0.16707
+ 0.129276   0.0609665   -0.00734343   0.0609665   0.129276
+ 0.106037  -0.00734343  -0.257343    -0.00734343  0.106037
+ 0.129276   0.0609665   -0.00734343   0.0609665   0.129276
+ 0.16707    0.129276     0.106037     0.129276    0.16707
 
 julia> L*s ≈ w
 true
