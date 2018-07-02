@@ -127,7 +127,7 @@ laplacian(w)
 As with the other operators, we can also construct a shorthand of the discrete
 Laplacian operator,
 ```@repl create
-L = Laplacian(size(w))
+L = plan_laplacian(size(w))
 L*w
 ```
 
@@ -140,7 +140,7 @@ for $s$, for given data $w$. We achieve this in `whirl` with the *lattice Green'
 function*. To outfit the operator with its inverse, we simply set the optional
 flag:
 ```@repl create
-L = Laplacian(size(w),with_inverse=true)
+L = plan_laplacian(size(w),with_inverse=true)
 ```
 
 Then, the Poisson system is solved with the backslash (`\`),
@@ -173,7 +173,7 @@ the solution on it
 ```@repl create
 w = Nodes(Dual,(50,10));
 w[20,5] = 1.0
-L = Laplacian(w,with_inverse=true)
+L = plan_laplacian(w,with_inverse=true)
 plot(L\w)
 savefig("Linvw.svg"); nothing # hide
 ```
@@ -199,9 +199,9 @@ easiest way to understand the role of $E(t)$ is to consider its behavior when $f
 is zero and $u_0$ contains a field of zeros except for a single $1$ entry at one
 cell. Let's set up this initial data:
 ```@repl create
-w = Nodes(Dual,(100,100));
-w[40,50] = 1.0
-plot(w)
+u0 = Nodes(Dual,(100,100));
+u0[40,50] = 1.0
+plot(u0)
 savefig("w1.svg"); nothing # hide
 ```
 ![](w1.svg)
@@ -210,8 +210,8 @@ Then, $E(t)u_0$ diffuses this initial unit perturbation in each direction. Here,
 with $t = 5$:
 
 ```@repl create
-E = IntFact(5,w)
-plot(E*w)
+E = IntFact(5,u0)
+plot(E*u0)
 savefig("Ew1.svg"); nothing # hide
 ```
 ![](Ew1.svg)
@@ -260,13 +260,13 @@ q∘q
 
 Thus far, we have not had to consider the relationship between the grid's index space
 and some physical space.
-All of the operations act on the entries in the discrete fields, based only on their
+All of the operations thus far have acted on the entries in the discrete fields, based only on their
 relative indices, and not on their physical coordinates. In this section, we will
 discuss the relationship between the grid's index space and physical space, and then
 in the next section we'll discuss how we can transfer data between these spaces.
 
-Generically, we can write the relationship between the physical coordinate $x$ and
-the index $i$ of any grid point as
+Generically, we can write the relationship between the physical coordinates $x$ and $y$, and
+the indices $i$ and $j$ of any grid point as
 
 $$x(i) = (i - \Delta i - i_0)\Delta x, \quad y(j) = (j - \Delta j - j_0)\Delta x$$
 
@@ -300,7 +300,7 @@ are effectively smearing this data over some extended neighborhood; the
 opposite operation, transferring grid field data to an arbitrary point, is
  *interpolation*. In `whirl`, both operations are carried out with the *discrete
  delta function* (DDF), which is a discrete analog of the Dirac delta function. The
- DDF function generally has compact support, so that
+ DDF generally has compact support, so that
  it only interacts with a small number of grid points in the vicinity of a
  given physical location. Since each of the different field types reside at
  slightly different locations, the range of indices invoked in this interaction
@@ -329,7 +329,8 @@ with each discrete point. These arguments are used to weight the sum.
 
  Let's see the regularization and interpolation in action. We will set up a ring
  of 100 points on a circle of radius $1/4$ centered at $(1/2,1/2)$. This curve-
- type regularization will be weighted by the arclength, $ds$, associated with each 100 points.
+ type regularization will be weighted by the arclength, $ds$, associated with each
+ of the 100 points.
  On these points, we will
  set vector-valued data in which the $x$ component is uniformly equal to 1.0,
  while the $y$ component is set equal to the vertical position relative to the
@@ -426,12 +427,12 @@ savefig("regw.svg"); nothing # hide
 ```
 ![](regw.svg)
 
-For a given regularization operator, $H$, the interpolation operator, $E$, is
-the transpose of this, $H^T$. In `whirl`, this interpolation is also carried out
+For a given regularization operator, $H$, there is a companion interpolation operator,
+$E$. In `whirl`, this interpolation is also carried out
 with the same constructed operator, but with the arguments reversed: the grid field
 data are the source and the immersed points are the target. Note that interpolation
-is always a volumetric operation and the weighting is automatically built in,
-so there is no third argument. Let's interpolate our regularized field back onto the immersed points.
+is always a volumetric operation, so the weights assigned during the construction
+of the operator are not used in interpolation. Let's interpolate our regularized field back onto the immersed points.
 
 ```@repl regularize
 f2 = VectorData(X);
@@ -442,8 +443,15 @@ savefig("interpf.svg"); nothing # hide
 ```
 ![](interpf.svg)
 
-Note that $H^T$ is *not* the inverse of $H$; we don't recover the original data
-when we regularize and then interpolate.
+Note that interpolation is *not* the inverse of regularization; we don't recover the original data
+when we regularize and then interpolate. However, there is generally a way to scale the quantities on the immersed points and on the grid so that $H = E^T$. If we want to force these
+operations to be transposes of each other, we can supply the `issymmetric` flag:
+
+```@repl regularize
+H = Regularize(X,dx,issymmetric=true)
+```
+
+This flag will override any supplied weights.
 
 ## Methods
 

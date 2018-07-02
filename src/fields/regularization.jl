@@ -20,7 +20,7 @@ end
 
 """
     Regularize(x,y,dx,[ddftype=Roma],[I0=(1,1)], [weights=1.0], [filter=false],
-                       [symmetric=false])
+                       [issymmetric=false])
 
 Constructor to set up an operator for regularizing and interpolating data from/to
 points immersed in the grid to/from fields on the grid itself. The supplied
@@ -46,7 +46,7 @@ apply filtering (see Goza et al, J Comput Phys 2016) to the grid data before
 interpolating. This is generally only used in the context of preconditioning
 the solution for forces on the immersed points.
 
-If the optional Boolean parameter `symmetric` is set to `true`, then the
+If the optional Boolean parameter `issymmetric` is set to `true`, then the
 regularization and interpolation are constructed to be transposes of each other.
 Note that this option overrides any supplied weights. The default of this
 parameter is `false`.
@@ -116,10 +116,10 @@ function Regularize(x::Vector{T},y::Vector{T},dx::T;
                     I0::Tuple{Int,Int}=(1,1),
                     weights::Union{T,Vector{T}}=1.0,
                     filter::Bool = false,
-                    symmetric::Bool = false) where {T<:Real}
+                    issymmetric::Bool = false) where {T<:Real}
   n = length(x)
   @assert length(y)==n
-  if !symmetric
+  if !issymmetric
     if typeof(weights) == T
       wtvec = similar(x)
       fill!(wtvec,weights)

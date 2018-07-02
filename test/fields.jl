@@ -168,7 +168,7 @@ import Base: to_indices, uncolon, tail, _maybetail
     @test iszero(curl(grad(nodeunit)))
   end
 
-  L = Laplacian(nx,ny;with_inverse=true)
+  L = plan_laplacian(nx,ny;with_inverse=true)
 
   @testset "Laplacian of the LGF" begin
     ψ = L\cellunit
@@ -199,14 +199,19 @@ end
         s = Nodes{Dual, 30, 40}()
         s[3:end-2, 3:end-2] .= rand(26, 36)
 
-        L = Laplacian(30, 40)
+        L = plan_laplacian(30, 40)
 
         @test L*s ≈ -curl(curl(s))
 
         @test_throws MethodError (L \ s)
 
-        L = Laplacian(30, 40, with_inverse = true, fftw_flags = FFTW.PATIENT)
+        L = plan_laplacian(30, 40, with_inverse = true, fftw_flags = FFTW.PATIENT)
         @test L \ (L*s) ≈ s
+
+        L! = plan_laplacian!(30, 40, with_inverse = true, fftw_flags = FFTW.PATIENT)
+        sold = deepcopy(s)
+        L! \ (L!*s)
+        @test s ≈ sold
     end
 
     @testset "Integrating factor" begin
