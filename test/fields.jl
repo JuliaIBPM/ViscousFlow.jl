@@ -218,10 +218,16 @@ end
         s = Nodes{Dual, 30, 40}()
         s[15,15] .= 1.0
 
-        E2 = IntFact(2,s)
-        E4 = IntFact(4,s)
+        E2 = plan_intfact(2,s)
+        E4 = plan_intfact(4,s)
 
         @test E2*(E2*s) ≈ E4*s
+
+        E! = plan_intfact!(2,s)
+        s2 = deepcopy(s)
+        E! * s
+
+        @test s ≈ E2*s2
 
     end
 

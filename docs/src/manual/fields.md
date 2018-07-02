@@ -210,7 +210,7 @@ Then, $E(t)u_0$ diffuses this initial unit perturbation in each direction. Here,
 with $t = 5$:
 
 ```@repl create
-E = IntFact(5,u0)
+E = plan_intfact(5,u0)
 plot(E*u0)
 savefig("Ew1.svg"); nothing # hide
 ```

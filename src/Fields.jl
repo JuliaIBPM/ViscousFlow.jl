@@ -24,7 +24,7 @@ export Primal, Dual, Edges, Nodes, EdgeGradient,
        curl, curl!, Curl, divergence, divergence!, Divergence,
        grad, grad!, Grad,
        laplacian, laplacian!, plan_laplacian, plan_laplacian!,
-       IntFact,Identity,
+       plan_intfact,plan_intfact!,Identity,
        product, product!, ∘,
        DDF, Regularize,
        CircularConvolution

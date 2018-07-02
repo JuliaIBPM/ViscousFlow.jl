@@ -203,8 +203,8 @@ end
 
 
 function A_ldiv_B!(out::Nodes{T,NX, NY},
-                   L::Laplacian{MX, MY, true, DX},
-                   s::Nodes{T, NX, NY}) where {T <: CellType, NX, NY, MX, MY, DX}
+                   L::Laplacian{MX, MY, true, DX, inplace},
+                   s::Nodes{T, NX, NY}) where {T <: CellType, NX, NY, MX, MY, DX, inplace}
 
     A_mul_B!(out.data, get(L.conv), s.data)
 
@@ -221,16 +221,15 @@ end
 
 # Integrating factor
 
-struct IntFact{NX, NY, a}
-    conv::Nullable{CircularConvolution{NX, NY}}
-end
-
 """
-    IntFact(a::Real,dims::Tuple,[fftw_flags=FFTW.ESTIMATE])
+    plan_intfact(a::Real,dims::Tuple,[fftw_flags=FFTW.ESTIMATE])
 
 Constructor to set up an operator for evaluating the integrating factor with
 real-valued parameter `a`. This can then be applied with the `*` operation on
 data of the appropriate size.
+
+The `dims` argument can be replaced with `w::Nodes` to specify the size of the
+domain.
 
 # Example
 
@@ -239,7 +238,7 @@ julia> w = Nodes(Dual,(6,6));
 
 julia> w[4,4] = 1.0;
 
-julia> E = IntFact(1.0,(6,6))
+julia> E = plan_intfact(1.0,(6,6))
 Integrating factor with parameter 1.0 on a (nx = 6, ny = 6) grid
 
 julia> E*w
@@ -253,47 +252,65 @@ Printing in grid orientation (lower left is (1,1)):
  0.000828935  0.00268447  0.00619787  0.00888233  0.00619787  0.00268447
 ```
 """
-function IntFact(a::Real,dims::Tuple{Int,Int};fftw_flags = FFTW.ESTIMATE)
-    NX, NY = dims
-
-    if a == 0
-      return Identity()
-    end
-
-    #qtab = [intfact(x, y, a) for x in 0:NX-1, y in 0:NY-1]
-    Nmax = 0
-    while intfact(Nmax,0,a) > eps(Float64)
-      Nmax += 1
-    end
-    qtab = [max(x,y) <= Nmax ? intfact(x, y, a) : 0.0 for x in 0:NX-1, y in 0:NY-1]
-    IntFact{NX, NY, a}(Nullable(CircularConvolution(qtab, fftw_flags)))
-end
+function plan_intfact end
 
 """
-    IntFact(a::Real,w::Nodes,[fftw_flags=FFTW.ESTIMATE])
+    plan_intfact!(a::Real,dims::Tuple,[fftw_flags=FFTW.ESTIMATE])
 
-Construct the integrating factor operator with size appropriate for nodal data `w`.
+Same as [`plan_intfact`](@ref), but operates in-place on data.
 """
-function IntFact(a::Real,nodes::Nodes{T,NX,NY}; fftw_flags = FFTW.ESTIMATE) where {T<:CellType,NX,NY}
-    IntFact(a,node_inds(T,(NX,NY)), fftw_flags = fftw_flags)
+function plan_intfact! end
+
+
+struct IntFact{NX, NY, a, inplace}
+    conv::Nullable{CircularConvolution{NX, NY}}
 end
 
-function Base.show(io::IO, E::IntFact{NX, NY, a}) where {NX, NY, a}
+for (lf,inplace) in ((:plan_intfact,false),
+                     (:plan_intfact!,true))
+
+    @eval function $lf(a::Real,dims::Tuple{Int,Int};fftw_flags = FFTW.ESTIMATE)
+        NX, NY = dims
+
+        if a == 0
+          return Identity()
+        end
+
+        #qtab = [intfact(x, y, a) for x in 0:NX-1, y in 0:NY-1]
+        Nmax = 0
+        while intfact(Nmax,0,a) > eps(Float64)
+          Nmax += 1
+        end
+        qtab = [max(x,y) <= Nmax ? intfact(x, y, a) : 0.0 for x in 0:NX-1, y in 0:NY-1]
+        IntFact{NX, NY, a, $inplace}(Nullable(CircularConvolution(qtab, fftw_flags)))
+      end
+
+      @eval $lf(a::Real,nodes::Nodes{T,NX,NY}; fftw_flags = FFTW.ESTIMATE) where {T<:CellType,NX,NY} =
+          $lf(a,node_inds(T,(NX,NY)), fftw_flags = fftw_flags)
+
+
+end
+
+
+function Base.show(io::IO, E::IntFact{NX, NY, a, inplace}) where {NX, NY, a, inplace}
     nodedims = "(nx = $NX, ny = $NY)"
-    print(io, "Integrating factor with parameter $a on a $nodedims grid")
+    isinplace = inplace ? "In-place integrating factor" : "Integrating factor"
+    print(io, "$isinplace with parameter $a on a $nodedims grid")
 end
 
 function A_mul_B!(out::Nodes{T,NX, NY},
-                   E::IntFact{MX, MY, a},
-                   s::Nodes{T, NX, NY}) where {T <: CellType, NX, NY, MX, MY, a}
+                   E::IntFact{MX, MY, a,inplace},
+                   s::Nodes{T, NX, NY}) where {T <: CellType, NX, NY, MX, MY, a, inplace}
 
     A_mul_B!(out.data, get(E.conv), s.data)
     out
 end
 
-function (*)(E::IntFact,s::Nodes{T,NX,NY}) where {T <: CellType, NX,NY}
+*(E::IntFact{MX,MY,a,false},s::Nodes{T,NX,NY}) where {MX,MY,a,T <: CellType, NX,NY} =
   A_mul_B!(Nodes(T,s), E, s)
-end
+
+*(E::IntFact{MX,MY,a,true},s::Nodes{T,NX,NY}) where {MX,MY,a,T <: CellType, NX,NY} =
+    A_mul_B!(s, E, deepcopy(s))
 
 # Identity
 
