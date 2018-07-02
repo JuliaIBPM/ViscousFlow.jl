@@ -145,246 +145,98 @@ function Base.show(io::IO, H::Regularize{N,DV,S}) where {N,DV,S}
     println(io, "  $N points in grid with cell area $(sprint(showcompact,DV))")
 end
 
-# These regularization operations should be easy to macro-generate
+# Regularization and interpolation operators
+for (ctype,dunx,duny,dvnx,dvny,ux,uy,vx,vy) = (
+      (:(Edges{Primal,NX,NY}),0,1,1,0,0.5,0.0,0.0,0.5),
+      (:(Edges{Dual,NX,NY}),  1,0,0,1,0.0,0.5,0.5,0.0),
+      (:(Tuple{Nodes{Dual,NX,NY},Nodes{Primal,NX,NY}}),0,0,1,1,0.5,0.5,0.0,0.0),
+      (:(Tuple{Nodes{Primal,NX,NY},Nodes{Dual,NX,NY}}),1,1,0,0,0.0,0.0,0.5,0.5))
 
-function (H::Regularize{N,DV})(target::Edges{Primal,NX,NY},source::VectorData{N}) where {N,DV,NX,NY}
-  @inbounds for y in 1:NY-1, x in 1:NX
-    H.buffer .= H.ddf.(x-0.5-H.x,y-H.y)
-    target.u[x,y] = dot(H.buffer,source.u.*H.wgt)/DV
+# Regularization
+  @eval function (H::Regularize{N,DV})(target::$ctype,source::VectorData{N}) where {N,DV,NX,NY}
+        @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
+          H.buffer .= H.ddf.(x-$ux-H.x,y-$uy-H.y)
+          target.u[x,y] = dot(H.buffer,source.u.*H.wgt)/DV
+        end
+        @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
+          H.buffer .= H.ddf.(x-$vx-H.x,y-$vy-H.y)
+          target.v[x,y] = dot(H.buffer,source.v.*H.wgt)/DV
+        end
+        target
   end
-  @inbounds for y in 1:NY, x in 1:NX-1
-    H.buffer .= H.ddf.(x-H.x,y-0.5-H.y)
-    target.v[x,y] = dot(H.buffer,source.v.*H.wgt)/DV
-  end
-  target
-end
 
-function (H::Regularize{N,DV})(target::Edges{Dual,NX,NY},source::VectorData{N}) where {N,DV,NX,NY}
-  @inbounds for y in 1:NY, x in 1:NX-1
-    H.buffer .= H.ddf.(x-H.x,y-0.5-H.y)
-    target.u[x,y] = dot(H.buffer,source.u.*H.wgt)/DV
+# Interpolation
+  @eval function (H::Regularize{N,DV,false})(target::VectorData{N},
+                                       source::$ctype) where {N,DV,NX,NY}
+    target.u .= target.v .= zeros(Float64,N)
+    @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
+      H.buffer .= H.ddf.(x-$ux-H.x,y-$uy-H.y)
+      target.u .+= H.buffer*source.u[x,y]
+    end
+    @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
+      H.buffer .= H.ddf.(x-$vx-H.x,y-$vy-H.y)
+      target.v .+= H.buffer*source.v[x,y]
+    end
+    target
   end
-  @inbounds for y in 1:NY-1, x in 1:NX
-    H.buffer .= H.ddf.(x-0.5-H.x,y-H.y)
-    target.v[x,y] = dot(H.buffer,source.v.*H.wgt)/DV
-  end
-  target
-end
-
-function (H::Regularize{N,DV})(target::Tuple{Nodes{Dual,NX,NY},Nodes{Primal,NX,NY}},source::VectorData{N}) where {N,DV,NX,NY}
-  @inbounds for y in 1:NY, x in 1:NX
-    H.buffer .= H.ddf.(x-0.5-H.x,y-0.5-H.y)
-    target[1][x,y] = dot(H.buffer,source.u.*H.wgt)/DV
-  end
-  @inbounds for y in 1:NY-1, x in 1:NX-1
-    H.buffer .= H.ddf.(x-H.x,y-H.y)
-    target[2][x,y] = dot(H.buffer,source.v.*H.wgt)/DV
-  end
-  target
-end
-
-function (H::Regularize{N,DV})(target::Tuple{Nodes{Primal,NX,NY},Nodes{Dual,NX,NY}},source::VectorData{N}) where {N,DV,NX,NY}
-  @inbounds for y in 1:NY-1, x in 1:NX-1
-    H.buffer .= H.ddf.(x-H.x,y-H.y)
-    target[1][x,y] = dot(H.buffer,source.u.*H.wgt)/DV
-  end
-  @inbounds for y in 1:NY, x in 1:NX
-    H.buffer .= H.ddf.(x-0.5-H.x,y-0.5-H.y)
-    target[2][x,y] = dot(H.buffer,source.v.*H.wgt)/DV
-  end
-  target
-end
-
-function (H::Regularize{N,DV})(target::Nodes{Primal,NX,NY},source::ScalarData{N}) where {N,DV,NX,NY}
-  @inbounds for y in 1:NY-1, x in 1:NX-1
-    H.buffer .= H.ddf.(x-H.x,y-H.y)
-    target[x,y] = dot(H.buffer,source.data.*H.wgt)/DV
-  end
-  target
-end
-
-function (H::Regularize{N,DV})(target::Nodes{Dual,NX,NY},source::ScalarData{N}) where {N,DV,NX,NY}
-  @inbounds for y in 1:NY, x in 1:NX
-    H.buffer .= H.ddf.(x-0.5-H.x,y-0.5-H.y)
-    target[x,y] = dot(H.buffer,source.data.*H.wgt)/DV
-  end
-  target
-end
-
-# Interpolation functions
-
-function (H::Regularize{N,DV,false})(target::VectorData{N},
-                                     source::Edges{Primal,NX,NY}) where {N,DV,NX,NY}
-  target.u .= target.v .= zeros(Float64,N)
-  @inbounds for y in 1:NY-1, x in 1:NX
-    H.buffer .= H.ddf.(x-0.5-H.x,y-H.y)
-    target.u .+= H.buffer*source.u[x,y]
-  end
-  @inbounds for y in 1:NY, x in 1:NX-1
-    H.buffer .= H.ddf.(x-H.x,y-0.5-H.y)
-    target.v .+= H.buffer*source.v[x,y]
-  end
-  target
-end
-
-function (H::Regularize{N,DV,false})(target::VectorData{N},
-                                     source::Edges{Dual,NX,NY}) where {N,DV,NX,NY}
-  target.u .= target.v .= zeros(Float64,N)
-  @inbounds for y in 1:NY, x in 1:NX-1
-    H.buffer .= H.ddf.(x-H.x,y-0.5-H.y)
-    target.u .+= H.buffer*source.u[x,y]
-  end
-  @inbounds for y in 1:NY-1, x in 1:NX
-    H.buffer .= H.ddf.(x-0.5-H.x,y-H.y)
-    target.v .+= H.buffer*source.v[x,y]
-  end
-  target
-end
-
-function (H::Regularize{N,DV,false})(target::VectorData{N},
-                                     source::Tuple{Nodes{Dual,NX,NY},Nodes{Primal,NX,NY}}) where {N,DV,NX,NY}
-  target.u .= target.v .= zeros(Float64,N)
-  @inbounds for y in 1:NY, x in 1:NX
-    H.buffer .= H.ddf.(x-0.5-H.x,y-0.5-H.y)
-    target.u .+= H.buffer*source[1][x,y]
-  end
-  @inbounds for y in 1:NY-1, x in 1:NX-1
-    H.buffer .= H.ddf.(x-H.x,y-H.y)
-    target.v .+= H.buffer*source[2][x,y]
-  end
-  target
-end
-
-function (H::Regularize{N,DV,false})(target::VectorData{N},
-                                     source::Tuple{Nodes{Primal,NX,NY},Nodes{Dual,NX,NY}}) where {N,DV,NX,NY}
-  target.u .= target.v .= zeros(Float64,N)
-  @inbounds for y in 1:NY-1, x in 1:NX-1
-    H.buffer .= H.ddf.(x-H.x,y-H.y)
-    target.u .+= H.buffer*source[1][x,y]
-  end
-  @inbounds for y in 1:NY, x in 1:NX
-    H.buffer .= H.ddf.(x-0.5-H.x,y-0.5-H.y)
-    target.v .+= H.buffer*source[2][x,y]
-  end
-  target
-end
-
-
-function (H::Regularize{N,DV,false})(target::ScalarData{N},
-                                     source::Nodes{Primal,NX,NY}) where {N,DV,NX,NY}
-  target .= zeros(Float64,N)
-  @inbounds for y in 1:NY-1, x in 1:NX-1
-    H.buffer .= H.ddf.(x-H.x,y-H.y)
-    target .+= H.buffer*source[x,y]
-  end
-  target
-end
-
-function (H::Regularize{N,DV,false})(target::ScalarData{N},
-                                     source::Nodes{Dual,NX,NY}) where {N,DV,NX,NY}
-  target .= zeros(Float64,N)
-  @inbounds for y in 1:NY, x in 1:NX
-    H.buffer .= H.ddf.(x-0.5-H.x,y-0.5-H.y)
-    target .+= H.buffer*source[x,y]
-  end
-  target
-end
 
 # Interpolation with filtering
+  @eval function (H::Regularize{N,DV,true})(target::VectorData{N},
+                                      source::$ctype) where {N,DV,NX,NY}
+    target.u .= target.v .= zeros(Float64,N)
+    @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
+      H.buffer .= H.ddf.(x-$ux-H.x,y-$uy-H.y)
+      w = dot(H.buffer,H.wgt)/DV
+      w = w ≢ 0.0 ? source.u[x,y]/w : 0.0
+      target.u .+= H.buffer*w
+    end
+    @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
+      H.buffer .= H.ddf.(x-$vx-H.x,y-$vy-H.y)
+      w = dot(H.buffer,H.wgt)/DV
+      w = w ≢ 0.0 ? source.v[x,y]/w : 0.0
+      target.v .+= H.buffer*w
+    end
+    target
+  end
 
-function (H::Regularize{N,DV,true})(target::VectorData{N},
-                                    source::Edges{Primal,NX,NY}) where {N,DV,NX,NY}
-  target.u .= target.v .= zeros(Float64,N)
-  @inbounds for y in 1:NY-1, x in 1:NX
-    H.buffer .= H.ddf.(x-0.5-H.x,y-H.y)
-    w = dot(H.buffer,H.wgt)/DV
-    w = w ≢ 0.0 ? source.u[x,y]/w : 0.0
-    target.u .+= H.buffer*w
-  end
-  @inbounds for y in 1:NY, x in 1:NX-1
-    H.buffer .= H.ddf.(x-H.x,y-0.5-H.y)
-    w = dot(H.buffer,H.wgt)/DV
-    w = w ≢ 0.0 ? source.v[x,y]/w : 0.0
-    target.v .+= H.buffer*w
-  end
-  target
 end
 
-function (H::Regularize{N,DV,true})(target::VectorData{N},
-                                    source::Edges{Dual,NX,NY}) where {N,DV,NX,NY}
-  target.u .= target.v .= zeros(Float64,N)
-  @inbounds for y in 1:NY, x in 1:NX-1
-    H.buffer .= H.ddf.(x-H.x,y-0.5-H.y)
-    w = dot(H.buffer,H.wgt)/DV
-    w = w ≢ 0.0 ? source.u[x,y]/w : 0.0
-    target.u .+= H.buffer*w
-  end
-  @inbounds for y in 1:NY-1, x in 1:NX
-    H.buffer .= H.ddf.(x-0.5-H.x,y-H.y)
-    w = dot(H.buffer,H.wgt)/DV
-    w = w ≢ 0.0 ? source.v[x,y]/w : 0.0
-    target.v .+= H.buffer*w
-  end
-  target
-end
+# Nodal type
+for (ctype,dnx,dny,dx,dy) = (
+      (:(Nodes{Primal,NX,NY}),1,1,0.0,0.0),
+      (:(Nodes{Dual,NX,NY}),  0,0,0.5,0.5))
 
-function (H::Regularize{N,DV,true})(target::VectorData{N},
-                                     source::Tuple{Nodes{Dual,NX,NY},Nodes{Primal,NX,NY}}) where {N,DV,NX,NY}
-  target.u .= target.v .= zeros(Float64,N)
-  @inbounds for y in 1:NY, x in 1:NX
-    H.buffer .= H.ddf.(x-0.5-H.x,y-0.5-H.y)
-    w = dot(H.buffer,H.wgt)/DV
-    w = w ≢ 0.0 ? source[1][x,y]/w : 0.0
-    target.u .+= H.buffer*w
+# Regularization
+  @eval function (H::Regularize{N,DV})(target::$ctype,source::ScalarData{N}) where {N,DV,NX,NY}
+    @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
+      H.buffer .= H.ddf.(x-$dx-H.x,y-$dy-H.y)
+      target[x,y] = dot(H.buffer,source.data.*H.wgt)/DV
+    end
+    target
   end
-  @inbounds for y in 1:NY-1, x in 1:NX-1
-    H.buffer .= H.ddf.(x-H.x,y-H.y)
-    w = dot(H.buffer,H.wgt)/DV
-    w = w ≢ 0.0 ? source[2][x,y]/w : 0.0
-    target.v .+= H.buffer*w
-  end
-  target
-end
 
-function (H::Regularize{N,DV,true})(target::VectorData{N},
-                                     source::Tuple{Nodes{Primal,NX,NY},Nodes{Dual,NX,NY}}) where {N,DV,NX,NY}
-  target.u .= target.v .= zeros(Float64,N)
-  @inbounds for y in 1:NY-1, x in 1:NX-1
-    H.buffer .= H.ddf.(x-H.x,y-H.y)
-    w = dot(H.buffer,H.wgt)/DV
-    w = w ≢ 0.0 ? source[1][x,y]/w : 0.0
-    target.u .+= H.buffer*w
+# Interpolation
+  @eval function (H::Regularize{N,DV,false})(target::ScalarData{N},
+                                       source::$ctype) where {N,DV,NX,NY}
+    target .= zeros(Float64,N)
+    @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
+      H.buffer .= H.ddf.(x-$dx-H.x,y-$dy-H.y)
+      target .+= H.buffer*source[x,y]
+    end
+    target
   end
-  @inbounds for y in 1:NY, x in 1:NX
-    H.buffer .= H.ddf.(x-0.5-H.x,y-0.5-H.y)
-    w = dot(H.buffer,H.wgt)/DV
-    w = w ≢ 0.0 ? source[2][x,y]/w : 0.0
-    target.v .+= H.buffer*w
-  end
-  target
-end
 
-
-function (H::Regularize{N,DV,true})(target::ScalarData{N},
-                                     source::Nodes{Primal,NX,NY}) where {N,DV,NX,NY}
-  target .= zeros(Float64,N)
-  @inbounds for y in 1:NY-1, x in 1:NX-1
-    H.buffer .= H.ddf.(x-H.x,y-H.y)
-    w = dot(H.buffer,H.wgt)/DV
-    w = w ≢ 0.0 ? source[x,y]/w : 0.0
-    target .+= H.buffer*w
+# Interpolation with filtering
+  @eval function (H::Regularize{N,DV,true})(target::ScalarData{N},
+                                       source::$ctype) where {N,DV,NX,NY}
+    target .= zeros(Float64,N)
+    @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
+      H.buffer .= H.ddf.(x-$dx-H.x,y-$dy-H.y)
+      w = dot(H.buffer,H.wgt)/DV
+      w = w ≢ 0.0 ? source[x,y]/w : 0.0
+      target .+= H.buffer*w
+    end
+    target
   end
-  target
-end
 
-function (H::Regularize{N,DV,true})(target::ScalarData{N},
-                                    source::Nodes{Dual,NX,NY}) where {N,DV,NX,NY}
-  target .= zeros(Float64,N)
-  @inbounds for y in 1:NY, x in 1:NX
-    H.buffer .= H.ddf.(x-0.5-H.x,y-0.5-H.y)
-    w = dot(H.buffer,H.wgt)/DV
-    w = w ≢ 0.0 ? source[x,y]/w : 0.0
-    target .+= H.buffer*w
-  end
-  target
 end
