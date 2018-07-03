@@ -46,7 +46,9 @@ end
 """
     VectorData
 
-A wrapper for a one-dimensional array of two-component vector-valued data.
+A wrapper for a one-dimensional array of two-component vector-valued data. The
+resulting wrapper can be indexed as though the first component and second
+component are stacked on top of each other.
 
 # Constructors
 - `VectorData(u,v)` constructs a wrapper for the vector components data `u` and `v`.
@@ -75,9 +77,24 @@ julia> f
  0.0  0.0
  0.0  0.0
  0.0  0.0
+
+julia> f[7] = 1; f[18] = 0.2;
+
+julia> f
+10 points of vector-valued data
+ 0.0  1.0
+ 0.0  2.0
+ 0.0  3.0
+ 0.0  4.0
+ 0.0  5.0
+ 0.0  0.0
+ 1.0  0.0
+ 0.0  0.2
+ 0.0  0.0
+ 0.0  0.0
 ```
 """
-struct VectorData{N}
+struct VectorData{N} <: AbstractVector{Float64}
     u::Vector{Float64}
     v::Vector{Float64}
 end
@@ -100,17 +117,11 @@ VectorData(x::VectorData) = VectorData(zeros(x.u),zeros(x.v))
 VectorData(n::Int) = VectorData(zeros(Float64,n),zeros(Float64,n))
 VectorData(x::ScalarData) = VectorData(zeros(x.data),zeros(x.data))
 
-#=
-Base.parent(A::VectorData) = A.u, A.v
-Base.size(A::VectorData) = size(A.u)
-Base.length(A::VectorData) = length(A.u)
-Base.indices(A::VectorData) = indices(A.u)
-@propagate_inbounds Base.getindex(A::VectorData, i::Int) = [A.u[i],A.v[i]]
-@propagate_inbounds function Base.setindex!(A::VectorData, v::AbstractVector, I::Int)
-  A.u[i] = convert(Float64, v[1])
-  A.v[i] = convert(Float64, v[2])
-end
-=#
+Base.size(A::VectorData) = size(A.u).+size(A.v)
+@propagate_inbounds Base.getindex(A::VectorData{N},i::Int) where {N} =
+   i > N ? A.v[i-N] : A.u[i]
+@propagate_inbounds Base.setindex!(A::VectorData{N}, v, i::Int) where {N} =
+   i > N ? A.v[i-N] = convert(Float64, v) : A.u[i] = convert(Float64, v)
 
 
 function Base.show(io::IO, pts::ScalarData{N}) where {N}
