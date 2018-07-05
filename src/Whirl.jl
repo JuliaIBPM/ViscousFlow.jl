@@ -10,11 +10,18 @@ using Reexport
 #== Imports/Exports ==#
 
 include("Utils.jl")
+@reexport using .Utils
+
 include("Fields.jl")
-#using .Utils
 
 @reexport using .Fields
 
+include("SaddlePointSystems.jl")
+
+@reexport using .SaddlePointSystems
+
+include("TimeMarching.jl")
+@reexport using .TimeMarching
 
 #== Type Definitions ==#
 
@@ -56,8 +63,7 @@ import .Fields
 include("IntFactSystems.jl")
 import .IntFactSystems
 
-include("TimeMarching.jl")
-using .TimeMarching
+
 
 include("Process.jl")
 using .Process

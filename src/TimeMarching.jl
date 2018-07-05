@@ -1,20 +1,167 @@
 module TimeMarching
 
-import Whirl
 import Whirl:@get
 
-struct RKParams
-    nstage::Int
+export System, Constrained, Unconstrained, IFHERK
+
+"Abstract type for a system of ODEs"
+abstract type System{C} end
+
+const Constrained = true
+const Unconstrained = false
+
+#function A⁻¹ end
+#function r₁ end
+
+struct RKParams{N}
   c::Vector{Float64}
   a::Matrix{Float64}
 end
 
-using ..IntFactSystems
+using ..SaddlePointSystems
 
-const RK31 = RKParams(3, [0.5, 1.0, 1.0],
+const RK31 = RKParams{3}([0.5, 1.0, 1.0],
                       [1/2        0        0
                        √3/3 (3-√3)/3        0
                        (3+√3)/6    -√3/3 (3+√3)/6])
+
+struct IFHERK{NS,FH,FB1,FB2,FR1,FR2,TU,TF}
+
+  # time step size
+  Δt :: Float64
+
+  rk :: RKParams
+
+  # Integrating factor
+  H :: Vector{FH}
+
+  B₁ᵀ :: FB1  # operates on TF and returns TU
+  B₂ :: FB2   # operates on TU and returns TF
+  r₁ :: FR1  # function of u and t, returns TU
+  r₂ :: FR2  # function of t, returns TF
+
+  S :: Vector{SaddleSystem}  # -B₂HB₁ᵀ
+
+  # scratch space
+  qᵢ :: TU
+  w :: Vector{TU}
+
+  # flags
+  _issymmetric :: Bool
+
+end
+
+"""
+    IFHERK(u,f,Δt,plan_intfact,B₁ᵀ,B₂,r₁,r₂;[issymmetric=false],[rk::RKParams=RK31])
+
+Construct an operator to advance a system of the form
+
+du/dt - Lu = -B₁ᵀf + r₁(u,t)
+B₂u = r₂(t)
+
+The resulting operator will advance the system `(u,f)` by one time step, `Δt`.
+
+# Arguments
+
+- `u` : example of state vector data
+- `f` : example of constraint force vector data
+- `Δt` : time-step size
+- `plan_intfact` : constructor to set up integrating factor operator for `L` that
+              will act on type `u` and return same type as `u`
+- `B₁ᵀ` : operator acting on type `f` and returning type `u`
+- `B₂` : operator acting on type `u` and returning type `f`
+- `r₁` : operator acting on type `u` and `t` and returning `u`
+- `r₂` : operator acting on `t` and returning type `f`
+"""
+function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
+                          plan_intfact::FI,B₁ᵀ::FB1,B₂::FB2,r₁::FR1,r₂::FR2;
+                          issymmetric::Bool=false,
+                          rk::RKParams{NS}=RK31) where {TU,TF,FI,FB1,FB2,FR1,FR2,NS}
+
+    # scratch space
+    qᵢ = deepcopy(u)
+    w = [deepcopy(u) for i = 1:NS-1]
+
+    dclist = diff([0;rk.c])
+
+    # construct an array of mutating functions for the integrating factor. Each
+    # one takes as arguments an output and an input of the same type `u`
+    Hlist = [(v,u)->A_mul_B!(v,plan_intfact(dc*Δt,u),u) for dc in unique(dclist)]
+
+    Slist = [SaddleSystem(u,f,H,B₁ᵀ,B₂,issymmetric=issymmetric,isposdef=true) for H in Hlist]
+
+    H = [Hlist[i] for i in indexin(dclist,unique(dclist))]
+    S = [Slist[i] for i in indexin(dclist,unique(dclist))]
+
+    htype,_ = typeof(H).parameters
+
+    IFHERK{NS,htype,FB1,FB2,FR1,FR2,TU,TF}(Δt,rk,
+                                H,B₁ᵀ,B₂,r₁,r₂,S,
+                                qᵢ,w,
+                                issymmetric)
+end
+
+function Base.show(io::IO, scheme::IFHERK{NS,FH,FB1,FB2,FR1,FR2,TU,TF}) where {NS,FH,FB1,FB2,FR1,FR2,TU,TF}
+    println(io, "Order-$NS IF-HERK system with")
+    println(io, "   State of type $TU")
+    println(io, "   Force of type $TF")
+    println(io, "   Time step size $(scheme.Δt)")
+end
+
+# Advance the IFHERK solution by one time step
+function (scheme::IFHERK{NS,FH,FB1,FB2,FR1,FR2,TU,TF})(t::Float64,u::TU,f::TF) where {NS,FH,FB1,FB2,FR1,FR2,TU,TF}
+  @get scheme (Δt,rk,H,S,B₁ᵀ,B₂,r₁,r₂,qᵢ,w)
+
+  # H[i] corresponds to H(i,i+1) = H((cᵢ - cᵢ₋₁)Δt)
+
+  # first stage, i = 1
+  i = 1
+  tᵢ₊₁ = t + Δt*rk.c[i]
+  qᵢ .= u
+  w[i] .= Δt*rk.a[i,i]*r₁(u,tᵢ₊₁) # gᵢ
+  u .+= w[i] # r₁ = qᵢ + gᵢ
+  fbuffer .= r₂(tᵢ₊₁) # r₂
+  A_ldiv_B!((u,f),S[i],(u,fbuffer))  # solve saddle point system
+
+  # diffuse the scratch vectors
+  H[i](qᵢ,qᵢ) # qᵢ₊₁ = H(i,i+1)qᵢ
+  H[i](w[i],w[i]) # H(i,i+1)gᵢ
+
+  # stages 2 through NS-1
+  for i = 2:NS-1
+    tᵢ₊₁ = t + Δt*rk.c[i]
+    w[i-1] .= (w[i-1]-S[i-1].A⁻¹B₁ᵀf)/(Δt*rk.a[i-1,i-1]) # w(i,i-1)
+    w[i] .= Δt*rk.a[i,i]*r₁(u,tᵢ₊₁) # gᵢ
+    u .= qᵢ .+ w[i] # r₁
+    for j = 1:i-1
+      u .+= Δt*rk.a[i,j]*w[j] # r₁
+    end
+    fbuffer .= r₂(tᵢ₊₁) # r₂
+    A_ldiv_B!((u,f),S[i],(u,fbuffer)) # solve saddle point system
+
+    # diffuse the scratch vectors
+    H[i](qᵢ,qᵢ) # qᵢ₊₁ = H(i,i+1)qᵢ
+    for j = 1:i
+      H[i](w[j],w[j]) # for j = i, this sets H(i,i+1)gᵢ
+    end
+
+  end
+  i = NS
+  tᵢ₊₁ = t + Δt*rk.c[i]
+  w[i-1] .= (w[i-1]-S[i-1].A⁻¹B₁ᵀf)/(Δt*rk.a[i-1,i-1]) # w(i,i-1)
+  u .= qᵢ .+ Δt*rk.a[i,i]*r₁(u,tᵢ₊₁) # r₁
+  for j = 1:i-1
+    u .+= Δt*rk.a[i,j]*w[j] # r₁
+  end
+  fbuffer .= r₂(tᵢ₊₁) # r₂
+  A_ldiv_B!((u,f),S[i],(u,fbuffer)) # solve saddle point system
+  f ./= Δt*rk.a[NS,NS]
+
+end
+
+end
+
+#=
 
 struct Operators{TA}
 
@@ -45,7 +192,7 @@ end
 function Base.show(io::IO, p::TimeParams)
     print(io, "Time step size $(p.Δt)")
 end
-
+=#
 #=
   We seek to advance, from tⁿ to tⁿ+Δt, the solution of equations of the form
 
@@ -78,6 +225,7 @@ end
   r₁ is function that acts upon solution structure s and returns data of size s.u
   r₂ is function that acts upon time value and returns data of size s.f
 =#
+#=
 function ifherk!(s::Whirl.ConstrainedSoln{T,K},p::TimeParams,ops::ConstrainedOperators) where {T,K}
 # Advance the solution by one time step
 @get p (Δt,rk)
@@ -192,4 +340,4 @@ function ifrk!(s₊, s, Δt, rk::RKParams, sys::System{Unconstrained})
     return s₊
 end
 
-end
+=#

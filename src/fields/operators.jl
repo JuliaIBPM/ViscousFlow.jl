@@ -273,7 +273,7 @@ for (lf,inplace) in ((:plan_intfact,false),
         NX, NY = dims
 
         if a == 0
-          return Identity()
+          return IntFact{NX, NY, 0.0, $inplace}(Nullable{CircularConvolution{NX, NY}}())
         end
 
         #qtab = [intfact(x, y, a) for x in 0:NX-1, y in 0:NY-1]
@@ -299,11 +299,17 @@ function Base.show(io::IO, E::IntFact{NX, NY, a, inplace}) where {NX, NY, a, inp
 end
 
 function A_mul_B!(out::Nodes{T,NX, NY},
-                   E::IntFact{MX, MY, a,inplace},
+                   E::IntFact{MX, MY, a, inplace},
                    s::Nodes{T, NX, NY}) where {T <: CellType, NX, NY, MX, MY, a, inplace}
 
     A_mul_B!(out.data, get(E.conv), s.data)
     out
+end
+
+function A_mul_B!(out::Nodes{T,NX, NY},
+                   E::IntFact{MX, MY, 0.0, inplace},
+                   s::Nodes{T, NX, NY}) where {T <: CellType, NX, NY, MX, MY, inplace}
+    out .= deepcopy(s)
 end
 
 *(E::IntFact{MX,MY,a,false},s::Nodes{T,NX,NY}) where {MX,MY,a,T <: CellType, NX,NY} =
@@ -311,6 +317,7 @@ end
 
 *(E::IntFact{MX,MY,a,true},s::Nodes{T,NX,NY}) where {MX,MY,a,T <: CellType, NX,NY} =
     A_mul_B!(s, E, deepcopy(s))
+
 
 # Identity
 
