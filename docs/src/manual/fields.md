@@ -22,7 +22,6 @@ end
 ```@setup create
 using Whirl
 using Plots
-pyplot()
 ```
 In `whirl`, field data, such as velocity, vorticity and pressure, are stored on
 a staggered uniform grid. Such a grid is divided into *cells*, with *edges* (which,
