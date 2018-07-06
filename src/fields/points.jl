@@ -116,6 +116,9 @@ ScalarData(x::VectorData) = ScalarData(zeros(x.u))
 VectorData(x::VectorData) = VectorData(zeros(x.u),zeros(x.v))
 VectorData(n::Int) = VectorData(zeros(Float64,n),zeros(Float64,n))
 VectorData(x::ScalarData) = VectorData(zeros(x.data),zeros(x.data))
+(::Type{ScalarData{N}})() where {N} = ScalarData(N)
+(::Type{VectorData{N}})() where {N} = VectorData(N)
+
 
 Base.size(A::VectorData) = size(A.u).+size(A.v)
 @propagate_inbounds Base.getindex(A::VectorData{N},i::Int) where {N} =

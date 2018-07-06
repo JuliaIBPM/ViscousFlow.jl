@@ -40,6 +40,12 @@ function fill!(edges::Edges, s::Number)
     edges
 end
 
+Base.size(A::Edges{C,NX,NY}) where {C,NX,NY} = (length(A.u)+length(A.v),1)
+@propagate_inbounds Base.getindex(A::Edges{C,NX,NY},i::Int) where {C,NX,NY} =
+   i > length(A.u) ? A.v[i-length(A.u)] : A.u[i]
+@propagate_inbounds Base.setindex!(A::Edges{C,NX,NY}, v, i::Int) where {C,NX,NY} =
+   i > length(A.u) ? A.v[i-length(A.u)] = convert(Float64, v) : A.u[i] = convert(Float64, v)
+
 """
     shift!(v::Edges{Dual/Primal},q::Edges{Primal/Dual})
 
