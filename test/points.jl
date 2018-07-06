@@ -49,6 +49,25 @@ using Fields
 
   end
 
+  @testset "Regularize vector to dual and primal nodes" begin
+
+  f = VectorData(X)
+  f.u .= rand(n)
+  f.v .= rand(n)
+
+  w1 = Nodes(Dual,(nx,ny))
+  w2 = Nodes(Primal,(nx,ny))
+
+  H((w1,w2),f)
+  @test sum(f.u) ≈ sum(w1)*dx*dx
+  @test sum(f.v) ≈ sum(w2)*dx*dx
+
+  H((w2,w1),f)
+  @test sum(f.u) ≈ sum(w2)*dx*dx
+  @test sum(f.v) ≈ sum(w1)*dx*dx
+
+  end
+
   @testset "Regularize scalar to primal nodes" begin
 
   f = ScalarData(X)
@@ -73,6 +92,85 @@ using Fields
 
   end
 
+
+  @testset "Matrix representation" begin
+
+  f = ScalarData(X)
+  w = Nodes(Dual,(nx,ny))
+  Hmat = RegularizationMatrix(H,f,w)
+  Emat = InterpolationMatrix(H,w,f)
+
+  f .= rand(n)
+
+  w2 = Nodes(Dual,(nx,ny))
+  A_mul_B!(w,Hmat,f)
+  H(w2,f)
+  @test w ≈ w2
+
+  @test_throws MethodError A_mul_B!(f,Hmat,w)
+
+  f2 = ScalarData(f)
+  A_mul_B!(f,Emat,w)
+  H(f2,w)
+  @test f ≈ f2
+
+  w = Nodes(Primal,(nx,ny))
+  Hmat = RegularizationMatrix(H,f,w)
+  Emat = InterpolationMatrix(H,w,f)
+  
+  w2 = Nodes(Primal,(nx,ny))
+  A_mul_B!(w,Hmat,f)
+  H(w2,f)
+  @test w ≈ w2
+
+  f2 = ScalarData(f)
+  A_mul_B!(f,Emat,w)
+  H(f2,w)
+  @test f ≈ f2
+
+  f = VectorData(X)
+  f.u .= rand(n)
+  f.v .= rand(n)
+
+  p = Edges(Dual,(nx,ny))
+  Hmat = RegularizationMatrix(H,f,p)
+  Emat = InterpolationMatrix(H,p,f)
+
+  p2 = Edges(Dual,(nx,ny))
+  A_mul_B!(p,Hmat,f)
+  H(p2,f)
+  @test p.u ≈ p2.u && p.v ≈ p2.v
+
+  f2 = VectorData(f)
+  A_mul_B!(f,Emat,p)
+  H(f2,p)
+  @test f.u ≈ f2.u && f.v ≈ f2.v
+
+  p = (Nodes(Dual,(nx,ny)),Nodes(Primal,(nx,ny)))
+  p2 = deepcopy(p)
+  Hmat = RegularizationMatrix(H,f,p)
+  Emat = InterpolationMatrix(H,p,f)
+  A_mul_B!(p,Hmat,f)
+  H(p2,f)
+  @test p[1] ≈ p2[1] && p[2] ≈ p2[2]
+
+  A_mul_B!(f,Emat,p)
+  H(f2,p)
+  @test f.u ≈ f2.u && f.v ≈ f2.v
+
+  p = (Nodes(Primal,(nx,ny)),Nodes(Dual,(nx,ny)))
+  p2 = deepcopy(p)
+  Hmat = RegularizationMatrix(H,f,p)
+  Emat = InterpolationMatrix(H,p,f)
+  A_mul_B!(p,Hmat,f)
+  H(p2,f)
+  @test p[1] ≈ p2[1] && p[2] ≈ p2[2]
+
+  A_mul_B!(f,Emat,p)
+  H(f2,p)
+  @test f.u ≈ f2.u && f.v ≈ f2.v
+
+  end
 
 
 end

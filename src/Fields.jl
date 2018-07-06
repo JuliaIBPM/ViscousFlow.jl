@@ -26,7 +26,7 @@ export Primal, Dual, Edges, Nodes, EdgeGradient,
        laplacian, laplacian!, plan_laplacian, plan_laplacian!,
        plan_intfact,plan_intfact!,Identity,
        product, product!, ∘,
-       DDF, Regularize,
+       DDF, Regularize, RegularizationMatrix, InterpolationMatrix,
        CircularConvolution
 
 abstract type CellType end

@@ -3,7 +3,7 @@ include("lgf.jl")
 include("intfact.jl")
 include("ddf.jl")
 
-import Base: *, \, A_mul_B!, A_ldiv_B!
+import Base: *, \, A_mul_B!, At_mul_B!, A_ldiv_B!
 
 # laplacian
 
