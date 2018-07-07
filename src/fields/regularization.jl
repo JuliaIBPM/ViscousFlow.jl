@@ -257,7 +257,7 @@ for (ctype,dunx,duny,dvnx,dvny,ux,uy,vx,vy) = (
   end
 
   # Construct interpolation matrix
-  @eval function InterpolationMatrix(H::Regularize{N,DV,F},src::$ctype,target::$ftype) where {N,DV,F,NX,NY}
+  @eval function InterpolationMatrix(H::Regularize{N,DV,false},src::$ctype,target::$ftype) where {N,DV,NX,NY}
 
     # note that we store interpolation matrices in the same shape as regularization matrices
     #Emat = (spzeros(length(src.u),length(target.u)),spzeros(length(src.v),length(target.v)))
@@ -273,6 +273,35 @@ for (ctype,dunx,duny,dvnx,dvny,ux,uy,vx,vy) = (
       H(v,g)
       Emat[1:lenu,i]           = sparsevec(v.u)
       Emat[lenu+1:lenu+lenv,i+N] = sparsevec(v.v)
+      g.u[i] = 0.0
+      g.v[i] = 0.0
+    end
+    InterpolationMatrix{$ctype,$ftype}(Emat)
+  end
+
+  # Construct interpolation matrix
+  @eval function InterpolationMatrix(H::Regularize{N,DV,true},src::$ctype,target::$ftype) where {N,DV,NX,NY}
+
+    # note that we store interpolation matrices in the same shape as regularization matrices
+    #Emat = (spzeros(length(src.u),length(target.u)),spzeros(length(src.v),length(target.v)))
+    lenu = length(src.u)
+    lenv = length(src.v)
+    Emat = spzeros(lenu+lenv,2N)
+    g = deepcopy(target)
+    v = deepcopy(src)
+    fill!(g,1.0)
+    H(v,g)
+    wtu = sparsevec(v.u)
+    wtu.nzval .= 1./wtu.nzval
+    wtv = sparsevec(v.v)
+    wtv.nzval .= 1./wtv.nzval
+    fill!(g,0.0)
+    for i = 1:N
+      g.u[i] = DV/H.wgt[i]  # unscale for interpolation
+      g.v[i] = DV/H.wgt[i]  # unscale for interpolation
+      H(v,g)
+      Emat[1:lenu,i]             = wtu.*sparsevec(v.u)
+      Emat[lenu+1:lenu+lenv,i+N] = wtv.*sparsevec(v.v)
       g.u[i] = 0.0
       g.v[i] = 0.0
     end
@@ -374,7 +403,7 @@ for (ctype,dunx,duny,dvnx,dvny,ux,uy,vx,vy) = (
   end
 
   # Construct interpolation matrix
-  @eval function InterpolationMatrix(H::Regularize{N,DV,F},src::$ctype,target::$ftype) where {N,DV,F,NX,NY}
+  @eval function InterpolationMatrix(H::Regularize{N,DV,false},src::$ctype,target::$ftype) where {N,DV,NX,NY}
 
     # note that we store interpolation matrices in the same shape as regularization matrices
     Emat = (spzeros(length(src[1]),length(target.u)),spzeros(length(src[2]),length(target.v)))
@@ -387,6 +416,32 @@ for (ctype,dunx,duny,dvnx,dvny,ux,uy,vx,vy) = (
       H(v,g)
       Emat[1][:,i] = sparsevec(v[1])
       Emat[2][:,i] = sparsevec(v[2])
+      g.u[i] = 0.0
+      g.v[i] = 0.0
+    end
+    InterpolationMatrix{$ctype,$ftype}(Emat[1]), InterpolationMatrix{$ctype,$ftype}(Emat[2])
+  end
+
+  # Construct interpolation matrix
+  @eval function InterpolationMatrix(H::Regularize{N,DV,true},src::$ctype,target::$ftype) where {N,DV,NX,NY}
+
+    # note that we store interpolation matrices in the same shape as regularization matrices
+    Emat = (spzeros(length(src[1]),length(target.u)),spzeros(length(src[2]),length(target.v)))
+    g = deepcopy(target)
+    v = deepcopy(src)
+    fill!(g,1.0)
+    H(v,g)
+    wtu = sparsevec(v[1])
+    wtu.nzval .= 1./wtu.nzval
+    wtv = sparsevec(v[2])
+    wtv.nzval .= 1./wtv.nzval
+    fill!(g,0.0)
+    for i = 1:N
+      g.u[i] = DV/H.wgt[i]  # unscale for interpolation
+      g.v[i] = DV/H.wgt[i]  # unscale for interpolation
+      H(v,g)
+      Emat[1][:,i] = wtu.*sparsevec(v[1])
+      Emat[2][:,i] = wtv.*sparsevec(v[2])
       g.u[i] = 0.0
       g.v[i] = 0.0
     end
@@ -486,9 +541,9 @@ for (ctype,dnx,dny,dx,dy) = (
   end
 
   # Construct interpolation matrix
-  @eval function InterpolationMatrix(H::Regularize{N,DV,F},
+  @eval function InterpolationMatrix(H::Regularize{N,DV,false},
     u::$ctype,
-    f::$ftype) where {N,DV,F,NX,NY}
+    f::$ftype) where {N,DV,NX,NY}
 
     Emat = spzeros(length(u),length(f))
     g = deepcopy(f)
@@ -497,6 +552,26 @@ for (ctype,dnx,dny,dx,dy) = (
     for i = 1:N
       g[i] = DV/H.wgt[i]  # unscale for interpolation
       Emat[:,i] = sparsevec(H(v,g))
+      g[i] = 0.0
+    end
+    InterpolationMatrix{$ctype,$ftype}(Emat)
+  end
+
+  # Construct interpolation matrix
+  @eval function InterpolationMatrix(H::Regularize{N,DV,true},
+    u::$ctype,
+    f::$ftype) where {N,DV,NX,NY}
+
+    Emat = spzeros(length(u),length(f))
+    g = deepcopy(f)
+    v = deepcopy(u)
+    fill!(g,1.0)
+    wt = sparsevec(H(v,g))
+    wt.nzval .= 1./wt.nzval
+    fill!(g,0.0)
+    for i = 1:N
+      g[i] = DV/H.wgt[i]  # unscale for interpolation
+      Emat[:,i] = wt.*sparsevec(H(v,g))
       g[i] = 0.0
     end
     InterpolationMatrix{$ctype,$ftype}(Emat)
@@ -528,5 +603,5 @@ end
 (*)(Hmat::RegularizationMatrix{TU,TF},src::TF) where {TU,TF<:Union{ScalarData,VectorData}} =
         A_mul_B!(TU(),Hmat,src)
 
-(*)(Emat::InterpolationMatrix{TU,TF},src::TU) where {TU,TF<:Union{ScalarData,VectorData}} =
+(*)(Emat::InterpolationMatrix{TU,TF},src::TU) where {TU<:Union{Nodes,Edges},TF<:Union{ScalarData,VectorData}} =
                 A_mul_B!(TF(),Emat,src)

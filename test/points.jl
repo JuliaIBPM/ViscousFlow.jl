@@ -20,6 +20,8 @@ using Fields
 
   dx = 0.1
   H = Regularize(X,dx)
+  H̃ = Regularize(X,dx,filter=true)
+
 
   @testset "Regularize vector to primal edges" begin
 
@@ -114,18 +116,33 @@ using Fields
   H(f2,w)
   @test f ≈ f2
 
+  w .= rand(nx,ny)
+  Ẽmat = InterpolationMatrix(H̃,w,f)
+
+  A_mul_B!(f,Ẽmat,w)
+  H̃(f2,w)
+  @test f ≈ f2
+
   w = Nodes(Primal,(nx,ny))
   Hmat = RegularizationMatrix(H,f,w)
   Emat = InterpolationMatrix(H,w,f)
-  
+  Ẽmat = InterpolationMatrix(H̃,w,f)
+
+
   w2 = Nodes(Primal,(nx,ny))
   A_mul_B!(w,Hmat,f)
   H(w2,f)
   @test w ≈ w2
 
+  w .= rand(size(w))
   f2 = ScalarData(f)
   A_mul_B!(f,Emat,w)
   H(f2,w)
+  @test f ≈ f2
+
+  f2 = ScalarData(f)
+  A_mul_B!(f,Ẽmat,w)
+  H̃(f2,w)
   @test f ≈ f2
 
   f = VectorData(X)
@@ -135,39 +152,62 @@ using Fields
   p = Edges(Dual,(nx,ny))
   Hmat = RegularizationMatrix(H,f,p)
   Emat = InterpolationMatrix(H,p,f)
+  Ẽmat = InterpolationMatrix(H̃,p,f)
 
   p2 = Edges(Dual,(nx,ny))
   A_mul_B!(p,Hmat,f)
   H(p2,f)
   @test p.u ≈ p2.u && p.v ≈ p2.v
 
+  p.u .= rand(size(p.u))
+  p.v .= rand(size(p.v))
   f2 = VectorData(f)
   A_mul_B!(f,Emat,p)
   H(f2,p)
+  @test f.u ≈ f2.u && f.v ≈ f2.v
+
+  A_mul_B!(f,Ẽmat,p)
+  H̃(f2,p)
   @test f.u ≈ f2.u && f.v ≈ f2.v
 
   p = (Nodes(Dual,(nx,ny)),Nodes(Primal,(nx,ny)))
   p2 = deepcopy(p)
   Hmat = RegularizationMatrix(H,f,p)
   Emat = InterpolationMatrix(H,p,f)
+  Ẽmat = InterpolationMatrix(H̃,p,f)
+
   A_mul_B!(p,Hmat,f)
   H(p2,f)
   @test p[1] ≈ p2[1] && p[2] ≈ p2[2]
 
+  p[1] .= rand(size(p[1]))
+  p[2] .= rand(size(p[2]))
   A_mul_B!(f,Emat,p)
   H(f2,p)
   @test f.u ≈ f2.u && f.v ≈ f2.v
+
+  A_mul_B!(f,Ẽmat,p)
+  H̃(f2,p)
+  @test f.u ≈ f2.u && f.v ≈ f2.v
+
 
   p = (Nodes(Primal,(nx,ny)),Nodes(Dual,(nx,ny)))
   p2 = deepcopy(p)
   Hmat = RegularizationMatrix(H,f,p)
   Emat = InterpolationMatrix(H,p,f)
+  Ẽmat = InterpolationMatrix(H̃,p,f)
   A_mul_B!(p,Hmat,f)
   H(p2,f)
   @test p[1] ≈ p2[1] && p[2] ≈ p2[2]
 
+  p[1] .= rand(size(p[1]))
+  p[2] .= rand(size(p[2]))
   A_mul_B!(f,Emat,p)
   H(f2,p)
+  @test f.u ≈ f2.u && f.v ≈ f2.v
+
+  A_mul_B!(f,Ẽmat,p)
+  H̃(f2,p)
   @test f.u ≈ f2.u && f.v ≈ f2.v
 
   end
