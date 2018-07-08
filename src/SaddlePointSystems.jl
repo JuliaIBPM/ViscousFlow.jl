@@ -28,7 +28,7 @@ Construct a saddle-point system.
 
 - `u` : example of state vector data
 - `f` : example of constraint force vector data
-- `A⁻¹` : operator evaluating the inverse of `A`
+- `A⁻¹!` : operator evaluating the inverse of `A`
 - `B₁ᵀ!` : operator evaluating the influence of constraint force on system
 - `B₂!` : operator evaluating the influence of state vector on constraints
 """

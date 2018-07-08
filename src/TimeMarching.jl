@@ -2,7 +2,7 @@ module TimeMarching
 
 import Whirl:@get
 
-export System, Constrained, Unconstrained, IFHERK
+export System, Constrained, Unconstrained, IFRK, IFHERK
 
 "Abstract type for a system of ODEs"
 abstract type System{C} end
@@ -27,6 +27,123 @@ const RK31 = RKParams{3}([0.5, 1.0, 1.0],
 
 const Euler = RKParams{1}([1.0],ones(1,1))
 
+# IFRK
+
+struct IFRK{NS,FH,FR1,TU}
+
+  # time step size
+  Δt :: Float64
+
+  rk :: RKParams
+
+  # Integrating factors
+  H :: Vector{FH}
+
+  r₁ :: FR1  # function of u and t, returns TU
+
+  # scratch space
+  qᵢ :: TU
+  w :: Vector{TU}
+
+end
+
+"""
+    IFRK(u,Δt,plan_intfact,r₁;[rk::RKParams=RK31])
+
+Construct an operator to advance a system of the form
+
+du/dt - Au = r₁(u,t)
+
+The resulting operator will advance the state `u` by one time step, `Δt`.
+
+# Arguments
+
+- `u` : example of state vector data
+- `Δt` : time-step size
+- `plan_intfact` : constructor to set up integrating factor operator for `A` that
+              will act on type `u` and return same type as `u`
+- `r₁` : operator acting on type `u` and `t` and returning `u`
+"""
+function (::Type{IFRK})(u::TU,Δt::Float64,
+                          plan_intfact::FI,r₁::FR1;
+                          rk::RKParams{NS}=RK31) where {TU,FI,FR1,NS}
+
+    # scratch space
+    qᵢ = deepcopy(u)
+    w = [deepcopy(u) for i = 1:NS-1]
+
+    dclist = diff([0;rk.c])
+
+    # construct an array of mutating functions for the integrating factor. Each
+    # one takes as arguments an output and an input of the same type `u`
+    Hlist = [(v,u)->A_mul_B!(v,plan_intfact(dc*Δt,u),u) for dc in unique(dclist)]
+
+    H = [Hlist[i] for i in indexin(dclist,unique(dclist))]
+
+    htype,_ = typeof(H).parameters
+
+    IFRK{NS,htype,FR1,TU}(Δt,rk,H,r₁,qᵢ,w)
+end
+
+function Base.show(io::IO, scheme::IFRK{NS,FH,FR1,TU}) where {NS,FH,FR1,TU}
+    println(io, "Order-$NS IF-RK system with")
+    println(io, "   State of type $TU")
+    println(io, "   Time step size $(scheme.Δt)")
+end
+
+# Advance the IFRK solution by one time step
+function (scheme::IFRK{NS,FH,FR1,TU})(t::Float64,u::TU) where {NS,FH,FR1,TU}
+  @get scheme (Δt,rk,H,r₁,qᵢ,w)
+
+  # H[i] corresponds to H(i,i+1) = H((cᵢ - cᵢ₋₁)Δt)
+
+  i = 1
+  qᵢ .= u
+
+  if NS > 1
+    # first stage, i = 1
+    tᵢ₊₁ = t + Δt*rk.c[i]
+
+    w[i] .= Δt*rk.a[i,i]*r₁(u,tᵢ₊₁) # gᵢ
+
+    # diffuse the scratch vectors
+    qᵢ .= H[i](u,qᵢ) # qᵢ₊₁ = H(i,i+1)qᵢ
+    w[i] .= H[i](u,w[i]) # H(i,i+1)gᵢ
+    u .= qᵢ .+ w[i]
+
+    # stages 2 through NS-1
+    for i = 2:NS-1
+      tᵢ₊₁ = t + Δt*rk.c[i]
+      w[i-1] ./= Δt*rk.a[i-1,i-1] # w(i,i-1)
+      w[i] .= Δt*rk.a[i,i]*r₁(u,tᵢ₊₁) # gᵢ
+
+      # diffuse the scratch vectors and assemble
+      qᵢ .= H[i](u,qᵢ) # qᵢ₊₁ = H(i,i+1)qᵢ
+      for j = 1:i
+         w[j] .= H[i](u,w[j]) # for j = i, this sets H(i,i+1)gᵢ
+      end
+      u .= qᵢ .+ w[i] # r₁
+      for j = 1:i-1
+        u .+= Δt*rk.a[i,j]*w[j]
+      end
+
+    end
+    i = NS
+    w[i-1] ./= Δt*rk.a[i-1,i-1] # w(i,i-1)
+  end
+
+  # final stage (assembly)
+  tᵢ₊₁ = t + Δt*rk.c[i]
+  u .= qᵢ .+ Δt*rk.a[i,i]*r₁(u,tᵢ₊₁) # r₁
+  for j = 1:i-1
+    u .+= Δt*rk.a[i,j]*w[j] # r₁
+  end
+  u .= H[i](qᵢ,u)
+
+end
+
+# IFHERK
+
 struct IFHERK{NS,FH,FB1,FB2,FR1,FR2,TU,TF}
 
   # time step size
@@ -47,6 +164,7 @@ struct IFHERK{NS,FH,FB1,FB2,FR1,FR2,TU,TF}
 
   # scratch space
   qᵢ :: TU
+  ubuffer :: TU   # should not need this
   w :: Vector{TU}
   fbuffer :: TF
 
@@ -60,7 +178,7 @@ end
 
 Construct an operator to advance a system of the form
 
-du/dt - Lu = -B₁ᵀf + r₁(u,t)
+du/dt - Au = -B₁ᵀf + r₁(u,t)
 B₂u = r₂(t)
 
 The resulting operator will advance the system `(u,f)` by one time step, `Δt`.
@@ -70,7 +188,7 @@ The resulting operator will advance the system `(u,f)` by one time step, `Δt`.
 - `u` : example of state vector data
 - `f` : example of constraint force vector data
 - `Δt` : time-step size
-- `plan_intfact` : constructor to set up integrating factor operator for `L` that
+- `plan_intfact` : constructor to set up integrating factor operator for `A` that
               will act on type `u` and return same type as `u`
 - `B₁ᵀ` : operator acting on type `f` and returning type `u`
 - `B₂` : operator acting on type `u` and returning type `f`
@@ -84,6 +202,7 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
 
     # scratch space
     qᵢ = deepcopy(u)
+    ubuffer = deepcopy(u)
     w = [deepcopy(u) for i = 1:NS-1]
     fbuffer = deepcopy(f)
 
@@ -102,7 +221,7 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
 
     IFHERK{NS,htype,FB1,FB2,FR1,FR2,TU,TF}(Δt,rk,
                                 H,B₁ᵀ,B₂,r₁,r₂,S,
-                                qᵢ,w,fbuffer,
+                                qᵢ,ubuffer,w,fbuffer,
                                 issymmetric)
 end
 
@@ -115,11 +234,12 @@ end
 
 # Advance the IFHERK solution by one time step
 function (scheme::IFHERK{NS,FH,FB1,FB2,FR1,FR2,TU,TF})(t::Float64,u::TU,f::TF) where {NS,FH,FB1,FB2,FR1,FR2,TU,TF}
-  @get scheme (Δt,rk,H,S,B₁ᵀ,B₂,r₁,r₂,qᵢ,w,fbuffer)
+  @get scheme (Δt,rk,H,S,B₁ᵀ,B₂,r₁,r₂,qᵢ,w,fbuffer,ubuffer)
 
   # H[i] corresponds to H(i,i+1) = H((cᵢ - cᵢ₋₁)Δt)
 
   i = 1
+  ubuffer .= u
   qᵢ .= u
 
   if NS > 1
@@ -127,30 +247,30 @@ function (scheme::IFHERK{NS,FH,FB1,FB2,FR1,FR2,TU,TF})(t::Float64,u::TU,f::TF) w
     tᵢ₊₁ = t + Δt*rk.c[i]
 
     w[i] .= Δt*rk.a[i,i]*r₁(u,tᵢ₊₁) # gᵢ
-    u .+= w[i] # r₁ = qᵢ + gᵢ
+    ubuffer .+= w[i] # r₁ = qᵢ + gᵢ
     fbuffer .= r₂(tᵢ₊₁) # r₂
-    A_ldiv_B!((u,f),S[i],(u,fbuffer))  # solve saddle point system
+    A_ldiv_B!((u,f),S[i],(ubuffer,fbuffer))  # solve saddle point system
 
     # diffuse the scratch vectors
-    H[i](qᵢ,qᵢ) # qᵢ₊₁ = H(i,i+1)qᵢ
-    H[i](w[i],w[i]) # H(i,i+1)gᵢ
+    qᵢ .= H[i](ubuffer,qᵢ) # qᵢ₊₁ = H(i,i+1)qᵢ
+    w[i] .= H[i](ubuffer,w[i]) # H(i,i+1)gᵢ
 
     # stages 2 through NS-1
     for i = 2:NS-1
       tᵢ₊₁ = t + Δt*rk.c[i]
       w[i-1] .= (w[i-1]-S[i-1].A⁻¹B₁ᵀf)/(Δt*rk.a[i-1,i-1]) # w(i,i-1)
       w[i] .= Δt*rk.a[i,i]*r₁(u,tᵢ₊₁) # gᵢ
-      u .= qᵢ .+ w[i] # r₁
+      ubuffer .= qᵢ .+ w[i] # r₁
       for j = 1:i-1
-        u .+= Δt*rk.a[i,j]*w[j] # r₁
+        ubuffer .+= Δt*rk.a[i,j]*w[j] # r₁
       end
       fbuffer .= r₂(tᵢ₊₁) # r₂
-      A_ldiv_B!((u,f),S[i],(u,fbuffer)) # solve saddle point system
+      A_ldiv_B!((u,f),S[i],(ubuffer,fbuffer)) # solve saddle point system
 
       # diffuse the scratch vectors
-      H[i](qᵢ,qᵢ) # qᵢ₊₁ = H(i,i+1)qᵢ
+      qᵢ .= H[i](ubuffer,qᵢ) # qᵢ₊₁ = H(i,i+1)qᵢ
       for j = 1:i
-        H[i](w[j],w[j]) # for j = i, this sets H(i,i+1)gᵢ
+        w[j] .= H[i](ubuffer,w[j]) # for j = i, this sets H(i,i+1)gᵢ
       end
 
     end
@@ -159,16 +279,18 @@ function (scheme::IFHERK{NS,FH,FB1,FB2,FR1,FR2,TU,TF})(t::Float64,u::TU,f::TF) w
   end
 
   # final stage (assembly)
-  tᵢ₊₁ = t + Δt*rk.c[i]
-  u .= qᵢ .+ Δt*rk.a[i,i]*r₁(u,tᵢ₊₁) # r₁
+  t = t + Δt*rk.c[i]
+  ubuffer .= qᵢ .+ Δt*rk.a[i,i]*r₁(u,t) # r₁
   for j = 1:i-1
-    u .+= Δt*rk.a[i,j]*w[j] # r₁
+    ubuffer .+= Δt*rk.a[i,j]*w[j] # r₁
   end
-  fbuffer .= r₂(tᵢ₊₁) # r₂
-  A_ldiv_B!((u,f),S[i],(u,fbuffer)) # solve saddle point system
+  fbuffer .= r₂(t) # r₂
+  A_ldiv_B!((u,f),S[i],(ubuffer,fbuffer)) # solve saddle point system
   f ./= Δt*rk.a[NS,NS]
+  return t, u, f
 
 end
+
 
 end
 
