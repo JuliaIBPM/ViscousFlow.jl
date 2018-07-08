@@ -11,28 +11,31 @@ export SaddleSystem
 struct SaddleSystem{FA,FAB,FBA,TU,TF,N}
     A⁻¹B₁ᵀf :: TU
     B₂A⁻¹r₁ :: TF
-    A⁻¹! :: FA
-    A⁻¹B₁ᵀ! :: FAB
-    B₂A⁻¹! :: FBA
+    A⁻¹ :: FA
+    A⁻¹B₁ᵀ :: FAB
+    B₂A⁻¹ :: FBA
     S  :: LinearMap
     _issymmetric :: Bool
     _isposdef :: Bool
 end
 
 """
-    SaddleSystem(u,f,A⁻¹!,B₁ᵀ!,B₂!;[issymmetric=false],[isposdef=false])
+    SaddleSystem(u,f,A⁻¹,B₁ᵀ,B₂;[issymmetric=false],[isposdef=false])
 
 Construct a saddle-point system.
 
 # Arguments
 
-- `u` : example of state vector data
-- `f` : example of constraint force vector data
-- `A⁻¹!` : operator evaluating the inverse of `A`
-- `B₁ᵀ!` : operator evaluating the influence of constraint force on system
-- `B₂!` : operator evaluating the influence of state vector on constraints
+- `u` : example of state vector data.
+- `f` : example of constraint force vector data. This data must be of
+        AbstractVector supertype.
+- `A⁻¹` : operator evaluating the inverse of `A` on data of type `u`, return type `u`
+- `B₁ᵀ` : operator evaluating the influence of constraint force,
+            acting on `f` and returning type `u`
+- `B₂` : operator evaluating the influence of state vector on constraints,
+            acting on `u` and returning type `f`
 """
-function (::Type{SaddleSystem})(u::TU,f::TF,A⁻¹!::FA,B₁ᵀ!::FB1,B₂!::FB2;
+function (::Type{SaddleSystem})(u::TU,f::TF,A⁻¹::FA,B₁ᵀ::FB1,B₂::FB2;
                                 issymmetric::Bool=false,
                                 isposdef::Bool=false) where {TU,TF,FA,FB1,FB2}
     ubuffer = deepcopy(u)
@@ -42,24 +45,18 @@ function (::Type{SaddleSystem})(u::TU,f::TF,A⁻¹!::FA,B₁ᵀ!::FB1,B₂!::FB2
     # Schur complement
     function Schur!(fout::AbstractVector{Float64},fin::AbstractVector{Float64})
        fbuffer .= fin
-       B₂!(fbuffer,A⁻¹!(ubuffer,B₁ᵀ!(ubuffer,fbuffer)))
+       fbuffer .= (B₂∘A⁻¹∘B₁ᵀ)(fbuffer)
        fout .= -fbuffer
        return fout
     end
     S = LinearMap(Schur!,N;ismutating=true,issymmetric=issymmetric,isposdef=isposdef)
 
-    function A⁻¹B₁ᵀ!(w::TU,f::TF)
-        A⁻¹!(w,B₁ᵀ!(ubuffer,f))
-        return w
-    end
+    A⁻¹B₁ᵀ(f::TF) = (A⁻¹∘B₁ᵀ)(f)
 
-    function B₂A⁻¹!(f::TF,w::TU)
-        B₂!(f,A⁻¹!(ubuffer,w))
-        return f
-    end
+    B₂A⁻¹(w::TU) = (B₂∘A⁻¹)(w)
 
-    SaddleSystem{FA,typeof(A⁻¹B₁ᵀ!),typeof(B₂A⁻¹!),TU,TF,N}(ubuffer,fbuffer,
-                                A⁻¹!,A⁻¹B₁ᵀ!,B₂A⁻¹!,S,
+    SaddleSystem{FA,typeof(A⁻¹B₁ᵀ),typeof(B₂A⁻¹),TU,TF,N}(ubuffer,fbuffer,
+                                A⁻¹,A⁻¹B₁ᵀ,B₂A⁻¹,S,
                                 issymmetric,isposdef)
 end
 
@@ -82,11 +79,16 @@ function A_ldiv_B!(state::Tuple{TU,TF},
 
   ru, rf = rhs
   u, f = state
-  rf .-= sys.B₂A⁻¹!(sys.B₂A⁻¹r₁,ru)
+  sys.B₂A⁻¹r₁ .= sys.B₂A⁻¹(ru)
+  rf .-= sys.B₂A⁻¹r₁
   cg!(f,sys.S,rf,tol=1e-3)
-  sys.A⁻¹!(u,ru)
-  u .-= sys.A⁻¹B₁ᵀ!(sys.A⁻¹B₁ᵀf,f)
+  u .= sys.A⁻¹(ru)
+  sys.A⁻¹B₁ᵀf .= sys.A⁻¹B₁ᵀ(f)
+  u .-= sys.A⁻¹B₁ᵀf
   state = u, f
 end
+
+\(sys::SaddleSystem{FA,FAB,FBA,TU,TF,N},rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,N} =
+      A_ldiv_B!((TU(),TF()),sys,rhs)
 
 end
