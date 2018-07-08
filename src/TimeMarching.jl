@@ -74,9 +74,10 @@ function (::Type{IFRK})(u::TU,Δt::Float64,
 
     dclist = diff([0;rk.c])
 
-    # construct an array of mutating functions for the integrating factor. Each
-    # one takes as arguments an output and an input of the same type `u`
-    Hlist = [(v,u)->A_mul_B!(v,plan_intfact(dc*Δt,u),u) for dc in unique(dclist)]
+    # construct an array of operators for the integrating factor. Each
+    # one can act on data of type `u` and return data of the same type.
+    # e.g. we can call Hlist[1](u) to get the result.
+    Hlist = [u->plan_intfact(dc*Δt,u)*u for dc in unique(dclist)]
 
     H = [Hlist[i] for i in indexin(dclist,unique(dclist))]
 
@@ -107,8 +108,8 @@ function (scheme::IFRK{NS,FH,FR1,TU})(t::Float64,u::TU) where {NS,FH,FR1,TU}
     w[i] .= Δt*rk.a[i,i]*r₁(u,tᵢ₊₁) # gᵢ
 
     # diffuse the scratch vectors
-    qᵢ .= H[i](u,qᵢ) # qᵢ₊₁ = H(i,i+1)qᵢ
-    w[i] .= H[i](u,w[i]) # H(i,i+1)gᵢ
+    qᵢ .= H[i](qᵢ) # qᵢ₊₁ = H(i,i+1)qᵢ
+    w[i] .= H[i](w[i]) # H(i,i+1)gᵢ
     u .= qᵢ .+ w[i]
 
     # stages 2 through NS-1
@@ -118,9 +119,9 @@ function (scheme::IFRK{NS,FH,FR1,TU})(t::Float64,u::TU) where {NS,FH,FR1,TU}
       w[i] .= Δt*rk.a[i,i]*r₁(u,tᵢ₊₁) # gᵢ
 
       # diffuse the scratch vectors and assemble
-      qᵢ .= H[i](u,qᵢ) # qᵢ₊₁ = H(i,i+1)qᵢ
+      qᵢ .= H[i](qᵢ) # qᵢ₊₁ = H(i,i+1)qᵢ
       for j = 1:i
-         w[j] .= H[i](u,w[j]) # for j = i, this sets H(i,i+1)gᵢ
+         w[j] .= H[i](w[j]) # for j = i, this sets H(i,i+1)gᵢ
       end
       u .= qᵢ .+ w[i] # r₁
       for j = 1:i-1
@@ -133,12 +134,14 @@ function (scheme::IFRK{NS,FH,FR1,TU})(t::Float64,u::TU) where {NS,FH,FR1,TU}
   end
 
   # final stage (assembly)
-  tᵢ₊₁ = t + Δt*rk.c[i]
-  u .= qᵢ .+ Δt*rk.a[i,i]*r₁(u,tᵢ₊₁) # r₁
+  t = t + Δt*rk.c[i]
+  u .= qᵢ .+ Δt*rk.a[i,i]*r₁(u,t) # r₁
   for j = 1:i-1
     u .+= Δt*rk.a[i,j]*w[j] # r₁
   end
-  u .= H[i](qᵢ,u)
+  u .= H[i](u)
+
+  return t, u
 
 end
 
@@ -208,9 +211,10 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
 
     dclist = diff([0;rk.c])
 
-    # construct an array of mutating functions for the integrating factor. Each
-    # one takes as arguments an output and an input of the same type `u`
-    Hlist = [(v,u)->A_mul_B!(v,plan_intfact(dc*Δt,u),u) for dc in unique(dclist)]
+    # construct an array of operators for the integrating factor. Each
+    # one can act on data of type `u` and return data of the same type.
+    # e.g. we can call Hlist[1](u) to get the result.
+    Hlist = [u -> plan_intfact(dc*Δt,u)*u for dc in unique(dclist)]
 
     Slist = [SaddleSystem(u,f,H,B₁ᵀ,B₂,issymmetric=issymmetric,isposdef=true) for H in Hlist]
 
@@ -249,11 +253,11 @@ function (scheme::IFHERK{NS,FH,FB1,FB2,FR1,FR2,TU,TF})(t::Float64,u::TU,f::TF) w
     w[i] .= Δt*rk.a[i,i]*r₁(u,tᵢ₊₁) # gᵢ
     ubuffer .+= w[i] # r₁ = qᵢ + gᵢ
     fbuffer .= r₂(tᵢ₊₁) # r₂
-    A_ldiv_B!((u,f),S[i],(ubuffer,fbuffer))  # solve saddle point system
+    u, f = S[i]\(ubuffer,fbuffer)  # solve saddle point system
 
     # diffuse the scratch vectors
-    qᵢ .= H[i](ubuffer,qᵢ) # qᵢ₊₁ = H(i,i+1)qᵢ
-    w[i] .= H[i](ubuffer,w[i]) # H(i,i+1)gᵢ
+    qᵢ .= H[i](qᵢ) # qᵢ₊₁ = H(i,i+1)qᵢ
+    w[i] .= H[i](w[i]) # H(i,i+1)gᵢ
 
     # stages 2 through NS-1
     for i = 2:NS-1
@@ -265,12 +269,13 @@ function (scheme::IFHERK{NS,FH,FB1,FB2,FR1,FR2,TU,TF})(t::Float64,u::TU,f::TF) w
         ubuffer .+= Δt*rk.a[i,j]*w[j] # r₁
       end
       fbuffer .= r₂(tᵢ₊₁) # r₂
-      A_ldiv_B!((u,f),S[i],(ubuffer,fbuffer)) # solve saddle point system
+      u, f = S[i]\(ubuffer,fbuffer)  # solve saddle point system
+      #A_ldiv_B!((u,f),S[i],(ubuffer,fbuffer)) # solve saddle point system
 
       # diffuse the scratch vectors
-      qᵢ .= H[i](ubuffer,qᵢ) # qᵢ₊₁ = H(i,i+1)qᵢ
+      qᵢ .= H[i](qᵢ) # qᵢ₊₁ = H(i,i+1)qᵢ
       for j = 1:i
-        w[j] .= H[i](ubuffer,w[j]) # for j = i, this sets H(i,i+1)gᵢ
+        w[j] .= H[i](w[j]) # for j = i, this sets H(i,i+1)gᵢ
       end
 
     end
@@ -285,7 +290,8 @@ function (scheme::IFHERK{NS,FH,FB1,FB2,FR1,FR2,TU,TF})(t::Float64,u::TU,f::TF) w
     ubuffer .+= Δt*rk.a[i,j]*w[j] # r₁
   end
   fbuffer .= r₂(t) # r₂
-  A_ldiv_B!((u,f),S[i],(ubuffer,fbuffer)) # solve saddle point system
+  u, f = S[i]\(ubuffer,fbuffer)  # solve saddle point system
+  #A_ldiv_B!((u,f),S[i],(ubuffer,fbuffer)) # solve saddle point system
   f ./= Δt*rk.a[NS,NS]
   return t, u, f
 
