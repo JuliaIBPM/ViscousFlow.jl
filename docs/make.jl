@@ -5,12 +5,9 @@ makedocs(
     sitename = "Whirl.jl",
     pages = [
         "Home" => "index.md",
-        "Manual" => ["manual/fields.md"
-        #             "manual/elements.md",
-        #             "manual/velocities.md",
-        #             "manual/timemarching.md",
-        #             "manual/noflowthrough.md",
-        #             "manual/motions.md"
+        "Manual" => ["manual/fields.md",
+                     "manual/saddlesystems.md",
+                     "manual/timemarching.md"
                      ]
         #"Internals" => [ "internals/properties.md"]
     ],

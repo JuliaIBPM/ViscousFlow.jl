@@ -452,6 +452,28 @@ H = Regularize(X,dx,issymmetric=true)
 
 This flag will override any supplied weights.
 
+If we expect to carry out the regularization and interpolation a lot, then it
+is often sensible to construct matrix versions of these operators. This
+construction is sometimes a bit slow, but the resulting operators perform their
+operations much faster than the matrix-free operators described above. To
+generate these matrix operators, we have to supply the data types of the
+source and target of the operation. For example, for regularization from
+scalar field data to dual node data,
+```@repl regularize
+g = ScalarData(X);
+w = Nodes(Dual,(nx,ny));
+Hmat = RegularizationMatrix(H,g,w);
+fill!(g,1.0);
+w .= Hmat*g;
+```
+The interpolation matrix is separately constructed, and the source and target
+are reversed:
+```@repl regularize
+Emat = InterpolationMatrix(H,w,g);
+g .= Emat*w;
+```
+
+
 ## Methods
 
 ```@autodocs

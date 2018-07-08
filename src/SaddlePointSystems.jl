@@ -61,17 +61,21 @@ function (::Type{SaddleSystem})(u::TU,f::TF,A⁻¹::FA,B₁ᵀ::FB1,B₂::FB2;
 end
 
 function Base.show(io::IO, S::SaddleSystem{FA,FAB,FBA,TU,TF,N}) where {FA,FAB,FBA,TU,TF,N}
-    print(io, "Saddle system with state of type $TU and force of type $TF")
+    println(io, "Saddle system with")
+    println(io, "   State of type $TU")
+    println(io, "   Force of type $TF")
 end
 
 
 """
     A_ldiv_B!(state,sys::SaddleSystem,rhs)
 
-Solve a saddle-point system. `rhs` is a tuple of the right-hand side (ru,rf).
+Solve a saddle-point system. `rhs` is a tuple of the right-hand side `(ru,rf)`.
 Output `state`, a tuple (u,f), is updated. Note that `sys` is also mutated:
 its scratch space `sys.B₂A⁻¹r₁` and `sys.A⁻¹B₁ᵀf` hold the intermediate results
 of the solution.
+
+A shorthand can be used for this operation: state = sys\rhs
 """
 function A_ldiv_B!(state::Tuple{TU,TF},
                     sys::SaddleSystem{FA,FAB,FBA,TU,TF,N},

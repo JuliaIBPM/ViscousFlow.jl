@@ -29,6 +29,23 @@ const Euler = RKParams{1}([1.0],ones(1,1))
 
 # IFRK
 
+"""
+    IFRK(u,Δt,plan_intfact,r₁;[rk::RKParams=RK31])
+
+Construct an operator to advance a system of the form
+
+du/dt - Au = r₁(u,t)
+
+The resulting operator will advance the state `u` by one time step, `Δt`.
+
+# Arguments
+
+- `u` : example of state vector data
+- `Δt` : time-step size
+- `plan_intfact` : constructor to set up integrating factor operator for `A` that
+              will act on type `u` and return same type as `u`
+- `r₁` : operator acting on type `u` and `t` and returning `u`
+"""
 struct IFRK{NS,FH,FR1,TU}
 
   # time step size
@@ -47,23 +64,7 @@ struct IFRK{NS,FH,FR1,TU}
 
 end
 
-"""
-    IFRK(u,Δt,plan_intfact,r₁;[rk::RKParams=RK31])
 
-Construct an operator to advance a system of the form
-
-du/dt - Au = r₁(u,t)
-
-The resulting operator will advance the state `u` by one time step, `Δt`.
-
-# Arguments
-
-- `u` : example of state vector data
-- `Δt` : time-step size
-- `plan_intfact` : constructor to set up integrating factor operator for `A` that
-              will act on type `u` and return same type as `u`
-- `r₁` : operator acting on type `u` and `t` and returning `u`
-"""
 function (::Type{IFRK})(u::TU,Δt::Float64,
                           plan_intfact::FI,r₁::FR1;
                           rk::RKParams{NS}=RK31) where {TU,FI,FR1,NS}
@@ -147,6 +148,28 @@ end
 
 # IFHERK
 
+"""
+    IFHERK(u,f,Δt,plan_intfact,B₁ᵀ,B₂,r₁,r₂;[issymmetric=false],[rk::RKParams=RK31])
+
+Construct an operator to advance a system of the form
+
+du/dt - Au = -B₁ᵀf + r₁(u,t)
+B₂u = r₂(t)
+
+The resulting operator will advance the system `(u,f)` by one time step, `Δt`.
+
+# Arguments
+
+- `u` : example of state vector data
+- `f` : example of constraint force vector data
+- `Δt` : time-step size
+- `plan_intfact` : constructor to set up integrating factor operator for `A` that
+              will act on type `u` and return same type as `u`
+- `B₁ᵀ` : operator acting on type `f` and returning type `u`
+- `B₂` : operator acting on type `u` and returning type `f`
+- `r₁` : operator acting on type `u` and `t` and returning `u`
+- `r₂` : operator acting on `t` and returning type `f`
+"""
 struct IFHERK{NS,FH,FB1,FB2,FR1,FR2,TU,TF}
 
   # time step size
@@ -176,28 +199,7 @@ struct IFHERK{NS,FH,FB1,FB2,FR1,FR2,TU,TF}
 
 end
 
-"""
-    IFHERK(u,f,Δt,plan_intfact,B₁ᵀ,B₂,r₁,r₂;[issymmetric=false],[rk::RKParams=RK31])
 
-Construct an operator to advance a system of the form
-
-du/dt - Au = -B₁ᵀf + r₁(u,t)
-B₂u = r₂(t)
-
-The resulting operator will advance the system `(u,f)` by one time step, `Δt`.
-
-# Arguments
-
-- `u` : example of state vector data
-- `f` : example of constraint force vector data
-- `Δt` : time-step size
-- `plan_intfact` : constructor to set up integrating factor operator for `A` that
-              will act on type `u` and return same type as `u`
-- `B₁ᵀ` : operator acting on type `f` and returning type `u`
-- `B₂` : operator acting on type `u` and returning type `f`
-- `r₁` : operator acting on type `u` and `t` and returning `u`
-- `r₂` : operator acting on `t` and returning type `f`
-"""
 function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
                           plan_intfact::FI,B₁ᵀ::FB1,B₂::FB2,r₁::FR1,r₂::FR2;
                           issymmetric::Bool=false,
