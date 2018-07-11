@@ -57,16 +57,17 @@ using Fields
   f.u .= rand(n)
   f.v .= rand(n)
 
-  w1 = Nodes(Dual,(nx,ny))
-  w2 = Nodes(Primal,(nx,ny))
+  w = NodePair(Dual,(nx,ny))
 
-  H((w1,w2),f)
-  @test sum(f.u) ≈ sum(w1)*dx*dx
-  @test sum(f.v) ≈ sum(w2)*dx*dx
+  H(w,f)
+  @test sum(f.u) ≈ sum(w.u)*dx*dx
+  @test sum(f.v) ≈ sum(w.v)*dx*dx
 
-  H((w2,w1),f)
-  @test sum(f.u) ≈ sum(w2)*dx*dx
-  @test sum(f.v) ≈ sum(w1)*dx*dx
+  w = NodePair(Primal,(nx,ny))
+
+  H(w,f)
+  @test sum(f.u) ≈ sum(w.u)*dx*dx
+  @test sum(f.v) ≈ sum(w.v)*dx*dx
 
   end
 
@@ -170,7 +171,7 @@ using Fields
   H̃(f2,p)
   @test f.u ≈ f2.u && f.v ≈ f2.v
 
-  p = (Nodes(Dual,(nx,ny)),Nodes(Primal,(nx,ny)))
+  p = NodePair(Dual,(nx,ny))
   p2 = deepcopy(p)
   Hmat = RegularizationMatrix(H,f,p)
   Emat = InterpolationMatrix(H,p,f)
@@ -178,10 +179,10 @@ using Fields
 
   A_mul_B!(p,Hmat,f)
   H(p2,f)
-  @test p[1] ≈ p2[1] && p[2] ≈ p2[2]
+  @test p.u ≈ p2.u && p.v ≈ p2.v
 
-  p[1] .= rand(size(p[1]))
-  p[2] .= rand(size(p[2]))
+  p.u .= rand(size(p.u))
+  p.v .= rand(size(p.v))
   A_mul_B!(f,Emat,p)
   H(f2,p)
   @test f.u ≈ f2.u && f.v ≈ f2.v
@@ -190,18 +191,17 @@ using Fields
   H̃(f2,p)
   @test f.u ≈ f2.u && f.v ≈ f2.v
 
-
-  p = (Nodes(Primal,(nx,ny)),Nodes(Dual,(nx,ny)))
+  p = NodePair(Primal,(nx,ny))
   p2 = deepcopy(p)
   Hmat = RegularizationMatrix(H,f,p)
   Emat = InterpolationMatrix(H,p,f)
   Ẽmat = InterpolationMatrix(H̃,p,f)
   A_mul_B!(p,Hmat,f)
   H(p2,f)
-  @test p[1] ≈ p2[1] && p[2] ≈ p2[2]
+  @test p.u ≈ p2.u && p.v ≈ p2.v
 
-  p[1] .= rand(size(p[1]))
-  p[2] .= rand(size(p[2]))
+  p.u .= rand(size(p.u))
+  p.v .= rand(size(p.v))
   A_mul_B!(f,Emat,p)
   H(f2,p)
   @test f.u ≈ f2.u && f.v ≈ f2.v
