@@ -19,7 +19,7 @@ the grid), but these are not distinguished in these basic definitions and operat
 module Fields
 
 import Base: @propagate_inbounds, shift!
-export Primal, Dual, Edges, Nodes, EdgeGradient,
+export Primal, Dual, Edges, Nodes, EdgeGradient,NodePair,
        Points, ScalarData, VectorData,
        curl, curl!, Curl, divergence, divergence!, Divergence,
        grad, grad!, Grad,
@@ -75,25 +75,14 @@ end
 
 include("fields/nodes.jl")
 include("fields/edges.jl")
+include("fields/collections.jl")
 include("fields/points.jl")
 
+coordinates(w::Nodes{Dual,NX,NY};dx::Float64=1.0,I0::Tuple{Int,Int}=(1,1)) where {NX,NY} =
+    dx.*((1-I0[1]-0.5):(node_inds(Dual,(NX,NY))[1]-I0[1]-0.5),
+         (1-I0[2]-0.5):(node_inds(Dual,(NX,NY))[2]-I0[2]-0.5))
 
-struct EdgeGradient{C <: CellType,D <: CellType, NX,NY}
-  dudx :: Nodes{C,NX,NY}
-  dvdy :: Nodes{C,NX,NY}
-  dudy :: Nodes{D,NX,NY}
-  dvdx :: Nodes{D,NX,NY}
-end
 
-function EdgeGradient(T::Type{C}, dualnodedims::Tuple{Int, Int}) where {C <: CellType}
-    dudxdims = node_inds(T, dualnodedims)
-    dudydims = node_inds(othertype(C), dualnodedims)
-
-    EdgeGradient{T, othertype(T), dualnodedims...}(
-            Nodes(T,dualnodedims),Nodes(T,dualnodedims),
-            Nodes(othertype(T),dualnodedims),Nodes(othertype(T),dualnodedims)
-            )
-end
 
 include("fields/operators.jl")
 

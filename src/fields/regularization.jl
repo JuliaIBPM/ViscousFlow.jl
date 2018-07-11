@@ -16,10 +16,6 @@ struct Regularize{N,DV,F}
   "Discrete Delta function"
   ddf :: DDF
 
-  ""
-
-  #"Matrix representation of the regularization"
-  #Eᵀ :: Nullable{Array{SparseMatrixCSC{Float64,Int},1}}
 end
 
 
@@ -183,7 +179,9 @@ end
 ftype = :(VectorData{N})
 for (ctype,dunx,duny,dvnx,dvny,ux,uy,vx,vy) = (
       (:(Edges{Primal,NX,NY}),0,1,1,0,0.5,0.0,0.0,0.5),
-      (:(Edges{Dual,NX,NY}),  1,0,0,1,0.0,0.5,0.5,0.0))
+      (:(Edges{Dual,NX,NY}),  1,0,0,1,0.0,0.5,0.5,0.0),
+      (:(NodePair{Primal,Dual,NX,NY}),1,1,0,0,0.0,0.0,0.5,0.5),
+      (:(NodePair{Dual,Primal,NX,NY}),0,0,1,1,0.5,0.5,0.0,0.0))
 
 # Regularization
   @eval function (H::Regularize{N,DV,F})(target::$ctype,source::$ftype) where {N,DV,F,NX,NY}
@@ -328,160 +326,6 @@ for (ctype,dunx,duny,dvnx,dvny,ux,uy,vx,vy) = (
 
 end
 
-# Regularization and interpolation operators of vector data to tuples of nodes
-ftype = :(VectorData{N})
-for (ctype,dunx,duny,dvnx,dvny,ux,uy,vx,vy) = (
-      (:(Tuple{Nodes{Dual,NX,NY},Nodes{Primal,NX,NY}}),0,0,1,1,0.5,0.5,0.0,0.0),
-      (:(Tuple{Nodes{Primal,NX,NY},Nodes{Dual,NX,NY}}),1,1,0,0,0.0,0.0,0.5,0.5))
-
-# Regularization
-  @eval function (H::Regularize{N,DV,F})(target::$ctype,source::$ftype) where {N,DV,F,NX,NY}
-        fill!(target[1],0.0)
-        @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
-          H.buffer .= H.ddf.(x-$ux-H.x,y-$uy-H.y)
-          target[1][x,y] = dot(H.buffer,source.u.*H.wgt)/DV
-        end
-        fill!(target[2],0.0)
-        @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
-          H.buffer .= H.ddf.(x-$vx-H.x,y-$vy-H.y)
-          target[2][x,y] = dot(H.buffer,source.v.*H.wgt)/DV
-        end
-        target
-  end
-
-# Interpolation
-  @eval function (H::Regularize{N,DV,false})(target::$ftype,
-                                       source::$ctype) where {N,DV,NX,NY}
-    target.u .= target.v .= zeros(Float64,N)
-    @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
-      H.buffer .= H.ddf.(x-$ux-H.x,y-$uy-H.y)
-      target.u .+= H.buffer*source[1][x,y]
-    end
-    @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
-      H.buffer .= H.ddf.(x-$vx-H.x,y-$vy-H.y)
-      target.v .+= H.buffer*source[2][x,y]
-    end
-    target
-  end
-
-# Interpolation with filtering
-  @eval function (H::Regularize{N,DV,true})(target::$ftype,
-                                      source::$ctype) where {N,DV,NX,NY}
-    target.u .= target.v .= zeros(Float64,N)
-    @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
-      H.buffer .= H.ddf.(x-$ux-H.x,y-$uy-H.y)
-      w = dot(H.buffer,H.wgt)/DV
-      w = w ≢ 0.0 ? source[1][x,y]/w : 0.0
-      target.u .+= H.buffer*w
-    end
-    @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
-      H.buffer .= H.ddf.(x-$vx-H.x,y-$vy-H.y)
-      w = dot(H.buffer,H.wgt)/DV
-      w = w ≢ 0.0 ? source[2][x,y]/w : 0.0
-      target.v .+= H.buffer*w
-    end
-    target
-  end
-
-  # Construct regularization matrix
-  @eval function RegularizationMatrix(H::Regularize{N,DV,F},src::$ftype,target::$ctype) where {N,DV,F,NX,NY}
-
-    Hmat = (spzeros(length(target[1]),length(src.u)),spzeros(length(target[2]),length(src.v)))
-    g = deepcopy(src)
-    v = deepcopy(target)
-    g.u .= g.v .= zeros(Float64,N)
-    for i = 1:N
-      g.u[i] = 1.0
-      g.v[i] = 1.0
-      H(v,g)
-      Hmat[1][:,i] = sparsevec(v[1])
-      Hmat[2][:,i] = sparsevec(v[2])
-      g.u[i] = 0.0
-      g.v[i] = 0.0
-    end
-    RegularizationMatrix{$ctype,$ftype}(Hmat[1]), RegularizationMatrix{$ctype,$ftype}(Hmat[2])
-  end
-
-  # Construct interpolation matrix
-  @eval function InterpolationMatrix(H::Regularize{N,DV,false},src::$ctype,target::$ftype) where {N,DV,NX,NY}
-
-    # note that we store interpolation matrices in the same shape as regularization matrices
-    Emat = (spzeros(length(src[1]),length(target.u)),spzeros(length(src[2]),length(target.v)))
-    g = deepcopy(target)
-    v = deepcopy(src)
-    g.u .= g.v .= zeros(Float64,N)
-    for i = 1:N
-      g.u[i] = DV/H.wgt[i]  # unscale for interpolation
-      g.v[i] = DV/H.wgt[i]  # unscale for interpolation
-      H(v,g)
-      Emat[1][:,i] = sparsevec(v[1])
-      Emat[2][:,i] = sparsevec(v[2])
-      g.u[i] = 0.0
-      g.v[i] = 0.0
-    end
-    InterpolationMatrix{$ctype,$ftype}(Emat[1]), InterpolationMatrix{$ctype,$ftype}(Emat[2])
-  end
-
-  # Construct interpolation matrix
-  @eval function InterpolationMatrix(H::Regularize{N,DV,true},src::$ctype,target::$ftype) where {N,DV,NX,NY}
-
-    # note that we store interpolation matrices in the same shape as regularization matrices
-    Emat = (spzeros(length(src[1]),length(target.u)),spzeros(length(src[2]),length(target.v)))
-    g = deepcopy(target)
-    v = deepcopy(src)
-    fill!(g,1.0)
-    H(v,g)
-    wtu = sparsevec(v[1])
-    wtu.nzval .= 1./wtu.nzval
-    wtv = sparsevec(v[2])
-    wtv.nzval .= 1./wtv.nzval
-    fill!(g,0.0)
-    for i = 1:N
-      g.u[i] = DV/H.wgt[i]  # unscale for interpolation
-      g.v[i] = DV/H.wgt[i]  # unscale for interpolation
-      H(v,g)
-      Emat[1][:,i] = wtu.*sparsevec(v[1])
-      Emat[2][:,i] = wtv.*sparsevec(v[2])
-      g.u[i] = 0.0
-      g.v[i] = 0.0
-    end
-    InterpolationMatrix{$ctype,$ftype}(Emat[1]), InterpolationMatrix{$ctype,$ftype}(Emat[2])
-  end
-
-  @eval function A_mul_B!(u::$ctype,
-    Hmat::Tuple{RegularizationMatrix{$ctype,$ftype},RegularizationMatrix{$ctype,$ftype}},
-    f::$ftype) where {NX,NY,N}
-    fill!(u[1],0.0)
-    I,J,V = findnz(Hmat[1].M)
-    for (cnt,v) in enumerate(V)
-      u[1][I[cnt]] += v*f.u[J[cnt]]
-    end
-    fill!(u[2],0.0)
-    I,J,V = findnz(Hmat[2].M)
-    for (cnt,v) in enumerate(V)
-      u[2][I[cnt]] += v*f.v[J[cnt]]
-    end
-    u
-  end
-
-  @eval function A_mul_B!(f::$ftype,
-    Emat::Tuple{InterpolationMatrix{$ctype,$ftype},InterpolationMatrix{$ctype,$ftype}},
-    u::$ctype) where {NX,NY,N}
-    fill!(f.u,0.0)
-    I,J,V = findnz(Emat[1].M)
-    for (cnt,v) in enumerate(V)
-      f.u[J[cnt]] += v*u[1][I[cnt]]
-    end
-    fill!(f.v,0.0)
-    I,J,V = findnz(Emat[2].M)
-    for (cnt,v) in enumerate(V)
-      f.v[J[cnt]] += v*u[2][I[cnt]]
-    end
-    f
-  end
-
-
-end
 
 # Nodal type
 ftype = :(ScalarData{N})

@@ -3,17 +3,32 @@ using ColorTypes
 import PlotUtils: cgrad
 
 @recipe function plot(w::Fields.Nodes{T,NX,NY}) where {T,NX,NY}
+  grid --> :none
+  ratio := 1
+  linewidth --> 1
+  legend --> :none
+  framestyle --> :frame
+  levels --> linspace(minimum(w.data),maximum(w.data),16)
+  @series begin
     seriestype --> :contour
+    transpose(w.data)
+  end
+end
+
+@recipe function plot(x::AbstractArray{S,1},y::AbstractArray{S,1},w::Fields.Nodes{T,NX,NY}) where {S,T,NX,NY}
       grid --> :none
       ratio := 1
       linewidth --> 1
       legend --> :none
       framestyle --> :frame
       levels --> linspace(minimum(w.data),maximum(w.data),16)
-      transpose(w.data)
+      @series begin
+        seriestype --> :contour
+        x,y,transpose(w.data)
+      end
 end
 
-@recipe function plot(q::Fields.Edges{T,NX,NY}) where {T,NX,NY}
+@recipe function plot(q::Union{Fields.Edges{T,NX,NY},Fields.NodePair{T,S,NX,NY}}) where {T,S,NX,NY}
     #wx = Fields.Nodes(Dual,(NX,NY))
     #wy = Fields.Nodes(Dual,(NX,NY))
     #shift!((wx,wy),q)
