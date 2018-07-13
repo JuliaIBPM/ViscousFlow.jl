@@ -27,6 +27,7 @@ export Primal, Dual, Edges, Nodes,
        laplacian, laplacian!, plan_laplacian, plan_laplacian!,
        plan_intfact,plan_intfact!,Identity,
        product, product!, ∘,
+       coordinates,
        DDF, Regularize, RegularizationMatrix, InterpolationMatrix,
        CircularConvolution
 
@@ -97,9 +98,22 @@ CollectedData = Union{EdgeGradient{T,S,NX,NY},NodePair{T,S,NX,NY}} where {T,S,NX
 """
     cooordinates(w::Nodes/Edges;[dx=1.0],[I0=(1,1)])
 
-Return tuples of ranges of the physical coordinates in each direction for grid
-data `w`.
-```
+Return a tuple of the ranges of the physical coordinates in each direction for grid
+data `w`. If `w` is of `Nodes` type, then it returns a tuple of the form
+`xg,yg`. If `w` is of `Edges` or `NodePair` type, then it returns a tuple of
+the form `xgu,ygu,xgv,ygv`.
+
+The optional keyword argument `dx` sets the grid spacing; its default is `1.0`. The
+optional keyword `I0` accepts a tuple of integers to set the index pair of the
+primal nodes that coincide with the origin. The default is `(1,1)`. 
+
+# Example
+
+```jldoctest
+julia> w = Nodes(Dual,(12,22));
+
+julia> xg, yg = coordinates(w,dx=0.1)
+(-0.05:0.1:1.05, -0.05:0.1:2.0500000000000003)
 ```
 """
 function coordinates end
@@ -123,7 +137,6 @@ end
 
 
 include("fields/operators.jl")
-
 include("fields/shift.jl")
 
 

@@ -16,6 +16,9 @@ struct Regularize{N,DV,F}
   "Discrete Delta function"
   ddf :: DDF
 
+  "Symmetry flag"
+  _issymmetric :: Bool
+
 end
 
 
@@ -129,11 +132,15 @@ function Regularize(x::Vector{T},y::Vector{T},dx::T;
       wtvec = deepcopy(weights)
     end
   else
+    # if the regularization and interpolation are symmetric, then the
+    # weights are automatically set to be the cell area in order to cancel it
+    # in the denominator of the regularization operator.
     wtvec = similar(x)
     fill!(wtvec,dx*dx)
   end
 
-  Regularize{length(x),dx*dx,filter}(x/dx+I0[1],y/dx+I0[2],wtvec,zeros(T,n),DDF(ddftype=ddftype,dx=1.0))
+  Regularize{length(x),dx*dx,filter}(x/dx+I0[1],y/dx+I0[2],
+                      wtvec,zeros(T,n),DDF(ddftype=ddftype,dx=1.0),issymmetric)
 end
 
 Regularize(x::T,y::T,a...;b...) where {T<:Real} = Regularize([x],[y],a...;b...)
@@ -142,7 +149,8 @@ Regularize(x::VectorData,a...;b...) = Regularize(x.u,x.v,a...;b...)
 
 function Base.show(io::IO, H::Regularize{N,DV,F}) where {N,DV,F}
     filter = F ? "filtered" : "non-filtered"
-    println(io, "Regularization/interpolation operator with $filter interpolation")
+    op = H._issymmetric ? "Symmetric regularization/interpolation" : "Regularization/interpolation"
+    println(io, "$op operator with $filter interpolation")
     println(io, "  $N points in grid with cell area $(sprint(showcompact,DV))")
 end
 
@@ -152,7 +160,10 @@ end
 Construct and store a matrix representation of regularization associated with `H`
 for data of type `f` to data of type `u`. The resulting matrix `Hmat` can then be
 used to apply on point data of type `f` to regularize it to grid data of type `u`,
-using `A_mul_B!(u,Hmat,f)`. For vector data, a `Hmat` is actually a tuple of matrices.
+using `A_mul_B!(u,Hmat,f)`. It can also be used as just `Hmat*f`.
+
+If `H` is a symmetric regularization and interpolation operator, then this
+actually returns a tuple `Hmat, Emat`, where `Emat` is the interpolation matrix.
 """
 struct RegularizationMatrix{TU,TF} <: AbstractMatrix{Float64}
   M :: SparseMatrixCSC{Float64,Int64}
@@ -165,7 +176,7 @@ end
 Construct and store a matrix representation of interpolation associated with `H`
 for data of type `u` to data of type `f`. The resulting matrix `Emat` can then be
 used to apply on grid data of type `u` to interpolate it to point data of type `f`,
-using `A_mul_B!(f,Emat,u)`. For vector data, a `Emat` is actually a tuple of matrices.
+using `A_mul_B!(f,Emat,u)`. It can also be used as just `Emat*u`.
 """
 struct InterpolationMatrix{TU,TF} <: AbstractMatrix{Float64}
   M :: SparseMatrixCSC{Float64,Int64}
@@ -247,7 +258,13 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
       g.u[i] = 0.0
       g.v[i] = 0.0
     end
-    RegularizationMatrix{$ctype,$ftype}(Hmat)
+    if H._issymmetric
+      # In symmetric case, these matrices are identical. (Interpolation is stored
+      # as its transpose.)
+      return RegularizationMatrix{$ctype,$ftype}(Hmat),InterpolationMatrix{$ctype,$ftype}(Hmat)
+    else
+      return RegularizationMatrix{$ctype,$ftype}(Hmat)
+    end
   end
 
   # Construct interpolation matrix
@@ -273,7 +290,7 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
     InterpolationMatrix{$ctype,$ftype}(Emat)
   end
 
-  # Construct interpolation matrix
+  # Construct interpolation matrix with filtering
   @eval function InterpolationMatrix(H::Regularize{N,DV,true},src::$ctype,target::$ftype) where {N,DV,NX,NY}
 
     # note that we store interpolation matrices in the same shape as regularization matrices
@@ -375,7 +392,13 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
       Hmat[:,i] = sparsevec(H(v,g))
       g[i] = 0.0
     end
-    RegularizationMatrix{$ctype,$ftype}(Hmat)
+    if H._issymmetric
+      # In symmetric case, these matrices are identical. (Interpolation is stored
+      # as its transpose.)
+      return RegularizationMatrix{$ctype,$ftype}(Hmat),InterpolationMatrix{$ctype,$ftype}(Hmat)
+    else
+      return RegularizationMatrix{$ctype,$ftype}(Hmat)
+    end
   end
 
   # Construct interpolation matrix
@@ -395,7 +418,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
     InterpolationMatrix{$ctype,$ftype}(Emat)
   end
 
-  # Construct interpolation matrix
+  # Construct interpolation matrix with filtering
   @eval function InterpolationMatrix(H::Regularize{N,DV,true},
     u::$ctype,
     f::$ftype) where {N,DV,NX,NY}
@@ -443,3 +466,12 @@ end
 
 (*)(Emat::InterpolationMatrix{TU,TF},src::TU) where {TU<:Union{Nodes,Edges},TF<:Union{ScalarData,VectorData}} =
                 A_mul_B!(TF(),Emat,src)
+
+
+function Base.show(io::IO, H::RegularizationMatrix{TU,TF}) where {TU,TF}
+    print(io, "Regularization matrix acting on type $TF and returning type $TU")
+end
+
+function Base.show(io::IO, H::InterpolationMatrix{TU,TF}) where {TU,TF}
+    print(io, "Interpolation matrix acting on type $TU and returning type $TF")
+end

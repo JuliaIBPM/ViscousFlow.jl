@@ -466,13 +466,22 @@ Hmat = RegularizationMatrix(H,g,w);
 fill!(g,1.0);
 w .= Hmat*g;
 ```
-The interpolation matrix is separately constructed, and the source and target
+In general, the interpolation matrix is separately constructed, and the source and target
 are reversed:
 ```@repl regularize
 Emat = InterpolationMatrix(H,w,g);
 g .= Emat*w;
 ```
 
+Alternatively, if the regularization and interpolation are symmetric, then we
+can get them both when we call for the regularization matrix:
+```@repl regularize
+H = Regularize(X,dx,issymmetric=true)
+Hmat, Emat = RegularizationMatrix(H,g,w)
+```
+It might seem a bit funny to store them separately if they are just transposes
+of each other, but it is essential for the method dispatch that they are
+given separate types.
 
 ## Methods
 
