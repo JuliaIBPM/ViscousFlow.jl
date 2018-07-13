@@ -177,22 +177,18 @@ end
 
 # Regularization and interpolation operators of vector data to edges
 ftype = :(VectorData{N})
-for (ctype,dunx,duny,dvnx,dvny,ux,uy,vx,vy) = (
-      (:(Edges{Primal,NX,NY}),0,1,1,0,0.5,0.0,0.0,0.5),
-      (:(Edges{Dual,NX,NY}),  1,0,0,1,0.0,0.5,0.5,0.0),
-      (:(NodePair{Primal,Dual,NX,NY}),1,1,0,0,0.0,0.0,0.5,0.5),
-      (:(NodePair{Dual,Primal,NX,NY}),0,0,1,1,0.5,0.5,0.0,0.0))
+for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
 
 # Regularization
   @eval function (H::Regularize{N,DV,F})(target::$ctype,source::$ftype) where {N,DV,F,NX,NY}
         fill!(target.u,0.0)
         @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
-          H.buffer .= H.ddf.(x-$ux-H.x,y-$uy-H.y)
+          H.buffer .= H.ddf.(x-$shiftux-H.x,y-$shiftuy-H.y)
           target.u[x,y] = dot(H.buffer,source.u.*H.wgt)/DV
         end
         fill!(target.v,0.0)
         @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
-          H.buffer .= H.ddf.(x-$vx-H.x,y-$vy-H.y)
+          H.buffer .= H.ddf.(x-$shiftvx-H.x,y-$shiftvy-H.y)
           target.v[x,y] = dot(H.buffer,source.v.*H.wgt)/DV
         end
         target
@@ -203,11 +199,11 @@ for (ctype,dunx,duny,dvnx,dvny,ux,uy,vx,vy) = (
                                        source::$ctype) where {N,DV,NX,NY}
     target.u .= target.v .= zeros(Float64,N)
     @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
-      H.buffer .= H.ddf.(x-$ux-H.x,y-$uy-H.y)
+      H.buffer .= H.ddf.(x-$shiftux-H.x,y-$shiftuy-H.y)
       target.u .+= H.buffer*source.u[x,y]
     end
     @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
-      H.buffer .= H.ddf.(x-$vx-H.x,y-$vy-H.y)
+      H.buffer .= H.ddf.(x-$shiftvx-H.x,y-$shiftvy-H.y)
       target.v .+= H.buffer*source.v[x,y]
     end
     target
@@ -218,13 +214,13 @@ for (ctype,dunx,duny,dvnx,dvny,ux,uy,vx,vy) = (
                                       source::$ctype) where {N,DV,NX,NY}
     target.u .= target.v .= zeros(Float64,N)
     @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
-      H.buffer .= H.ddf.(x-$ux-H.x,y-$uy-H.y)
+      H.buffer .= H.ddf.(x-$shiftux-H.x,y-$shiftuy-H.y)
       w = dot(H.buffer,H.wgt)/DV
       w = w ≢ 0.0 ? source.u[x,y]/w : 0.0
       target.u .+= H.buffer*w
     end
     @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
-      H.buffer .= H.ddf.(x-$vx-H.x,y-$vy-H.y)
+      H.buffer .= H.ddf.(x-$shiftvx-H.x,y-$shiftvy-H.y)
       w = dot(H.buffer,H.wgt)/DV
       w = w ≢ 0.0 ? source.v[x,y]/w : 0.0
       target.v .+= H.buffer*w
@@ -329,15 +325,13 @@ end
 
 # Nodal type
 ftype = :(ScalarData{N})
-for (ctype,dnx,dny,dx,dy) = (
-      (:(Nodes{Primal,NX,NY}),1,1,0.0,0.0),
-      (:(Nodes{Dual,NX,NY}),  0,0,0.5,0.5))
+for (ctype,dnx,dny,shiftx,shifty) in scalarlist
 
 # Regularization
   @eval function (H::Regularize{N,DV,F})(target::$ctype,source::$ftype) where {N,DV,F,NX,NY}
     fill!(target,0.0)
     @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
-      H.buffer .= H.ddf.(x-$dx-H.x,y-$dy-H.y)
+      H.buffer .= H.ddf.(x-$shiftx-H.x,y-$shifty-H.y)
       target[x,y] = dot(H.buffer,source.data.*H.wgt)/DV
     end
     target
@@ -348,7 +342,7 @@ for (ctype,dnx,dny,dx,dy) = (
                                        source::$ctype) where {N,DV,NX,NY}
     target .= zeros(Float64,N)
     @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
-      H.buffer .= H.ddf.(x-$dx-H.x,y-$dy-H.y)
+      H.buffer .= H.ddf.(x-$shiftx-H.x,y-$shifty-H.y)
       target .+= H.buffer*source[x,y]
     end
     target
@@ -359,7 +353,7 @@ for (ctype,dnx,dny,dx,dy) = (
                                        source::$ctype) where {N,DV,NX,NY}
     target .= zeros(Float64,N)
     @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
-      H.buffer .= H.ddf.(x-$dx-H.x,y-$dy-H.y)
+      H.buffer .= H.ddf.(x-$shiftx-H.x,y-$shifty-H.y)
       w = dot(H.buffer,H.wgt)/DV
       w = w ≢ 0.0 ? source[x,y]/w : 0.0
       target .+= H.buffer*w

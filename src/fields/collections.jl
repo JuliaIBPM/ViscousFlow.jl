@@ -67,8 +67,8 @@ function fill!(nodes::NodePair, s::Number)
     nodes
 end
 
-Base.size(A::Union{Edges{C,NX,NY},NodePair{C,D,NX,NY}}) where {C,D,NX,NY} = (length(A.u)+length(A.v),1)
-@propagate_inbounds Base.getindex(A::Union{Edges{C,NX,NY},NodePair{C,D,NX,NY}},i::Int) where {C,D,NX,NY} =
+Base.size(A::NodePair{C,D,NX,NY}) where {C,D,NX,NY} = (length(A.u)+length(A.v),1)
+@propagate_inbounds Base.getindex(A::NodePair{C,D,NX,NY},i::Int) where {C,D,NX,NY} =
    i > length(A.u) ? A.v[i-length(A.u)] : A.u[i]
-@propagate_inbounds Base.setindex!(A::Union{Edges{C,NX,NY},NodePair{C,D,NX,NY}}, v, i::Int) where {C,D,NX,NY} =
+@propagate_inbounds Base.setindex!(A::NodePair{C,D,NX,NY}, v, i::Int) where {C,D,NX,NY} =
    i > length(A.u) ? A.v[i-length(A.u)] = convert(Float64, v) : A.u[i] = convert(Float64, v)

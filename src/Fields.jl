@@ -19,7 +19,8 @@ the grid), but these are not distinguished in these basic definitions and operat
 module Fields
 
 import Base: @propagate_inbounds, shift!
-export Primal, Dual, Edges, Nodes, EdgeGradient,NodePair,
+export Primal, Dual, Edges, Nodes,
+       EdgeGradient, NodePair,
        Points, ScalarData, VectorData,
        curl, curl!, Curl, divergence, divergence!, Divergence,
        grad, grad!, Grad,
@@ -76,148 +77,54 @@ end
 include("fields/nodes.jl")
 include("fields/edges.jl")
 include("fields/collections.jl")
+
+scalarlist = ((:(Nodes{Primal,NX,NY}),1,1,0.0,0.0),
+              (:(Nodes{Dual,NX,NY}),  0,0,0.5,0.5))
+
+vectorlist = ((:(Edges{Primal,NX,NY}),          0,1,1,0,0.5,0.0,0.0,0.5),
+              (:(Edges{Dual,NX,NY}),            1,0,0,1,0.0,0.5,0.5,0.0),
+              (:(NodePair{Dual,Dual,NX,NY}),    0,0,0,0,0.5,0.5,0.5,0.5),
+              (:(NodePair{Primal,Dual,NX,NY}),  1,1,0,0,0.0,0.0,0.5,0.5),
+              (:(NodePair{Dual,Primal,NX,NY}),  0,0,1,1,0.5,0.5,0.0,0.0),
+              (:(NodePair{Primal,Primal,NX,NY}),1,1,1,1,0.0,0.0,0.0,0.0))
+
 include("fields/points.jl")
 
-coordinates(w::Nodes{Dual,NX,NY};dx::Float64=1.0,I0::Tuple{Int,Int}=(1,1)) where {NX,NY} =
-    dx.*((1-I0[1]-0.5):(node_inds(Dual,(NX,NY))[1]-I0[1]-0.5),
-         (1-I0[2]-0.5):(node_inds(Dual,(NX,NY))[2]-I0[2]-0.5))
+GridData = Union{Nodes{T,NX,NY},Edges{T,NX,NY}} where {T,NX,NY}
 
+CollectedData = Union{EdgeGradient{T,S,NX,NY},NodePair{T,S,NX,NY}} where {T,S,NX,NY}
+
+"""
+    cooordinates(w::Nodes/Edges;[dx=1.0],[I0=(1,1)])
+
+Return tuples of ranges of the physical coordinates in each direction for grid
+data `w`.
+```
+```
+"""
+function coordinates end
+
+for (ctype,dnx,dny,shiftx,shifty) in scalarlist
+   @eval coordinates(w::$ctype;dx::Float64=1.0,I0::Tuple{Int,Int}=(1,1)) where {NX,NY} =
+    dx.*((1-I0[1]-$shiftx):(NX-$dnx-I0[1]-$shiftx),
+         (1-I0[2]-$shifty):(NY-$dny-I0[2]-$shifty))
+
+end
+
+for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
+   @eval coordinates(w::$ctype;dx::Float64=1.0,I0::Tuple{Int,Int}=(1,1)) where {NX,NY} =
+    dx.*((1-I0[1]-$shiftux):(NX-$dunx-I0[1]-$shiftux),
+         (1-I0[2]-$shiftuy):(NY-$duny-I0[2]-$shiftuy),
+         (1-I0[1]-$shiftvx):(NX-$dvnx-I0[1]-$shiftvx),
+         (1-I0[2]-$shiftvy):(NY-$dvny-I0[2]-$shiftvy))
+
+
+end
 
 
 include("fields/operators.jl")
 
+include("fields/shift.jl")
 
-"""
-    shift!(q::Edges{Dual},w::Nodes{Dual})
-
-Shift (by linear interpolation) the dual nodal data `w` to the edges of the dual
-cells, and return the result in `q`.
-
-# Example
-
-```jldoctest
-julia> w = Nodes(Dual,(8,6));
-
-julia> w[3,4] = 1.0;
-
-julia> q = Edges(Dual,w);
-
-julia> shift!(q,w)
-Whirl.Fields.Edges{Whirl.Fields.Dual,8,6} data
-u (in grid orientation):
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0
- 0.0  0.5  0.5  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0
-v (in grid orientation):
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.5  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.5  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
-```
-"""
-function shift!(dual::Edges{Dual, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
-    @inbounds for y in 2:NY-1, x in 1:NX-1
-        dual.u[x,y] = (w[x,y] + w[x+1,y])/2
-    end
-
-    @inbounds for y in 1:NY-1, x in 2:NX-1
-        dual.v[x,y] = (w[x,y] + w[x,y+1])/2
-    end
-    dual
-end
-
-
-shift(nodes::Nodes{Dual,NX,NY}) where {NX,NY} = shift!(Edges(Dual, nodes), nodes)
-
-"""
-    shift!((wx::Nodes,wy::Nodes),q::Edges)
-
-Shift (by linear interpolation) the edge data `q` (of either dual or primal
-type) to the dual or primal nodes, and return the result in `wx` and `wy`. `wx`
-holds the shifted `q.u` data and `wy` the shifted `q.v` data.
-
-# Example
-
-```jldoctest
-julia> q = Edges(Primal,(8,6));
-
-julia> q.u[3,2] = 1.0;
-
-julia> wx = Nodes(Dual,(8,6)); wy = deepcopy(wx);
-
-julia> Fields.shift!((wx,wy),q);
-
-julia> wx
-Whirl.Fields.Nodes{Whirl.Fields.Dual,8,6} data
-Printing in grid orientation (lower left is (1,1)):
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.5  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.5  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
-
-julia> wy
-Whirl.Fields.Nodes{Whirl.Fields.Dual,8,6} data
-Printing in grid orientation (lower left is (1,1)):
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
-```
-"""
-function shift!(dual::Tuple{Nodes{Dual, NX, NY},Nodes{Dual, NX, NY}}, w::Edges{Primal,NX, NY}) where {NX, NY}
-    @inbounds for y in 2:NY-1, x in 1:NX
-        dual[1][x,y] = (w.u[x,y-1] + w.u[x,y])/2
-    end
-
-    @inbounds for y in 1:NY, x in 2:NX-1
-        dual[2][x,y] = (w.v[x-1,y] + w.v[x,y])/2
-    end
-    dual
-end
-
-function shift!(dual::Tuple{Nodes{Dual, NX, NY},Nodes{Dual, NX, NY}}, w::Edges{Dual,NX, NY}) where {NX, NY}
-    @inbounds for y in 1:NY, x in 2:NX-1
-        dual[1][x,y] = (w.u[x-1,y] + w.u[x,y])/2
-    end
-
-    @inbounds for y in 2:NY-1, x in 1:NX
-        dual[2][x,y] = (w.v[x,y-1] + w.v[x,y])/2
-    end
-    dual
-end
-
-function shift!(primal::Tuple{Nodes{Primal, NX, NY},Nodes{Primal, NX, NY}}, w::Edges{Primal,NX, NY}) where {NX, NY}
-    @inbounds for y in 1:NY-1, x in 1:NX-1
-        primal[1][x,y] = (w.u[x,y] + w.u[x+1,y])/2
-    end
-
-    @inbounds for y in 1:NY-1, x in 1:NX-1
-        primal[2][x,y] = (w.v[x,y] + w.v[x,y+1])/2
-    end
-    primal
-end
-
-function shift!(primal::Tuple{Nodes{Primal, NX, NY},Nodes{Primal, NX, NY}}, w::Edges{Dual,NX, NY}) where {NX, NY}
-    @inbounds for y in 1:NY-1, x in 1:NX-1
-        primal[1][x,y] = (w.u[x,y] + w.u[x,y+1])/2
-    end
-
-    @inbounds for y in 1:NY-1, x in 1:NX-1
-        primal[2][x,y] = (w.v[x,y] + w.v[x+1,y])/2
-    end
-    primal
-end
-
-
-# I don't like this one. It is ambiguous what type of nodes are being shifted to.
-nodeshift(edges::Edges{Primal,NX,NY}) where {NX,NY} = shift!((Nodes(Dual, (NX,NY)),Nodes(Dual, (NX,NY))),edges)
 
 end
