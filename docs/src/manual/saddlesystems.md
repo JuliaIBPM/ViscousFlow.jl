@@ -45,7 +45,7 @@ We need only to provide rules for how to evaluate the actions of the various
 operators in the system. Let us use an example to show how this can be done.
 
 
-## A translating cylinder in potential flow
+## Translating cylinder in potential flow
 
 In irrotational, incompressible flow, the streamfunction $\psi$ satisfies Laplace's equation,
 
@@ -115,25 +115,18 @@ Now we need to set up the regularization `H` and interpolation `E` operators.
 ```@repl saddle
 regop = Regularize(X,dx;issymmetric=true)
 Hmat, Emat = RegularizationMatrix(regop,f,w);
-H(f::ScalarData) = Hmat*f;
-E(w::Nodes) = Emat*w;
 ```
-The last two lines do as we did for the Laplacian: generate operators of the correct
-form for the saddle point system structure.
 
 Now we are ready to set up the system.
 ```@repl saddle
-S = SaddleSystem((w,f),(L⁻¹,H,E),issymmetric=true,isposdef=true)
+S = SaddleSystem((w,f),(L⁻¹,Hmat,Emat),issymmetric=true,isposdef=true)
 ```
 Note that we have provided a tuple of the types of data, `w` and `f`, that we want the solver
-to work with, along with a tuple of the definitions of the three operators. A more
-physically appealing (and easier to remember) way to supply the operators is to
-supply them as a $2\times 2$ array:
-```@repl saddle
-Ã = [L⁻¹ H
-     E   0];
-S = SaddleSystem((w,f),Ã,issymmetric=true,isposdef=true)
-```
+to work with, along with a tuple of the definitions of the three operators. The operators
+can be in the form of a function acting on its data (as for `L⁻¹`) or in the form of a
+matrix (or matrix-like) operator (as for `Hmat` and `Emat`); the constructor sorts it
+out. However, the order is important: we must supply $A^{-1}$, $B_1^T$, and $B_2$, in
+that order.
 
 We have also
 set two optional flags, to specify that the system is symmetric and positive definite.
@@ -152,10 +145,18 @@ constraint is the specified streamfunction on the body. Note that we have
 subtracted the circle center from the $x$ positions on the body. The reason for
 this will be discussed in a moment.
 
-Finally, we solve it:
+We solve the system with the convenient shorthand of the backslash:
 ```@repl saddle
-@time (ψ,f) = S\(w,ψb)
-plot(ψ)
+@time ψ,f = S\(w,ψb)
+```
+Just to point out how fast it can be, we have also timed it. It's pretty fast.
+
+Now, let's plot the solution in physical space. We'll plot the body shape for
+reference, also.
+```@repl saddle
+xg, yg = coordinates(ψ,dx=dx)
+plot(xg,yg,ψ)
+plot!(xb,yb,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black)
 savefig("sfunc.svg"); nothing # hide
 ```
 ![](sfunc.svg)

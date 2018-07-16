@@ -23,8 +23,10 @@ end
     SaddleSystem((u,f),(A⁻¹,B₁ᵀ,B₂);[issymmetric=false],[isposdef=false])
 
 Construct the computational operators for a saddle-point system of the form
-\$[A B₁ᵀ; B₂ 0][u;f]\$. Note that the constituent operators can be passed in as a
-tuple (as they are here), or as a 2 x 2 matrix with a `0` in the lower right corner.
+\$[A B₁ᵀ; B₂ 0][u;f]\$. Note that the constituent operators are passed in as a
+tuple in the order seen here. Each of these operators could act on its corresponding
+data type in a function-like way, e.g. A⁻¹(u), or in a matrix-like way, e.g.,
+A⁻¹*u.
 
 # Arguments
 
@@ -41,7 +43,23 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
                                 issymmetric::Bool=false,
                                 isposdef::Bool=false) where {TU,TF,FA,FB1,FB2}
     u,f = state
-    A⁻¹, B₁ᵀ, B₂ = sys
+
+    optypes = (TU,TF,TU)
+    ops = []
+
+    # check for methods
+    for (i,typ) in enumerate(optypes)
+      if method_exists(sys[i],Tuple{typ})
+        push!(ops,sys[i])
+      elseif method_exists(*,Tuple{typeof(sys[i]),typ})
+        # generate a method that acts on TU
+        push!(ops,x->sys[i]*x)
+      else
+        error("No valid operator for $(op) supplied")
+      end
+    end
+
+    A⁻¹, B₁ᵀ, B₂ = ops
     ubuffer = deepcopy(u)
     fbuffer = deepcopy(f)
     N = length(f)
@@ -59,11 +77,12 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
 
     B₂A⁻¹(w::TU) = (B₂∘A⁻¹)(w)
 
-    saddlesys = SaddleSystem{FA,typeof(A⁻¹B₁ᵀ),typeof(B₂A⁻¹),TU,TF,N}(ubuffer,fbuffer,
+    saddlesys = SaddleSystem{typeof(A⁻¹),typeof(A⁻¹B₁ᵀ),typeof(B₂A⁻¹),TU,TF,N}(ubuffer,fbuffer,
                                 A⁻¹,A⁻¹B₁ᵀ,B₂A⁻¹,S,
                                 issymmetric,isposdef)
     # run once in order to precompile it
     saddlesys\(u,f)
+
     return saddlesys
 
 end
@@ -86,7 +105,7 @@ Output `state`, a tuple (u,f), is updated. Note that `sys` is also mutated:
 its scratch space `sys.B₂A⁻¹r₁` and `sys.A⁻¹B₁ᵀf` hold the intermediate results
 of the solution.
 
-A shorthand can be used for this operation: state = sys\rhs
+A shorthand can be used for this operation: `state = sys\rhs`
 """
 function A_ldiv_B!(state::Tuple{TU,TF},
                     sys::SaddleSystem{FA,FAB,FBA,TU,TF,N},
