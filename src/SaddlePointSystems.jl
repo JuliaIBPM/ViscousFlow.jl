@@ -45,6 +45,7 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
     u,f = state
 
     optypes = (TU,TF,TU)
+    opnames = ("A⁻¹","B₁ᵀ","B₂")
     ops = []
 
     # check for methods
@@ -55,7 +56,7 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
         # generate a method that acts on TU
         push!(ops,x->sys[i]*x)
       else
-        error("No valid operator for $(op) supplied")
+        error("No valid operator for $(opnames[i]) supplied")
       end
     end
 
