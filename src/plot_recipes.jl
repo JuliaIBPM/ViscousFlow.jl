@@ -28,7 +28,7 @@ end
       end
 end
 
-@recipe function plot(q::Union{Fields.Edges{T,NX,NY},Fields.NodePair{T,S,NX,NY}}) where {T,S,NX,NY}
+@recipe function plot(q::T) where {T <: Union{Fields.Edges,Fields.NodePair}}
     #wx = Fields.Nodes(Dual,(NX,NY))
     #wy = Fields.Nodes(Dual,(NX,NY))
     #shift!((wx,wy),q)
