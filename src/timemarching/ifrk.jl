@@ -62,7 +62,12 @@ function (::Type{IFRK})(u::TU,Δt::Float64,
 
     htype,_ = typeof(H).parameters
 
-    IFRK{NS,htype,typeof(r₁),TU}(Δt,rk,H,r₁,qᵢ,w)
+    ifrksys = IFRK{NS,htype,typeof(r₁),TU}(Δt,rk,H,r₁,qᵢ,w)
+
+    #pre-compile
+    ifrksys(0.0,u)
+
+    return ifrksys
 end
 
 function Base.show(io::IO, scheme::IFRK{NS,FH,FR1,TU}) where {NS,FH,FR1,TU}

@@ -36,7 +36,8 @@ struct NavierStokes{NX, NY}  #<: System{Unconstrained}
 
 end
 
-function NavierStokes(dims::Tuple{Int, Int}, Re, Δx, Δt, U∞ = (0.0, 0.0);
+function NavierStokes(dims::Tuple{Int, Int}, Re, Δx, Δt;
+                       U∞ = (0.0, 0.0),
                        rk::TimeMarching.RKParams=TimeMarching.RK31)
     NX, NY = dims
 
@@ -63,20 +64,24 @@ function Base.show(io::IO, sys::NavierStokes{NX,NY}) where {NX,NY}
     print(io, "Navier-Stokes system on a grid of size $NX x $NY")
 end
 
-function r₁(w,t,sys::NavierStokes{NX,NY}) where {NX,NY}
+function TimeMarching.r₁(w,t,sys::NavierStokes{NX,NY}) where {NX,NY}
 
   Ww = sys.Ww
   Qq = sys.Qq
   L = sys.L
   Δx⁻¹ = 1/sys.Δx
 
-  shift!(Qq,curl(sys.L\w)) # -velocity, on dual edges
+  shift!(Qq,curl(L\w)) # -velocity, on dual edges
   Qq.u .-= sys.U∞[1]
   Qq.v .-= sys.U∞[2]
 
   return scale!(divergence(Qq∘shift!(Ww,w)),Δx⁻¹) # -∇⋅(wu)
 
 end
+
+Fields.plan_intfact(t,w,sys::NavierStokes{NX,NY}) where {NX,NY} =
+        Fields.plan_intfact(t/(sys.Re*sys.Δx^2),w)
+
 
 #=
 

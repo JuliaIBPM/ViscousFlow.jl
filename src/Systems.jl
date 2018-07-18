@@ -2,7 +2,9 @@ module Systems
 
 using ..Fields
 using ..TimeMarching
-#import IntFactSystems: A⁻¹, r₁
+#import Whirl: r₁
+#import Whirl: plan_intfact
+
 
 
 include("systems/navier_stokes.jl")
