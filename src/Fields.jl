@@ -105,7 +105,7 @@ the form `xgu,ygu,xgv,ygv`.
 
 The optional keyword argument `dx` sets the grid spacing; its default is `1.0`. The
 optional keyword `I0` accepts a tuple of integers to set the index pair of the
-primal nodes that coincide with the origin. The default is `(1,1)`. 
+primal nodes that coincide with the origin. The default is `(1,1)`.
 
 # Example
 

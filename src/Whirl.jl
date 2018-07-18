@@ -23,6 +23,9 @@ include("SaddlePointSystems.jl")
 include("TimeMarching.jl")
 @reexport using .TimeMarching
 
+include("Systems.jl")
+@reexport using .Systems
+
 #== Type Definitions ==#
 
 const ndim = 2
