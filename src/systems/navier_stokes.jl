@@ -14,23 +14,12 @@ struct NavierStokes{NX, NY}  #<: System{Unconstrained}
     rk::TimeMarching.RKParams
 
     # Operators
-    #"Convolution operator for the integrating factor"
-    #E::CircularConvolution{NX, NY}
-    #"Convolution operator for LGF-based inverse Laplacian"
-    #invlap::CircularConvolution{NX, NY}
     "Laplacian operator"
     L::Fields.Laplacian{NX,NY}
 
     # Scratch space
 
-    ## Required structures for time marching
-    #A⁻¹g::Nodes{Dual,NX, NY}
-    #Ñ::Nodes{Dual,NX, NY}
-    #q::Nodes{Dual,NX, NY}
-    #w::Vector{Nodes{Dual,NX, NY}}
-
     ## Pre-allocated space for intermediate values
-    #Cs::Edges{Primal, NX, NY}
     Ww::Edges{Dual, NX, NY}
     Qq::Edges{Dual, NX, NY}
 
@@ -42,18 +31,9 @@ function NavierStokes(dims::Tuple{Int, Int}, Re, Δx, Δt;
     NX, NY = dims
 
     α = Δt/(Re*Δx^2)
-    #qtab = [intfact(x, y, 0.5α) for x in 0:NX-1, y in 0:NY-1]
-    #E = CircularConvolution(qtab, FFTW.PATIENT)
-    #invlap = CircularConvolution(view(Fields.LGF_TABLE, 1:NX, 1:NY), FFTW.PATIENT)
 
     L = plan_laplacian((NX,NY),with_inverse=true)
 
-    #A⁻¹g = Nodes{Dual,NX, NY}()
-    #Ñ    = Nodes{Dual,NX, NY}()
-    #q = Nodes{Dual,NX, NY}()
-    #w = [Nodes{Dual,NX, NY}() for i in 1:nw]
-
-    #Cs   = Edges{Primal, NX, NY}()
     Ww   = Edges{Dual, NX, NY}()
     Qq  = Edges{Dual, NX, NY}()
 

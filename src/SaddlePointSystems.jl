@@ -28,8 +28,17 @@ end
 Construct the computational operators for a saddle-point system of the form
 \$[A B₁ᵀ; B₂ 0][u;f]\$. Note that the constituent operators are passed in as a
 tuple in the order seen here. Each of these operators could act on its corresponding
-data type in a function-like way, e.g. A⁻¹(u), or in a matrix-like way, e.g.,
-A⁻¹*u.
+data type in a function-like way, e.g. `A⁻¹(u)`, or in a matrix-like way, e.g.,
+`A⁻¹*u`.
+
+The optional argument `conditioner` can be used to supply a function that acts
+upon the result `f` to 'condition' it (e.g. filter it). It is, by default, set
+to the identity.
+
+The optional Boolean argument `store` will compute and store the Schur
+complement matrix's factorization. This makes the inversion faster, though
+it comes at the expense of memory and overhead time for pre-computing it. The
+resulting solution is somewhat noiser, too.
 
 # Arguments
 

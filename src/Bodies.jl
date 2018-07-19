@@ -1,5 +1,84 @@
 module Bodies
 
+import Base:diff
+
+export Body,RigidTransform,Ellipse
+
+abstract type Body{N} end
+
+
+struct RigidTransform
+   α   :: Float64
+   rot :: Matrix{Float64}
+   trans  :: Tuple{Float64,Float64}
+end
+
+function RigidTransform(x::Tuple{Float64,Float64},α::Float64)
+    rot = [cos(α) -sin(α)
+           sin(α) cos(α)]
+    RigidTransform(α,rot,x)
+end
+
+function (T::RigidTransform)(x̃::Float64,ỹ::Float64)
+    Xr = T.rot*[x̃,ỹ]
+    return T.trans .+ (Xr[1],Xr[2])
+end
+function (T::RigidTransform)(x̃::Vector{Float64},ỹ::Vector{Float64})
+    x = copy(x̃)
+    y = copy(ỹ)
+    for i = 1:length(x̃)
+        x[i],y[i] = T(x̃[i],ỹ[i])
+    end
+    return x, y
+end
+function (T::RigidTransform)(b::Body{N}) where {N}
+  b.x, b.y = T(b.x̃,b.ỹ)
+  b.α = T.α
+  b.cent = T.trans
+end
+
+# Evaluate some geometric details of a body
+function diff(b::Body{N}) where {N}
+
+  ip1(i) = 1 + mod(i,N)
+  im1(i) = 1 + mod(i-2,N)
+  dxtmp = [0.5*(b.x̃[ip1(i)] - b.x̃[im1(i)]) for i = 1:N]
+  dytmp = [0.5*(b.ỹ[ip1(i)] - b.ỹ[im1(i)]) for i = 1:N]
+  return dxtmp,dytmp
+end
+
+ds(b::Body{N}) where {N} = sqrt.(diff(b)[1].^2+diff(b)[2].^2)
+
+
+mutable struct Ellipse{N} <: Body{N}
+  a :: Float64
+  b :: Float64
+  cent :: Tuple{Float64,Float64}
+  α :: Float64
+
+  x̃ :: Vector{Float64}
+  ỹ :: Vector{Float64}
+
+  x :: Vector{Float64}
+  y :: Vector{Float64}
+
+end
+
+
+function Ellipse(a::Float64,b::Float64,N::Int)
+    x̃ = zeros(N)
+    ỹ = zeros(N)
+    θ = linspace(0,2π,N+1)
+    @. x̃ = a*cos(θ[1:N])
+    @. ỹ = b*sin(θ[1:N])
+
+
+    Ellipse{N}(a,b,(0.0,0.0),0.0,x̃,ỹ,x̃,ỹ)
+end
+
+
+
+#=
 export Body
 
 import Whirl
@@ -103,17 +182,7 @@ function set_velocity!(body::Body,m::RigidBodyMotion,l=1)
 end
 
 # Evaluate some geometric details of a body
-function dx(b::Body)
-  x = map(x->x[1],b.x)
-  y = map(x->x[2],b.x)
-  ip1(i) = 1 + mod(i,b.N)
-  im1(i) = 1 + mod(i-2,b.N)
-  dxtmp = [0.5*(x[ip1(i)] - x[im1(i)]) for i = 1:b.N]
-  dytmp = [0.5*(y[ip1(i)] - y[im1(i)]) for i = 1:b.N]
-  return dxtmp,dytmp
-end
 
-ds(body::Body) = sqrt.(dx(body)[1].^2+dx(body)[2].^2)
 
 function normal(body::Body)
   nx = -dx(body)[2]./ds(body)
@@ -234,5 +303,6 @@ function Base.show(io::IO, b::Body)
     println(io,"     min spacing between points = $(minimum(ds))")
 end
 
+=#
 
 end

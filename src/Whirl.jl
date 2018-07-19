@@ -16,6 +16,10 @@ include("Fields.jl")
 
 @reexport using .Fields
 
+include("Bodies.jl")
+
+@reexport using .Bodies
+
 include("SaddlePointSystems.jl")
 
 @reexport using .SaddlePointSystems
