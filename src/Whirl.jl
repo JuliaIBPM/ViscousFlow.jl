@@ -20,6 +20,10 @@ include("Bodies.jl")
 
 @reexport using .Bodies
 
+include("RigidBodyMotions.jl")
+
+@reexport using .RigidBodyMotions
+
 include("SaddlePointSystems.jl")
 
 @reexport using .SaddlePointSystems
