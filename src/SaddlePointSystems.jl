@@ -8,20 +8,22 @@ import Base: *, \, A_mul_B!, A_ldiv_B!
 
 export SaddleSystem
 
-struct SaddleSystem{FA,FAB,FBA,FP,TU,TF,N}
+struct SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,Storage}
     A⁻¹B₁ᵀf :: TU
     B₂A⁻¹r₁ :: TF
+    tmpvec :: Vector{Float64}
     A⁻¹ :: FA
     A⁻¹B₁ᵀ :: FAB
     B₂A⁻¹ :: FBA
     P :: FP
     S  :: LinearMap
+    S⁻¹ :: Nullable{Factorization{Float64}}
     _issymmetric :: Bool
     _isposdef :: Bool
 end
 
 """
-    SaddleSystem((u,f),(A⁻¹,B₁ᵀ,B₂);[issymmetric=false],[isposdef=false])
+    SaddleSystem((u,f),(A⁻¹,B₁ᵀ,B₂);[issymmetric=false],[isposdef=false],[conditioner=Identity],[store=false])
 
 Construct the computational operators for a saddle-point system of the form
 \$[A B₁ᵀ; B₂ 0][u;f]\$. Note that the constituent operators are passed in as a
@@ -43,7 +45,8 @@ A⁻¹*u.
 function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
                                 conditioner::FP=x->x,
                                 issymmetric::Bool=false,
-                                isposdef::Bool=false) where {TU,TF,FA,FB1,FB2,FP}
+                                isposdef::Bool=false,
+                                store::Bool=false) where {TU,TF,FA,FB1,FB2,FP}
     u,f = state
 
     optypes = (TU,TF,TU)
@@ -66,6 +69,7 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
     ubuffer = deepcopy(u)
     fbuffer = deepcopy(f)
     N = length(f)
+    tmpvec = zeros(N)
 
     # Schur complement
     function Schur!(fout::AbstractVector{Float64},fin::AbstractVector{Float64})
@@ -76,12 +80,28 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
     end
     S = LinearMap(Schur!,N;ismutating=true,issymmetric=issymmetric,isposdef=isposdef)
 
+
+    if store
+      Smat = zeros(N,N)
+      fill!(f,0.0)
+      for i = 1:N
+        f[i] = 1.0
+        fbuffer .= S*f
+        Smat[1:N,i] .= fbuffer
+        f[i] = 0.0
+      end
+      S⁻¹ = Nullable(factorize(Smat))
+    else
+      S⁻¹ = Nullable()
+    end
+
     A⁻¹B₁ᵀ(f::TF) = (A⁻¹∘B₁ᵀ)(f)
 
     B₂A⁻¹(w::TU) = (B₂∘A⁻¹)(w)
 
-    saddlesys = SaddleSystem{typeof(A⁻¹),typeof(A⁻¹B₁ᵀ),typeof(B₂A⁻¹),typeof(conditioner),TU,TF,N}(ubuffer,fbuffer,
-                                A⁻¹,A⁻¹B₁ᵀ,B₂A⁻¹,conditioner,S,
+    saddlesys = SaddleSystem{typeof(A⁻¹),typeof(A⁻¹B₁ᵀ),typeof(B₂A⁻¹),typeof(conditioner),TU,TF,N,store}(
+                                ubuffer,fbuffer,tmpvec,
+                                A⁻¹,A⁻¹B₁ᵀ,B₂A⁻¹,conditioner,S,S⁻¹,
                                 issymmetric,isposdef)
     # run once in order to precompile it
     saddlesys\(u,f)
@@ -93,7 +113,7 @@ end
 (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Array{Any,2};kwarg...) where {TU,TF} =
             SaddleSystem(state,(sys[1,1],sys[1,2],sys[2,1]);kwarg...)
 
-function Base.show(io::IO, S::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N}) where {FA,FAB,FBA,FP,TU,TF,N}
+function Base.show(io::IO, S::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,Storage}) where {FA,FAB,FBA,FP,TU,TF,N,Storage}
     println(io, "Saddle system with")
     println(io, "   State of type $TU")
     println(io, "   Force of type $TF")
@@ -110,15 +130,17 @@ of the solution.
 
 A shorthand can be used for this operation: `state = sys\rhs`
 """
+# non-stored matrix
 function A_ldiv_B!(state::Tuple{TU,TF},
-                    sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N},
+                    sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,false},
                     rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,FP,N}
 
   ru, rf = rhs
   u, f = state
   sys.B₂A⁻¹r₁ .= sys.B₂A⁻¹(ru)
   rf .-= sys.B₂A⁻¹r₁
-  cg!(f,sys.S,rf,tol=1e-3)
+  sys.tmpvec .= rf
+  cg!(f,sys.S,sys.tmpvec,tol=1e-3)
   f .= sys.P(f)
   u .= sys.A⁻¹(ru)
   sys.A⁻¹B₁ᵀf .= sys.A⁻¹B₁ᵀ(f)
@@ -126,7 +148,26 @@ function A_ldiv_B!(state::Tuple{TU,TF},
   state = u, f
 end
 
-\(sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N},rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,FP,N} =
+# stored matrix
+function A_ldiv_B!(state::Tuple{TU,TF},
+                    sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,true},
+                    rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,FP,N}
+
+  ru, rf = rhs
+  u, f = state
+  sys.B₂A⁻¹r₁ .= sys.B₂A⁻¹(ru)
+  rf .-= sys.B₂A⁻¹r₁
+  sys.tmpvec .= rf
+  A_ldiv_B!(get(sys.S⁻¹),sys.tmpvec)
+  f .= sys.tmpvec
+  f .= sys.P(f)
+  u .= sys.A⁻¹(ru)
+  sys.A⁻¹B₁ᵀf .= sys.A⁻¹B₁ᵀ(f)
+  u .-= sys.A⁻¹B₁ᵀf
+  state = u, f
+end
+
+\(sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,Storage},rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,FP,N,Storage} =
       A_ldiv_B!((TU(),TF()),sys,rhs)
 
 end
