@@ -1,6 +1,6 @@
 module Bodies
 
-import Base:diff
+import Base:diff,length
 
 export Body,RigidTransform,Ellipse,Plate
 
@@ -16,6 +16,8 @@ target coordinate system.
 The resulting transform can be used as an operator on pairs of coordinate vectors,
 `x` and `y`, or on bodies. For transformation of bodies, it only overwrites the
 `x` and `y` fields of the body, but leaves the `x̃` and `ỹ` (body coordinates) intact.
+
+The translation can be provided as either a tuple `(x,y)` or as a complex number.
 
 # Example
 
@@ -48,6 +50,8 @@ function RigidTransform(x::Tuple{Float64,Float64},α::Float64)
     RigidTransform(α,rot,x)
 end
 
+RigidTransform(c::Complex128,α::Float64) = RigidTransform((real(c),imag(c)),α)
+
 function Base.show(io::IO, T::RigidTransform)
     name = "Rigid-body transform"
     println(io, name)
@@ -76,6 +80,13 @@ function (T::RigidTransform)(b::Body{N}) where {N}
 end
 
 # Evaluate some geometric details of a body
+"""
+    length(body::Body)
+
+Return the number of points on the body perimeter
+"""
+length(::Body{N}) where {N} = N
+
 """
     diff(body::Body) -> Tuple{Vector{Float64},Vector{Float64}}
 

@@ -19,7 +19,7 @@ const myblue = RGBA{Float64}(74/255,144/255,226/255,1)
   end
 end
 
-@recipe function plot(x::AbstractArray{S,1},y::AbstractArray{S,1},w::Fields.Nodes{T,NX,NY}) where {S,T,NX,NY}
+@recipe function plot(x::AbstractArray{S,1},y::AbstractArray{S,1},w::Fields.Nodes{T,NX,NY};trim::Int=0) where {S,T,NX,NY}
       grid --> :none
       ratio := 1
       linewidth --> 1
@@ -28,7 +28,7 @@ end
       levels --> linspace(minimum(w.data),maximum(w.data),16)
       @series begin
         seriestype --> :contour
-        x,y,transpose(w.data)
+        x[1+trim:end-trim],y[1+trim:end-trim],transpose(w.data[1+trim:end-trim,1+trim:end-trim])
       end
 end
 
