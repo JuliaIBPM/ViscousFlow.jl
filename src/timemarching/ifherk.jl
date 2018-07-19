@@ -59,6 +59,7 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
                           rhs::Tuple{FR1,FR2};
                           issymmetric::Bool=false,
                           conditioner::FP = x -> x,
+                          store::Bool=false,
                           rk::RKParams{NS}=RK31) where {TU,TF,FI,FB1,FB2,FR1,FR2,FP,NS}
 
 
@@ -113,7 +114,7 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
     Hlist = [plan_intfact(dc*Δt,u) for dc in unique(dclist)]
 
 
-    Slist = [SaddleSystem((u,f),(H,B₁ᵀ,B₂),issymmetric=issymmetric,isposdef=true) for H in Hlist]
+    Slist = [SaddleSystem((u,f),(H,B₁ᵀ,B₂),issymmetric=issymmetric,isposdef=true,store=store) for H in Hlist]
 
     H = [Hlist[i] for i in indexin(dclist,unique(dclist))]
     S = [Slist[i] for i in indexin(dclist,unique(dclist))]
