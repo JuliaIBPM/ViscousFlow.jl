@@ -8,12 +8,13 @@ import Base: *, \, A_mul_B!, A_ldiv_B!
 
 export SaddleSystem
 
-struct SaddleSystem{FA,FAB,FBA,TU,TF,N}
+struct SaddleSystem{FA,FAB,FBA,FP,TU,TF,N}
     A⁻¹B₁ᵀf :: TU
     B₂A⁻¹r₁ :: TF
     A⁻¹ :: FA
     A⁻¹B₁ᵀ :: FAB
     B₂A⁻¹ :: FBA
+    P :: FP
     S  :: LinearMap
     _issymmetric :: Bool
     _isposdef :: Bool
@@ -40,8 +41,9 @@ A⁻¹*u.
             acting on `u` and returning type `f`
 """
 function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
+                                conditioner::FP=x->x,
                                 issymmetric::Bool=false,
-                                isposdef::Bool=false) where {TU,TF,FA,FB1,FB2}
+                                isposdef::Bool=false) where {TU,TF,FA,FB1,FB2,FP}
     u,f = state
 
     optypes = (TU,TF,TU)
@@ -78,8 +80,8 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
 
     B₂A⁻¹(w::TU) = (B₂∘A⁻¹)(w)
 
-    saddlesys = SaddleSystem{typeof(A⁻¹),typeof(A⁻¹B₁ᵀ),typeof(B₂A⁻¹),TU,TF,N}(ubuffer,fbuffer,
-                                A⁻¹,A⁻¹B₁ᵀ,B₂A⁻¹,S,
+    saddlesys = SaddleSystem{typeof(A⁻¹),typeof(A⁻¹B₁ᵀ),typeof(B₂A⁻¹),typeof(conditioner),TU,TF,N}(ubuffer,fbuffer,
+                                A⁻¹,A⁻¹B₁ᵀ,B₂A⁻¹,conditioner,S,
                                 issymmetric,isposdef)
     # run once in order to precompile it
     saddlesys\(u,f)
@@ -91,7 +93,7 @@ end
 (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Array{Any,2};kwarg...) where {TU,TF} =
             SaddleSystem(state,(sys[1,1],sys[1,2],sys[2,1]);kwarg...)
 
-function Base.show(io::IO, S::SaddleSystem{FA,FAB,FBA,TU,TF,N}) where {FA,FAB,FBA,TU,TF,N}
+function Base.show(io::IO, S::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N}) where {FA,FAB,FBA,FP,TU,TF,N}
     println(io, "Saddle system with")
     println(io, "   State of type $TU")
     println(io, "   Force of type $TF")
@@ -109,21 +111,22 @@ of the solution.
 A shorthand can be used for this operation: `state = sys\rhs`
 """
 function A_ldiv_B!(state::Tuple{TU,TF},
-                    sys::SaddleSystem{FA,FAB,FBA,TU,TF,N},
-                    rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,N}
+                    sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N},
+                    rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,FP,N}
 
   ru, rf = rhs
   u, f = state
   sys.B₂A⁻¹r₁ .= sys.B₂A⁻¹(ru)
   rf .-= sys.B₂A⁻¹r₁
   cg!(f,sys.S,rf,tol=1e-3)
+  f .= sys.P(f)
   u .= sys.A⁻¹(ru)
   sys.A⁻¹B₁ᵀf .= sys.A⁻¹B₁ᵀ(f)
   u .-= sys.A⁻¹B₁ᵀf
   state = u, f
 end
 
-\(sys::SaddleSystem{FA,FAB,FBA,TU,TF,N},rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,N} =
+\(sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N},rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,FP,N} =
       A_ldiv_B!((TU(),TF()),sys,rhs)
 
 end

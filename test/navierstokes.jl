@@ -1,18 +1,8 @@
 import Whirl: Systems
 using Systems
 
-#import Whirl: IntFactSystems, TimeMarching, Fields
 
-#using IntFactSystems
-#include(joinpath(Pkg.dir("Whirl"), "src/systems/navier_stokes.jl"))
-#import TimeMarching: ifrk!, RK31
-#import Whirl: Soln
-
-#using Fields
-
-
-
-@testset "Gaussian Vorticity Patch" begin
+@testset "Lamb-Oseen vortex" begin
 
     woseen(x::Tuple{Real,Real},t;Re=1.0,x0::Tuple{Real,Real}=(0,0),t0=1) =
                           exp(-((x[1]-x0[1])^2+(x[2]-x0[2])^2)/(4(t+t0)/Re))/(1+t/t0)
@@ -53,29 +43,4 @@ using Systems
     @test norm(w-wexact(t),Inf) < 1e-1
     @test sum(w) ≈ sum(wexact(t))
 
-    #=
-    Re = 200 + 50rand()
-    Δx = 0.02
-    x = linspace(-1-0.5Δx, 3+0.5Δx, 202)
-    y = linspace(-1-0.5Δx, 1+0.5Δx, 102)
-    Δt = min(0.5*Δx,0.5*Δx^2*Re)
-    dims = length.((x,y))
-
-    U = 1.0 + 0.2randn()
-    σ = 0.2 + 0.05randn()
-
-    ns = NavierStokes(dims, Re, Δx, Δt, (U, 0.0))
-    s = Soln(0.0, Fields.Nodes(Fields.Dual,dims));
-    s.u .= [wexact(xᵢ, yᵢ, 0, Re, σ, U, Δx) for xᵢ in x, yᵢ in y]
-    s₊ = Soln(0.0, Fields.Nodes(Fields.Dual,dims));
-
-    for i in 1:10
-        ifrk!(s₊, s, Δt, RK31, ns)
-        s₊, s = s, s₊
-    end
-
-    exact_soln = [wexact(xᵢ, yᵢ, s.t, Re, σ, U, Δx) for xᵢ in x, yᵢ in y]
-    @test norm(s.u - exact_soln) < 1e-3
-    @test sum(s.u) ≈ sum(exact_soln)
-    =#
 end

@@ -22,7 +22,7 @@ The resulting integrator will advance the system `(u,f)` by one time step, `Δt`
 - `r₁` : operator acting on type `u` and `t` and returning `u`
 - `r₂` : operator acting on type `u` and `t` and returning type `f`
 """
-struct IFHERK{NS,FH,FB1,FB2,FR1,FR2,TU,TF}
+struct IFHERK{NS,FH,FB1,FB2,FR1,FR2,FP,TU,TF}
 
   # time step size
   Δt :: Float64
@@ -36,6 +36,7 @@ struct IFHERK{NS,FH,FB1,FB2,FR1,FR2,TU,TF}
   B₂ :: FB2   # operates on TU and returns TF
   r₁ :: FR1  # function of u and t, returns TU
   r₂ :: FR2  # function of t, returns TF
+  P :: FP  # conditioner acting on TF and returning TF
 
   # Saddle-point systems
   S :: Vector{SaddleSystem}  # -B₂HB₁ᵀ
@@ -57,7 +58,8 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
                           sys::Tuple{FB1,FB2},
                           rhs::Tuple{FR1,FR2};
                           issymmetric::Bool=false,
-                          rk::RKParams{NS}=RK31) where {TU,TF,FI,FB1,FB2,FR1,FR2,NS}
+                          conditioner::FP = x -> x,
+                          rk::RKParams{NS}=RK31) where {TU,TF,FI,FB1,FB2,FR1,FR2,FP,NS}
 
 
    # templates for the operators
@@ -118,8 +120,8 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
 
     htype,_ = typeof(H).parameters
 
-    ifherksys = IFHERK{NS,htype,typeof(B₁ᵀ),typeof(B₂),typeof(r₁),typeof(r₂),TU,TF}(Δt,rk,
-                                H,B₁ᵀ,B₂,r₁,r₂,S,
+    ifherksys = IFHERK{NS,htype,typeof(B₁ᵀ),typeof(B₂),typeof(r₁),typeof(r₂),typeof(conditioner),TU,TF}(Δt,rk,
+                                H,B₁ᵀ,B₂,r₁,r₂,conditioner,S,
                                 qᵢ,ubuffer,w,fbuffer,
                                 issymmetric)
 
@@ -129,7 +131,7 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
     return ifherksys
 end
 
-function Base.show(io::IO, scheme::IFHERK{NS,FH,FB1,FB2,FR1,FR2,TU,TF}) where {NS,FH,FB1,FB2,FR1,FR2,TU,TF}
+function Base.show(io::IO, scheme::IFHERK{NS,FH,FB1,FB2,FR1,FR2,FP,TU,TF}) where {NS,FH,FB1,FB2,FR1,FR2,FP,TU,TF}
     println(io, "Order-$NS IF-HERK integrator with")
     println(io, "   State of type $TU")
     println(io, "   Force of type $TF")
@@ -137,7 +139,7 @@ function Base.show(io::IO, scheme::IFHERK{NS,FH,FB1,FB2,FR1,FR2,TU,TF}) where {N
 end
 
 # Advance the IFHERK solution by one time step
-function (scheme::IFHERK{NS,FH,FB1,FB2,FR1,FR2,TU,TF})(t::Float64,u::TU) where {NS,FH,FB1,FB2,FR1,FR2,TU,TF}
+function (scheme::IFHERK{NS,FH,FB1,FB2,FR1,FR2,FP,TU,TF})(t::Float64,u::TU) where {NS,FH,FB1,FB2,FR1,FR2,FP,TU,TF}
   @get scheme (Δt,rk,H,S,B₁ᵀ,B₂,r₁,r₂,qᵢ,w,fbuffer,ubuffer)
 
   # H[i] corresponds to H(i,i+1) = H((cᵢ - cᵢ₋₁)Δt)
@@ -170,6 +172,7 @@ function (scheme::IFHERK{NS,FH,FB1,FB2,FR1,FR2,TU,TF})(t::Float64,u::TU) where {
       end
       fbuffer .= r₂(u,tᵢ₊₁) # r₂
       u, f = S[i]\(ubuffer,fbuffer)  # solve saddle point system
+
       #A_ldiv_B!((u,f),S[i],(ubuffer,fbuffer)) # solve saddle point system
 
       # diffuse the scratch vectors
