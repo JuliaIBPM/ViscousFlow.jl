@@ -196,8 +196,8 @@ function Plate(len::Float64,N::Int;λ::Float64=1.0)
     # set up points on plate
     #x = [[len*(-0.5 + 1.0*(i-1)/(N-1)),0.0] for i=1:N]
 
-    Δϕ = π/N
-    Jϕa = [sqrt(sin(ϕ)^2+λ^2*cos(ϕ)^2) for ϕ in linspace(π-Δϕ/2,Δϕ/2,N)]
+    Δϕ = π/(N-1)
+    Jϕa = [sqrt(sin(ϕ)^2+λ^2*cos(ϕ)^2) for ϕ in linspace(π-Δϕ/2,Δϕ/2,N-1)]
     Jϕ = len*Jϕa/Δϕ/sum(Jϕa)
     x̃ = -0.5*len + Δϕ*cumsum([0.0; Jϕ])
     ỹ = zeros(x̃)
