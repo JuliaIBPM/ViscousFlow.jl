@@ -119,6 +119,10 @@ VectorData(x::ScalarData) = VectorData(zeros(x.data),zeros(x.data))
 (::Type{ScalarData{N}})() where {N} = ScalarData(N)
 (::Type{VectorData{N}})() where {N} = VectorData(N)
 
+Base.similar(::ScalarData{N}) where {N} = ScalarData(N)
+
+Base.similar(::VectorData{N}) where {N} = VectorData(N)
+
 
 Base.size(A::VectorData) = size(A.u).+size(A.v)
 @propagate_inbounds Base.getindex(A::VectorData{N},i::Int) where {N} =

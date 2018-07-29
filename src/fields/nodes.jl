@@ -37,6 +37,8 @@ Nodes(T, nodes::Nodes{S,NX,NY}) where {S <: CellType, NX, NY} = Nodes(T, (NX, NY
 Nodes(T, nx::Int, ny::Int) = Nodes(T,(nx,ny))
 (::Type{Nodes{T,NX,NY}})() where {T,NX,NY} = Nodes(T, (NX, NY))
 
+Base.similar(::Nodes{T,NX,NY}) where {T,NX,NY} = Nodes(T, (NX, NY))
+
 function Base.show(io::IO, nodes::Nodes{T, NX, NY}) where {T, NX, NY}
     nodedims = "(nx = $NX, ny = $NY)"
     dims = "(nx = $(size(nodes,1)), ny = $(size(nodes,2)))"
