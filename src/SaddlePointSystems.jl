@@ -12,6 +12,7 @@ struct SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,Storage}
     A⁻¹B₁ᵀf :: TU
     B₂A⁻¹r₁ :: TF
     tmpvec :: Vector{Float64}
+    tmpvecout :: Vector{Float64}
     A⁻¹ :: FA
     A⁻¹B₁ᵀ :: FAB
     B₂A⁻¹ :: FBA
@@ -79,6 +80,7 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
     fbuffer = deepcopy(f)
     N = length(f)
     tmpvec = zeros(N)
+    tmpvecout = zeros(N)
 
     # Schur complement
     function Schur!(fout::AbstractVector{Float64},fin::AbstractVector{Float64})
@@ -109,7 +111,7 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
     B₂A⁻¹(w::TU) = (B₂∘A⁻¹)(w)
 
     saddlesys = SaddleSystem{typeof(A⁻¹),typeof(A⁻¹B₁ᵀ),typeof(B₂A⁻¹),typeof(conditioner),TU,TF,N,store}(
-                                ubuffer,fbuffer,tmpvec,
+                                ubuffer,fbuffer,tmpvec,tmpvecout,
                                 A⁻¹,A⁻¹B₁ᵀ,B₂A⁻¹,conditioner,S,S⁻¹,
                                 issymmetric,isposdef)
     # run once in order to precompile it
@@ -123,7 +125,7 @@ end
             SaddleSystem(state,(sys[1,1],sys[1,2],sys[2,1]);kwarg...)
 
 function Base.show(io::IO, S::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,Storage}) where {FA,FAB,FBA,FP,TU,TF,N,Storage}
-    println(io, "Saddle system with")
+    println(io, "Saddle system with $N constraints and")
     println(io, "   State of type $TU")
     println(io, "   Force of type $TF")
 end
@@ -148,9 +150,12 @@ function A_ldiv_B!(state::Tuple{TU,TF},
   u, f = state
   sys.B₂A⁻¹r₁ .= sys.B₂A⁻¹(ru)
   rf .-= sys.B₂A⁻¹r₁
-  sys.tmpvec .= rf
-  cg!(f,sys.S,sys.tmpvec,tol=1e-3)
-  f .= sys.P(f)
+  if N > 0
+    sys.tmpvec .= rf
+    cg!(sys.tmpvecout,sys.S,sys.tmpvec,tol=1e-3)
+    f .= sys.tmpvecout
+    f .= sys.P(f)
+  end
   u .= sys.A⁻¹(ru)
   sys.A⁻¹B₁ᵀf .= sys.A⁻¹B₁ᵀ(f)
   u .-= sys.A⁻¹B₁ᵀf
@@ -166,17 +171,20 @@ function A_ldiv_B!(state::Tuple{TU,TF},
   u, f = state
   sys.B₂A⁻¹r₁ .= sys.B₂A⁻¹(ru)
   rf .-= sys.B₂A⁻¹r₁
-  sys.tmpvec .= rf
-  A_ldiv_B!(get(sys.S⁻¹),sys.tmpvec)
-  f .= sys.tmpvec
-  f .= sys.P(f)
+  if N > 0
+    sys.tmpvec .= rf
+    A_ldiv_B!(get(sys.S⁻¹),sys.tmpvec)
+    f .= sys.tmpvec
+    f .= sys.P(f)
+  end
   u .= sys.A⁻¹(ru)
   sys.A⁻¹B₁ᵀf .= sys.A⁻¹B₁ᵀ(f)
   u .-= sys.A⁻¹B₁ᵀf
   state = u, f
 end
 
+
 \(sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,Storage},rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,FP,N,Storage} =
-      A_ldiv_B!((TU(),TF()),sys,rhs)
+      A_ldiv_B!(similar.(rhs),sys,rhs)
 
 end

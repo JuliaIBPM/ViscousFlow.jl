@@ -38,4 +38,15 @@ fex = -2*cos.(θ[1:n])
 @test ψ[nx,65] ≈ -ψ[1,65]
 @test ψ[65,ny] ≈ ψ[65,1]
 
+ru = ones(Float64,2)
+rf = Vector{Float64}()
+A⁻¹(u::Vector{Float64}) = u
+B₁ᵀ(f::Vector{Float64}) = zeros(Float64,2)
+B₂(u::Vector{Float64}) = Vector{Float64}()
+sys = SaddleSystem((ru,rf),(A⁻¹,B₁ᵀ,B₂))
+
+u,f = sys\(ru,rf)
+@test u ≈ [1.0,1.0]
+@test length(f) == 0
+
 end
