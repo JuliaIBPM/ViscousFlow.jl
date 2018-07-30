@@ -2,7 +2,7 @@ module TimeMarching
 
 import Whirl:@get
 
-export System, Constrained, Unconstrained, IFRK, IFHERK, r₁
+export System, Constrained, Unconstrained, RK, IFRK, IFHERK, r₁, r₂, B₂, B₁ᵀ
 
 "Abstract type for a system of ODEs"
 abstract type System{C} end
@@ -11,7 +11,12 @@ const Constrained = true
 const Unconstrained = false
 
 #function A⁻¹ end
+# Functions that get extended by individual systems
 function r₁ end
+function r₂ end
+function B₂ end
+function B₁ᵀ end
+
 
 struct RKParams{N}
   c::Vector{Float64}
@@ -26,6 +31,8 @@ const RK31 = RKParams{3}([0.5, 1.0, 1.0],
                        (3+√3)/6    -√3/3 (3+√3)/6])
 
 const Euler = RKParams{1}([1.0],ones(1,1))
+
+include("timemarching/rk.jl")
 
 
 include("timemarching/ifrk.jl")
