@@ -45,8 +45,18 @@ B₁ᵀ(f::Vector{Float64}) = zeros(Float64,2)
 B₂(u::Vector{Float64}) = Vector{Float64}()
 sys = SaddleSystem((ru,rf),(A⁻¹,B₁ᵀ,B₂))
 
-u,f = sys\(ru,rf)
+u,fnull = sys\(ru,rf)
 @test u ≈ [1.0,1.0]
-@test length(f) == 0
+@test length(fnull) == 0
+
+sysys = (PS,sys)
+rhs = ((w,ψb),(ru,rf))
+(ψ,f),(u,fnull) = sysys\rhs
+
+@test ψ[nx,65] ≈ -ψ[1,65]
+@test ψ[65,ny] ≈ ψ[65,1]
+@test u ≈ [1.0,1.0]
+@test length(fnull) == 0
+
 
 end

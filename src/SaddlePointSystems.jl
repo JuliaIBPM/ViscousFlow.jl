@@ -187,4 +187,16 @@ end
 \(sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,Storage},rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,FP,N,Storage} =
       A_ldiv_B!(similar.(rhs),sys,rhs)
 
+
+# solving tuples of systems
+function A_ldiv_B!(state,sys::NTuple{M,SaddleSystem},rhs) where {M}
+  for (i,sysi) in enumerate(sys)
+    A_ldiv_B!(state[i],sysi,rhs[i])
+  end
+  state
+end
+
+\(sys::NTuple{M,SaddleSystem},rhs) where {M} =
+      A_ldiv_B!(deepcopy.(rhs),sys,rhs)
+
 end
