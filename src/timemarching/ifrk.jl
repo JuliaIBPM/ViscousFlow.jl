@@ -62,7 +62,12 @@ function (::Type{IFRK})(u::TU,Δt::Float64,
 
     htype,_ = typeof(H).parameters
 
-    ifrksys = IFRK{NS,htype,typeof(r₁),TU}(Δt,rk,H,r₁,qᵢ,w)
+    # fuse the time step size into the coefficients for some cost savings
+    rkdt = deepcopy(rk)
+    rkdt.a .*= Δt
+    rkdt.c .*= Δt
+
+    ifrksys = IFRK{NS,htype,typeof(r₁),TU}(Δt,rkdt,H,r₁,qᵢ,w)
 
     #pre-compile
     ifrksys(0.0,u)
@@ -87,9 +92,9 @@ function (scheme::IFRK{NS,FH,FR1,TU})(t::Float64,u::TU) where {NS,FH,FR1,TU}
 
   if NS > 1
     # first stage, i = 1
-    tᵢ₊₁ = t + Δt*rk.c[i]
+    tᵢ₊₁ = t + rk.c[i]
 
-    w[i] .= Δt*rk.a[i,i]*r₁(u,tᵢ₊₁) # gᵢ
+    w[i] .= rk.a[i,i].*r₁(u,tᵢ₊₁) # gᵢ
 
     # diffuse the scratch vectors
     qᵢ .= H[i]*qᵢ # qᵢ₊₁ = H(i,i+1)qᵢ
@@ -98,9 +103,9 @@ function (scheme::IFRK{NS,FH,FR1,TU})(t::Float64,u::TU) where {NS,FH,FR1,TU}
 
     # stages 2 through NS-1
     for i = 2:NS-1
-      tᵢ₊₁ = t + Δt*rk.c[i]
-      w[i-1] ./= Δt*rk.a[i-1,i-1] # w(i,i-1)
-      w[i] .= Δt*rk.a[i,i]*r₁(u,tᵢ₊₁) # gᵢ
+      tᵢ₊₁ = t + rk.c[i]
+      w[i-1] ./= rk.a[i-1,i-1] # w(i,i-1)
+      w[i] .= rk.a[i,i].*r₁(u,tᵢ₊₁) # gᵢ
 
       # diffuse the scratch vectors and assemble
       qᵢ .= H[i]*qᵢ # qᵢ₊₁ = H(i,i+1)qᵢ
@@ -109,19 +114,19 @@ function (scheme::IFRK{NS,FH,FR1,TU})(t::Float64,u::TU) where {NS,FH,FR1,TU}
       end
       u .= qᵢ .+ w[i] # r₁
       for j = 1:i-1
-        u .+= Δt*rk.a[i,j]*w[j]
+        u .+= rk.a[i,j]*w[j]
       end
 
     end
     i = NS
-    w[i-1] ./= Δt*rk.a[i-1,i-1] # w(i,i-1)
+    w[i-1] ./= rk.a[i-1,i-1] # w(i,i-1)
   end
 
   # final stage (assembly)
-  t = t + Δt*rk.c[i]
-  u .= qᵢ .+ Δt*rk.a[i,i]*r₁(u,t) # r₁
+  t = t + rk.c[i]
+  u .= qᵢ .+ rk.a[i,i].*r₁(u,t) # r₁
   for j = 1:i-1
-    u .+= Δt*rk.a[i,j]*w[j] # r₁
+    u .+= rk.a[i,j]*w[j] # r₁
   end
   u .= H[i]*u
 

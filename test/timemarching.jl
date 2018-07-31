@@ -1,6 +1,7 @@
 import Whirl: Fields, TimeMarching
 using Fields
 using TimeMarching
+import TimeMarching:RK31
 
 @testset "Time Marching" begin
 
@@ -13,7 +14,7 @@ using TimeMarching
   Δt = 0.005
   T = 0:Δt:10
   u = [u₀]
-  r₁(u::Vector{Float64},t::Float64) = cos(ω*t)
+  TimeMarching.r₁(u::Vector{Float64},t::Float64) = cos(ω*t)
   rk = RK(u,Δt,r₁,rk=TimeMarching.RK31)
 
   u = [u₀]
@@ -39,7 +40,7 @@ using TimeMarching
   Δt = 0.005
   T = 0:Δt:10
   u = [u₀]
-  r₁(u::Vector{Float64},t::Float64) = cos(ω*t)
+  TimeMarching.r₁(u::Vector{Float64},t::Float64) = cos(ω*t)
   ifrk = IFRK(u,Δt,plan_intfact,r₁,rk=TimeMarching.RK31)
 
   u = [u₀]

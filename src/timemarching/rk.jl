@@ -45,9 +45,12 @@ function (::Type{RK})(u::TU,Δt::Float64,rhs::FR1;
     qᵢ = deepcopy(u)
     w = [deepcopy(u) for i = 1:NS-1]
 
-    dclist = diff([0;rk.c])
+    # fuse the time step size into the coefficients for some cost savings
+    rkdt = deepcopy(rk)
+    rkdt.a .*= Δt
+    rkdt.c .*= Δt
 
-    rksys = RK{NS,typeof(r₁),TU}(Δt,rk,r₁,qᵢ,w)
+    rksys = RK{NS,typeof(r₁),TU}(Δt,rkdt,r₁,qᵢ,w)
 
     #pre-compile
     rksys(0.0,u)
@@ -70,33 +73,33 @@ function (scheme::RK{NS,FR1,TU})(t::Float64,u::TU) where {NS,FR1,TU}
 
   if NS > 1
     # first stage, i = 1
-    tᵢ₊₁ = t + Δt*rk.c[i]
+    tᵢ₊₁ = t + rk.c[i]
 
-    w[i] .= Δt*rk.a[i,i]*r₁(u,tᵢ₊₁) # gᵢ
+    w[i] .= rk.a[i,i].*r₁(u,tᵢ₊₁) # gᵢ
 
     u .= qᵢ .+ w[i]
 
     # stages 2 through NS-1
     for i = 2:NS-1
-      tᵢ₊₁ = t + Δt*rk.c[i]
-      w[i-1] ./= Δt*rk.a[i-1,i-1] # w(i,i-1)
-      w[i] .= Δt*rk.a[i,i]*r₁(u,tᵢ₊₁) # gᵢ
+      tᵢ₊₁ = t + rk.c[i]
+      w[i-1] ./= rk.a[i-1,i-1] # w(i,i-1)
+      w[i] .= rk.a[i,i].*r₁(u,tᵢ₊₁) # gᵢ
 
       u .= qᵢ .+ w[i] # r₁
       for j = 1:i-1
-        u .+= Δt*rk.a[i,j]*w[j]
+        u .+= rk.a[i,j]*w[j]
       end
 
     end
     i = NS
-    w[i-1] ./= Δt*rk.a[i-1,i-1] # w(i,i-1)
+    w[i-1] ./= rk.a[i-1,i-1] # w(i,i-1)
   end
 
   # final stage (assembly)
-  t = t + Δt*rk.c[i]
-  u .= qᵢ .+ Δt*rk.a[i,i]*r₁(u,t) # r₁
+  t = t + rk.c[i]
+  u .= qᵢ .+ rk.a[i,i].*r₁(u,t) # r₁
   for j = 1:i-1
-    u .+= Δt*rk.a[i,j]*w[j] # r₁
+    u .+= rk.a[i,j]*w[j] # r₁
   end
 
   return t, u

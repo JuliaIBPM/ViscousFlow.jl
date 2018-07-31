@@ -98,13 +98,12 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
    end
    r₁, r₂ = ops
 
+
     # scratch space
     qᵢ = deepcopy(u)
     ubuffer = deepcopy(u)
     w = [deepcopy(u) for i = 1:NS-1]
     fbuffer = deepcopy(f)
-
-
 
     dclist = diff([0;rk.c])
 
@@ -121,7 +120,13 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
 
     htype,_ = typeof(H).parameters
 
-    ifherksys = IFHERK{NS,htype,typeof(B₁ᵀ),typeof(B₂),typeof(r₁),typeof(r₂),typeof(conditioner),TU,TF}(Δt,rk,
+    # fuse the time step size into the coefficients for some cost savings
+    rkdt = deepcopy(rk)
+    rkdt.a .*= Δt
+    rkdt.c .*= Δt
+
+
+    ifherksys = IFHERK{NS,htype,typeof(B₁ᵀ),typeof(B₂),typeof(r₁),typeof(r₂),typeof(conditioner),TU,TF}(Δt,rkdt,
                                 H,B₁ᵀ,B₂,r₁,r₂,conditioner,S,
                                 qᵢ,ubuffer,w,fbuffer,
                                 issymmetric)
@@ -141,7 +146,7 @@ end
 
 # Advance the IFHERK solution by one time step
 function (scheme::IFHERK{NS,FH,FB1,FB2,FR1,FR2,FP,TU,TF})(t::Float64,u::TU) where {NS,FH,FB1,FB2,FR1,FR2,FP,TU,TF}
-  @get scheme (Δt,rk,H,S,B₁ᵀ,B₂,r₁,r₂,qᵢ,w,fbuffer,ubuffer)
+  @get scheme (Δt,rk,H,S,r₁,r₂,qᵢ,w,fbuffer,ubuffer)
 
   # H[i] corresponds to H(i,i+1) = H((cᵢ - cᵢ₋₁)Δt)
 
@@ -151,9 +156,9 @@ function (scheme::IFHERK{NS,FH,FB1,FB2,FR1,FR2,FP,TU,TF})(t::Float64,u::TU) wher
 
   if NS > 1
     # first stage, i = 1
-    tᵢ₊₁ = t + Δt*rk.c[i]
+    tᵢ₊₁ = t + rk.c[i]
 
-    w[i] .= Δt*rk.a[i,i]*r₁(u,tᵢ₊₁) # gᵢ
+    w[i] .= rk.a[i,i].*r₁(u,tᵢ₊₁) # gᵢ
     ubuffer .+= w[i] # r₁ = qᵢ + gᵢ
     fbuffer .= r₂(u,tᵢ₊₁) # r₂
     u, f = S[i]\(ubuffer,fbuffer)  # solve saddle point system
@@ -164,12 +169,12 @@ function (scheme::IFHERK{NS,FH,FB1,FB2,FR1,FR2,FP,TU,TF})(t::Float64,u::TU) wher
 
     # stages 2 through NS-1
     for i = 2:NS-1
-      tᵢ₊₁ = t + Δt*rk.c[i]
-      w[i-1] .= (w[i-1]-S[i-1].A⁻¹B₁ᵀf)/(Δt*rk.a[i-1,i-1]) # w(i,i-1)
-      w[i] .= Δt*rk.a[i,i]*r₁(u,tᵢ₊₁) # gᵢ
+      tᵢ₊₁ = t + rk.c[i]
+      w[i-1] .= (w[i-1]-S[i-1].A⁻¹B₁ᵀf)./(rk.a[i-1,i-1]) # w(i,i-1)
+      w[i] .= rk.a[i,i].*r₁(u,tᵢ₊₁) # gᵢ
       ubuffer .= qᵢ .+ w[i] # r₁
       for j = 1:i-1
-        ubuffer .+= Δt*rk.a[i,j]*w[j] # r₁
+        ubuffer .+= rk.a[i,j]*w[j] # r₁
       end
       fbuffer .= r₂(u,tᵢ₊₁) # r₂
       u, f = S[i]\(ubuffer,fbuffer)  # solve saddle point system
@@ -184,19 +189,19 @@ function (scheme::IFHERK{NS,FH,FB1,FB2,FR1,FR2,FP,TU,TF})(t::Float64,u::TU) wher
 
     end
     i = NS
-    w[i-1] .= (w[i-1]-S[i-1].A⁻¹B₁ᵀf)/(Δt*rk.a[i-1,i-1]) # w(i,i-1)
+    w[i-1] .= (w[i-1]-S[i-1].A⁻¹B₁ᵀf)./(rk.a[i-1,i-1]) # w(i,i-1)
   end
 
   # final stage (assembly)
-  t = t + Δt*rk.c[i]
-  ubuffer .= qᵢ .+ Δt*rk.a[i,i]*r₁(u,t) # r₁
+  t = t + rk.c[i]
+  ubuffer .= qᵢ .+ rk.a[i,i].*r₁(u,t) # r₁
   for j = 1:i-1
-    ubuffer .+= Δt*rk.a[i,j]*w[j] # r₁
+    ubuffer .+= rk.a[i,j]*w[j] # r₁
   end
   fbuffer .= r₂(u,t) # r₂
   u, f = S[i]\(ubuffer,fbuffer)  # solve saddle point system
   #A_ldiv_B!((u,f),S[i],(ubuffer,fbuffer)) # solve saddle point system
-  f ./= Δt*rk.a[NS,NS]
+  f ./= rk.a[NS,NS]
   return t, u, f
 
 end
