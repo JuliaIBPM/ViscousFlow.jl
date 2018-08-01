@@ -65,10 +65,9 @@ import TimeMarching:RK31
   f = Vector{Float64}()
   TimeMarching.r₁(u::Vector{Float64},t::Float64) = cos(ω*t)
   TimeMarching.r₂(u::Vector{Float64},t::Float64) = Vector{Float64}()
-  TimeMarching.B₁ᵀ(f::Vector{Float64}) = zeros(Float64,1)
-  TimeMarching.B₂(u::Vector{Float64}) = Vector{Float64}()
+  plan_constraints(u::Vector{Float64},t::Float64) = f -> zeros(Float64,1), u -> Vector{Float64}()
   Fields.plan_intfact(t::Float64,u::Vector{Float64}) = eye(1)
-  ifherk = IFHERK(u,f,Δt,plan_intfact,(B₁ᵀ,B₂),(r₁,r₂),rk=TimeMarching.RK31)
+  ifherk = IFHERK(u,f,Δt,plan_intfact,plan_constraints,(r₁,r₂),rk=TimeMarching.RK31)
 
   u = [u₀]
   uhist = Float64[]

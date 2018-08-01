@@ -17,12 +17,13 @@ The resulting integrator will advance the system `(u,f)` by one time step, `Δt`
 - `Δt` : time-step size
 - `plan_intfact` : constructor to set up integrating factor operator for `A` that
               will act on type `u` (by left multiplication) and return same type as `u`
+- `plan_constraints` : constructor to set up the
 - `B₁ᵀ` : operator acting on type `f` and returning type `u`
 - `B₂` : operator acting on type `u` and returning type `f`
 - `r₁` : operator acting on type `u` and `t` and returning `u`
 - `r₂` : operator acting on type `u` and `t` and returning type `f`
 """
-struct IFHERK{NS,FH,FR1,FR2,FS,TU,TF}
+struct IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF}
 
   # time step size
   Δt :: Float64
@@ -33,23 +34,27 @@ struct IFHERK{NS,FH,FR1,FR2,FS,TU,TF}
   H :: Vector{FH}
 
   r₁ :: FR1  # function of u and t, returns TU
-  r₂ :: FR2  # function of t, returns TF
+  r₂ :: FR2  # function of u and t, returns TF
 
-  # Saddle-point systems
+  # function of u and t, returns B₁ᵀ and B₂
+  plan_constraints :: FC
+
+  # Vector of saddle-point systems
   S :: Vector{FS}  # -B₂HB₁ᵀ
 
   # scratch space
   qᵢ :: TU
-  ubuffer :: TU   # should not need this
+  ubuffer :: TU
   w :: Vector{TU}
   fbuffer :: TF
 
   # flags
-  _issymmetric :: Bool
+  _issymmetric :: Bool # is the system matrix symmetric?
+  _isstaticconstraints :: Bool  # do the system constraint operators stay unchanged?
+  _isstaticmatrix :: Bool # is the upper left-hand matrix static?
 
 end
 
-# - move B₁ᵀ and B₂ out of IFHERK
 # - introduce an operator constructor that can be called from within ifherk
 #   and perform all of the operator updates. This will need some hidden variables
 #   that are fully determined by u and t. The constructor would be called initially
@@ -57,56 +62,24 @@ end
 #   called again
 # - this needs to also construct the saddle-point systems. Ultimately, this is
 #   the only thing that gets updated.
+# - should only return the updated ifherk.S
 
 
 function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
                           plan_intfact::FI,
-                          sys::Tuple{FB1,FB2},
+                          plan_constraints::FC,
                           rhs::Tuple{FR1,FR2};
-                          issymmetric::Bool=false,
                           conditioner::FP = x -> x,
                           store::Bool=false,
-                          rk::RKParams{NS}=RK31) where {TU,TF,FI,FB1,FB2,FR1,FR2,FP,NS}
+                          issymmetric::Bool=false,
+                          isstaticconstraints::Bool=true,
+                          isstaticmatrix::Bool=true,
+                          rk::RKParams{NS}=RK31) where {TU,TF,FI,FC,FR1,FR2,FP,NS}
 
 
    # templates for the operators
-   # B₁ᵀ acts on type TF
-   # B₂ acts on TU
    # r₁ acts on TU and time
    # r₂ acts on TU and time
-   optypes = ((TF,),(TU,))
-   opnames = ("B₁ᵀ","B₂")
-   ops = []
-
-   # check for methods for B₁ᵀ and B₂
-   for (i,typ) in enumerate(optypes)
-     if TU <: Tuple
-       opsi = ()
-       for I in eachindex(sys[i])
-         typI = (typ[1].parameters[I],)
-         if method_exists(sys[i][I],typI)
-           opsi = (opsi...,sys[i][I])
-         elseif method_exists(*,(typeof(sys[i][I]),typI...))
-           # generate a method that acts on TU
-           opsi = (opsi...,x->sys[i][I]*x)
-         else
-           error("No valid operator for $(opnames[i]) supplied")
-         end
-       end
-       push!(ops,opsi)
-     else
-       if method_exists(sys[i],typ)
-         push!(ops,sys[i])
-       elseif method_exists(*,(typeof(sys[i]),typ...))
-         # generate a method that acts on TU
-         push!(ops,x->sys[i]*x)
-       else
-         error("No valid operator for $(opnames[i]) supplied")
-       end
-     end
-   end
-   B₁ᵀ, B₂ = ops
-
    optypes = ((TU,Float64),(TU,Float64))
    opnames = ("r₁","r₂")
    ops = []
@@ -119,7 +92,6 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
      end
    end
    r₁, r₂ = ops
-
 
     # scratch space
     qᵢ = deepcopy(u)
@@ -136,17 +108,12 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
       (FI <: Tuple && length(plan_intfact) == length(u)) ||
                 error("plan_intfact argument must be a tuple")
       Hlist = [map((plan,ui) -> plan(dc*Δt,ui),plan_intfact,u) for dc in unique(dclist)]
-      Slist = [map((ui,fi,Hi,B₁ᵀi,B₂i) ->
-                  SaddleSystem((ui,fi),(Hi,B₁ᵀi,B₂i),issymmetric=issymmetric,isposdef=true,store=store),
-                    u,f,H,B₁ᵀ,B₂) for H in Hlist]
     else
       Hlist = [plan_intfact(dc*Δt,u) for dc in unique(dclist)]
-      Slist = [SaddleSystem((u,f),(H,B₁ᵀ,B₂),issymmetric=issymmetric,isposdef=true,store=store) for H in Hlist]
     end
-
-
     H = [Hlist[i] for i in indexin(dclist,unique(dclist))]
-    S = [Slist[i] for i in indexin(dclist,unique(dclist))]
+
+    S = construct_saddlesys(plan_constraints,rk,H,u,f,0.0,issymmetric,store)
 
     htype,_ = typeof(H).parameters
     stype,_ = typeof(S).parameters
@@ -158,10 +125,11 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
     rkdt.c .*= Δt
 
 
-    ifherksys = IFHERK{NS,htype,typeof(r₁),typeof(r₂),stype,TU,TF}(Δt,rkdt,
-                                H,r₁,r₂,S,
+    ifherksys = IFHERK{NS,htype,typeof(r₁),typeof(r₂),FC,stype,TU,TF}(Δt,rkdt,
+                                H,r₁,r₂,
+                                plan_constraints,S,
                                 qᵢ,ubuffer,w,fbuffer,
-                                issymmetric)
+                                issymmetric,isstaticconstraints,isstaticmatrix)
 
     # pre-compile
     ifherksys(0.0,u)
@@ -169,17 +137,75 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
     return ifherksys
 end
 
-function Base.show(io::IO, scheme::IFHERK{NS,FH,FR1,FR2,FS,TU,TF}) where {NS,FH,FR1,FR2,FS,TU,TF}
+function Base.show(io::IO, scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF}) where {NS,FH,FR1,FR2,FC,FS,TU,TF}
     println(io, "Order-$NS IF-HERK integrator with")
     println(io, "   State of type $TU")
     println(io, "   Force of type $TF")
     println(io, "   Time step size $(scheme.Δt)")
 end
 
+# this function will call the plan_constraints function and return the
+# saddle point system
+# plan_constraints should only compute B₁ᵀ and B₂ (and P if needed)
+function construct_saddlesys(plan_constraints::FC,rk::RKParams{NS},H::FH,
+                           u::TU,f::TF,t::Float64,issymmetric::Bool,store::Bool) where {FC,NS,FH,TU,TF}
+
+    sys = plan_constraints(u,t) # sys contains B₁ᵀ and B₂ before fixing them up
+
+    # B₁ᵀ acts on type TF
+    # B₂ acts on TU
+    optypes = ((TF,),(TU,))
+    opnames = ("B₁ᵀ","B₂")
+    ops = []
+    # check for methods for B₁ᵀ and B₂
+    for (i,typ) in enumerate(optypes)
+      if TU <: Tuple
+        opsi = ()
+        for I in eachindex(sys[i])
+          typI = (typ[1].parameters[I],)
+          if method_exists(sys[i][I],typI)
+            opsi = (opsi...,sys[i][I])
+          elseif method_exists(*,(typeof(sys[i][I]),typI...))
+            # generate a method that acts on TU
+            opsi = (opsi...,x->sys[i][I]*x)
+          else
+            error("No valid operator for $(opnames[i]) supplied")
+          end
+        end
+        push!(ops,opsi)
+      else
+        if method_exists(sys[i],typ)
+          push!(ops,sys[i])
+        elseif method_exists(*,(typeof(sys[i]),typ...))
+          # generate a method that acts on TU
+          push!(ops,x->sys[i]*x)
+        else
+          error("No valid operator for $(opnames[i]) supplied")
+        end
+      end
+    end
+    B₁ᵀ, B₂ = ops
+
+
+    dclist = diff([0;rk.c])
+    if TU <: Tuple
+      Slist = [map((ui,fi,Hi,B₁ᵀi,B₂i) ->
+                  SaddleSystem((ui,fi),(Hi,B₁ᵀi,B₂i),issymmetric=issymmetric,isposdef=true,store=store),
+                    u,f,H[i],B₁ᵀ,B₂) for i in indexin(unique(dclist),dclist)]
+    else
+      Slist = [SaddleSystem((u,f),(H[i],B₁ᵀ,B₂),issymmetric=issymmetric,isposdef=true,store=store)
+                          for i in indexin(unique(dclist),dclist)]
+    end
+
+    return [Slist[i] for i in indexin(dclist,unique(dclist))]
+
+
+end
+
 # Advance the IFHERK solution by one time step
 # This form works when u is a tuple of state vectors
-function (scheme::IFHERK{NS,FH,FR1,FR2,FS,TU,TF})(t::Float64,u::TU) where
-                          {NS,FH,FR1,FR2,FS,TU<:Tuple,TF<:Tuple}
+function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
+                          {NS,FH,FR1,FR2,FC,FS,TU<:Tuple,TF<:Tuple}
   @get scheme (Δt,rk,H,S,r₁,r₂,qᵢ,w,fbuffer,ubuffer)
 
   # H[i] corresponds to H(i,i+1) = H((cᵢ - cᵢ₋₁)Δt)
@@ -271,7 +297,8 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FS,TU,TF})(t::Float64,u::TU) where
 end
 
 # Advance the IFHERK solution by one time step
-function (scheme::IFHERK{NS,FH,FR1,FR2,FS,TU,TF})(t::Float64,u::TU) where {NS,FH,FR1,FR2,FS,TU,TF}
+function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
+                      {NS,FH,FR1,FR2,FC,FS,TU,TF}
   @get scheme (Δt,rk,H,S,r₁,r₂,qᵢ,w,fbuffer,ubuffer)
 
   # H[i] corresponds to H(i,i+1) = H((cᵢ - cᵢ₋₁)Δt)
