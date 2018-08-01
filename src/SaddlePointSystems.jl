@@ -92,7 +92,7 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
     S = LinearMap(Schur!,N;ismutating=true,issymmetric=issymmetric,isposdef=isposdef)
 
 
-    if store
+    if store && N > 0
       Smat = zeros(N,N)
       fill!(f,0.0)
       for i = 1:N

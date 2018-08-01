@@ -43,7 +43,7 @@ function (::Type{RK})(u::TU,Δt::Float64,rhs::FR1;
 
     # scratch space
     qᵢ = deepcopy(u)
-    w = [deepcopy(u) for i = 1:NS-1]
+    w = [deepcopy(u) for i = 1:NS] # one extra for last step in tuple form
 
     # fuse the time step size into the coefficients for some cost savings
     rkdt = deepcopy(rk)
@@ -65,8 +65,69 @@ function Base.show(io::IO, scheme::RK{NS,FR1,TU}) where {NS,FR1,TU}
 end
 
 # Advance the RK solution by one time step
+# This form works when u is a tuple of state vectors
+function (scheme::RK{NS,FR1,TU})(t::Float64,u::TU) where {NS,FR1,TU <: Tuple}
+  @get scheme (Δt,rk,r₁,qᵢ,w)
+
+  # Each of the coefficients includes the time step size
+
+  i = 1
+  for I in eachindex(u)
+    qᵢ[I] .= u[I]
+  end
+
+  if NS > 1
+    # first stage, i = 1
+    tᵢ₊₁ = t + rk.c[i]
+
+    w[i] = r₁(u,tᵢ₊₁)
+    for I in eachindex(u)
+      w[i][I] .*= rk.a[i,i]  # gᵢ
+      u[I] .= qᵢ[I] .+ w[i][I]
+    end
+
+    # stages 2 through NS-1
+    for i = 2:NS-1
+      tᵢ₊₁ = t + rk.c[i]
+
+      w[i] = r₁(u,tᵢ₊₁)
+      for I in eachindex(u)
+        w[i-1][I] ./= rk.a[i-1,i-1] # w(i,i-1)
+
+        w[i][I] .*= rk.a[i,i] # gᵢ
+        u[I] .= qᵢ[I] .+ w[i][I] # r₁
+        for j = 1:i-1
+          u[I] .+= rk.a[i,j]*w[j][I]
+        end
+      end
+
+    end
+    i = NS
+    for I in eachindex(u)
+      w[i-1][I] ./= rk.a[i-1,i-1] # w(i,i-1)
+    end
+  end
+
+  # final stage (assembly)
+  t = t + rk.c[i]
+  w[i] = r₁(u,t)
+  for I in eachindex(u)
+    w[i][I] .*= rk.a[i,i]
+    u[I] .= qᵢ[I] .+ w[i][I] # r₁
+    for j = 1:i-1
+      u[I] .+= rk.a[i,j]*w[j][I] # r₁
+    end
+  end
+
+  return t, u
+
+end
+
+# Advance the RK solution by one time step
 function (scheme::RK{NS,FR1,TU})(t::Float64,u::TU) where {NS,FR1,TU}
   @get scheme (Δt,rk,r₁,qᵢ,w)
+
+  # Each of the coefficients includes the time step size
 
   i = 1
   qᵢ .= u

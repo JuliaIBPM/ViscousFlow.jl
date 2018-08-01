@@ -49,14 +49,20 @@ function (::Type{IFRK})(u::TU,Δt::Float64,
 
     # scratch space
     qᵢ = deepcopy(u)
-    w = [deepcopy(u) for i = 1:NS-1]
+    w = [deepcopy(u) for i = 1:NS] # one extra for last step in tuple form
 
     dclist = diff([0;rk.c])
 
     # construct an array of operators for the integrating factor. Each
     # one can act on data of type `u` and return data of the same type.
     # e.g. we can call Hlist[1]*u to get the result.
-    Hlist = [plan_intfact(dc*Δt,u) for dc in unique(dclist)]
+    if TU <: Tuple
+      (FI <: Tuple && length(plan_intfact) == length(u)) ||
+                error("plan_intfact argument must be a tuple")
+      Hlist = [map((plan,ui) -> plan(dc*Δt,ui),plan_intfact,u) for dc in unique(dclist)]
+    else
+      Hlist = [plan_intfact(dc*Δt,u) for dc in unique(dclist)]
+    end
 
     H = [Hlist[i] for i in indexin(dclist,unique(dclist))]
 
@@ -82,10 +88,82 @@ function Base.show(io::IO, scheme::IFRK{NS,FH,FR1,TU}) where {NS,FH,FR1,TU}
 end
 
 # Advance the IFRK solution by one time step
+# This form works when u is a tuple of state vectors
+function (scheme::IFRK{NS,FH,FR1,TU})(t::Float64,u::TU) where {NS,FH,FR1,TU <: Tuple}
+  @get scheme (Δt,rk,H,r₁,qᵢ,w)
+
+  # H[i] corresponds to H(i,i+1) = H((cᵢ - cᵢ₋₁)Δt)
+  # Each of the coefficients includes the time step size
+
+  i = 1
+  for I in eachindex(u)
+    qᵢ[I] .= u[I]
+  end
+
+  if NS > 1
+    # first stage, i = 1
+    tᵢ₊₁ = t + rk.c[i]
+
+    w[i] = r₁(u,tᵢ₊₁)
+    for I in eachindex(u)
+      w[i][I] .*= rk.a[i,i]  # gᵢ
+
+      # diffuse the scratch vectors
+      qᵢ[I] .= H[i][I]*qᵢ[I] # qᵢ₊₁ = H(i,i+1)qᵢ
+      w[i][I] .= H[i][I]*w[i][I] # H(i,i+1)gᵢ
+      u[I] .= qᵢ[I] .+ w[i][I]
+    end
+
+    # stages 2 through NS-1
+    for i = 2:NS-1
+      tᵢ₊₁ = t + rk.c[i]
+
+      w[i] = r₁(u,tᵢ₊₁)
+      for I in eachindex(u)
+        w[i-1][I] ./= rk.a[i-1,i-1] # w(i,i-1)
+
+        w[i][I] .*= rk.a[i,i] # gᵢ
+
+        # diffuse the scratch vectors and assemble
+        qᵢ[I] .= H[i][I]*qᵢ[I] # qᵢ₊₁ = H(i,i+1)qᵢ
+        for j = 1:i
+          w[j][I] .= H[i][I]*w[j][I] # for j = i, this sets H(i,i+1)gᵢ
+        end
+        u[I] .= qᵢ[I] .+ w[i][I] # r₁
+        for j = 1:i-1
+          u[I] .+= rk.a[i,j]*w[j][I]
+        end
+      end
+
+    end
+    i = NS
+    for I in eachindex(u)
+      w[i-1][I] ./= rk.a[i-1,i-1] # w(i,i-1)
+    end
+  end
+
+  # final stage (assembly)
+  t = t + rk.c[i]
+  w[i] = r₁(u,t)
+  for I in eachindex(u)
+    w[i][I] .*= rk.a[i,i]
+    u[I] .= qᵢ[I] .+ w[i][I] # r₁
+    for j = 1:i-1
+      u[I] .+= rk.a[i,j]*w[j][I] # r₁
+    end
+    u[I] .= H[i][I]*u[I]
+  end
+
+  return t, u
+
+end
+
+# Advance the IFRK solution by one time step
 function (scheme::IFRK{NS,FH,FR1,TU})(t::Float64,u::TU) where {NS,FH,FR1,TU}
   @get scheme (Δt,rk,H,r₁,qᵢ,w)
 
   # H[i] corresponds to H(i,i+1) = H((cᵢ - cᵢ₋₁)Δt)
+  # Each of the coefficients includes the time step size
 
   i = 1
   qᵢ .= u
