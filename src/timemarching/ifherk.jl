@@ -179,12 +179,13 @@ function (scheme::IFHERK{NS,FH,FB1,FB2,FR1,FR2,FP,FS,TU,TF})(t::Float64,u::TU) w
   # H[i] corresponds to H(i,i+1) = H((cᵢ - cᵢ₋₁)Δt)
   # Each of the coefficients includes the time step size
 
+  f = deepcopy(fbuffer)
+
   i = 1
   for I in eachindex(u)
     ubuffer[I] .= u[I]
     qᵢ[I] .= u[I]
   end
-  f = deepcopy(fbuffer)
 
   if NS > 1
     # first stage, i = 1
