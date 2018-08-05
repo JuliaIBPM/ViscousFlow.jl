@@ -10,7 +10,7 @@ struct Regularize{N,F}
   "1/dV factor"
   overdv :: Float64
 
-  "weights for each point (e.g. arclengths)"
+  "weights for each point (e.g. arclengths), divided by dV"
   wgt :: Vector{Float64}
 
   "buffer space"
@@ -130,17 +130,17 @@ function Regularize(x::Vector{T},y::Vector{T},dx::T;
   if !issymmetric
     if typeof(weights) == T
       wtvec = similar(x)
-      fill!(wtvec,weights)
+      fill!(wtvec,weights/(dx*dx))
     else
       @assert length(weights)==n
-      wtvec = deepcopy(weights)
+      wtvec = deepcopy(weights)./(dx*dx)
     end
   else
     # if the regularization and interpolation are symmetric, then the
     # weights are automatically set to be the cell area in order to cancel it
     # in the denominator of the regularization operator.
     wtvec = similar(x)
-    fill!(wtvec,dx*dx)
+    fill!(wtvec,1.0)
   end
 
   Regularize{length(x),filter}(x/dx+I0[1],y/dx+I0[2],1.0/(dx*dx),
@@ -197,16 +197,16 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
 # Regularization
   @eval function (H::Regularize{N,F})(target::$ctype,source::$ftype) where {N,F,NX,NY}
         fill!(target.u,0.0)
+        H.buffer2 .= source.u.*H.wgt
         @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
           H.buffer .= H.ddf.(x-$shiftux-H.x,y-$shiftuy-H.y)
-          H.buffer2 .= source.u.*H.wgt
-          target.u[x,y] = dot(H.buffer,H.buffer2)*H.overdv
+          target.u[x,y] = dot(H.buffer,H.buffer2)
         end
         fill!(target.v,0.0)
+        H.buffer2 .= source.v.*H.wgt
         @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
           H.buffer .= H.ddf.(x-$shiftvx-H.x,y-$shiftvy-H.y)
-          H.buffer2 .= source.v.*H.wgt
-          target.v[x,y] = dot(H.buffer,H.buffer2)*H.overdv
+          target.v[x,y] = dot(H.buffer,H.buffer2)
         end
         target
   end
@@ -232,13 +232,13 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
     target.u .= target.v .= zeros(Float64,N)
     @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
       H.buffer .= H.ddf.(x-$shiftux-H.x,y-$shiftuy-H.y)
-      w = dot(H.buffer,H.wgt)*H.overdv
+      w = dot(H.buffer,H.wgt)
       w = w ≢ 0.0 ? source.u[x,y]/w : 0.0
       target.u .+= H.buffer*w
     end
     @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
       H.buffer .= H.ddf.(x-$shiftvx-H.x,y-$shiftvy-H.y)
-      w = dot(H.buffer,H.wgt)*H.overdv
+      w = dot(H.buffer,H.wgt)
       w = w ≢ 0.0 ? source.v[x,y]/w : 0.0
       target.v .+= H.buffer*w
     end
@@ -285,8 +285,8 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
     v = deepcopy(src)
     g.u .= g.v .= zeros(Float64,N)
     for i = 1:N
-      g.u[i] = 1.0/(H.overdv*H.wgt[i])  # unscale for interpolation
-      g.v[i] = 1.0/(H.overdv*H.wgt[i])  # unscale for interpolation
+      g.u[i] = 1.0/H.wgt[i]  # unscale for interpolation
+      g.v[i] = 1.0/H.wgt[i]  # unscale for interpolation
       H(v,g)
       Emat[1:lenu,i]           = sparsevec(v.u)
       Emat[lenu+1:lenu+lenv,i+N] = sparsevec(v.v)
@@ -314,8 +314,8 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
     wtv.nzval .= 1./wtv.nzval
     fill!(g,0.0)
     for i = 1:N
-      g.u[i] = 1.0/(H.overdv*H.wgt[i])  # unscale for interpolation
-      g.v[i] = 1.0/(H.overdv*H.wgt[i])  # unscale for interpolation
+      g.u[i] = 1.0/H.wgt[i]  # unscale for interpolation
+      g.v[i] = 1.0/H.wgt[i]  # unscale for interpolation
       H(v,g)
       Emat[1:lenu,i]             = wtu.*sparsevec(v.u)
       Emat[lenu+1:lenu+lenv,i+N] = wtv.*sparsevec(v.v)
@@ -353,9 +353,10 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
 # Regularization
   @eval function (H::Regularize{N,F})(target::$ctype,source::$ftype) where {N,F,NX,NY}
     fill!(target,0.0)
+    H.buffer2 .= source.data.*H.wgt
     @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
       H.buffer .= H.ddf.(x-$shiftx-H.x,y-$shifty-H.y)
-      target[x,y] = dot(H.buffer,source.data.*H.wgt)*H.overdv
+      target[x,y] = dot(H.buffer,H.buffer2)
     end
     target
   end
@@ -377,7 +378,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
     target .= zeros(Float64,N)
     @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
       H.buffer .= H.ddf.(x-$shiftx-H.x,y-$shifty-H.y)
-      w = dot(H.buffer,H.wgt)*H.overdv
+      w = dot(H.buffer,H.wgt)
       w = w ≢ 0.0 ? source[x,y]/w : 0.0
       target .+= H.buffer*w
     end
@@ -417,7 +418,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
     v = deepcopy(u)
     fill!(g,0.0)
     for i = 1:N
-      g[i] = 1.0/(H.overdv*H.wgt[i])  # unscale for interpolation
+      g[i] = 1.0/H.wgt[i]  # unscale for interpolation
       Emat[:,i] = sparsevec(H(v,g))
       g[i] = 0.0
     end
@@ -437,7 +438,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
     wt.nzval .= 1./wt.nzval
     fill!(g,0.0)
     for i = 1:N
-      g[i] = 1.0/(H.overdv*H.wgt[i])  # unscale for interpolation
+      g[i] = 1.0/H.wgt[i]  # unscale for interpolation
       Emat[:,i] = wt.*sparsevec(H(v,g))
       g[i] = 0.0
     end
