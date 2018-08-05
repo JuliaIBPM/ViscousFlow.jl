@@ -94,6 +94,7 @@ Compute the x and y differences of the faces on the perimeter of body `body`, wh
 are at the current `x` and `y` coordinates (in inertial space) of the body.
 """
 function diff(b::Body{N}) where {N}
+  # need to modify this for thin flat plates
 
   ip1(i) = 1 + mod(i,N)
   im1(i) = 1 + mod(i-2,N)

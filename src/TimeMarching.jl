@@ -2,7 +2,8 @@ module TimeMarching
 
 import Whirl:@get
 
-export System, Constrained, Unconstrained, RK, IFRK, IFHERK, r₁, r₂, B₂, B₁ᵀ
+export System, Constrained, Unconstrained, RK, IFRK, IFHERK, r₁, r₂, B₂, B₁ᵀ,
+          plan_constraints
 
 "Abstract type for a system of ODEs"
 abstract type System{C} end
@@ -15,6 +16,7 @@ function r₁ end
 function r₂ end
 function B₂ end
 function B₁ᵀ end
+function plan_constraints end
 
 struct RKParams{N}
   c::Vector{Float64}

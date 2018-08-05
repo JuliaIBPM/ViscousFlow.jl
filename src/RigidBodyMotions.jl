@@ -50,7 +50,10 @@ RigidBodyMotion(ċ, α̇) = RigidBodyMotion(0.0im, complex(ċ), 0.0im, 0.0, fl
 RigidBodyMotion(kin::Kinematics) = RigidBodyMotion(kin(0)..., kin)
 (m::RigidBodyMotion)(t) = m.kin(t)
 
+
 function (m::RigidBodyMotion)(t,x̃::Tuple{Float64,Float64})
+  # This expects coordinates in body's own coordinate system
+  #
   z̃ = Complex128(x̃[1],x̃[2])
   m.c, m.ċ, m.c̈, m.α, m.α̇, m.α̈ = m.kin(t)
   z = exp(im*m.α)*z̃
@@ -136,6 +139,11 @@ function (p::Pitchup)(t)
     return c, ċ, c̈, α, α̇, α̈
 end
 
+function show(io::IO, p::Pitchup)
+    print(io, "Pitch-up kinematics with rate K = $(p.K)")
+end
+
+
 """
     PitchHeave <: Kinematics
 
@@ -191,11 +199,19 @@ function (p::PitchHeave)(t)
     α̇ = p.α̇(t)
     α̈ = p.α̈(t)
 
-    # c will be update in the integration
+    c = p.U₀*t + im*p.Y(t) - p.a*exp(im*α)
     ċ = p.U₀ + im*p.Ẏ(t) - p.a*im*α̇*exp(im*α)
     c̈ = im*p.Ÿ(t) + p.a*exp(im*α)*(α̇^2 - im*α̈)
 
     return c, ċ, c̈, α, α̇, α̈
+end
+
+function show(io::IO, p::PitchHeave)
+    println(io, "Oscillatory pitch-heave kinematics with")
+    println(io, "     Reduced frequency K = $(p.K)")
+    println(io, "     Heaving amplitude A = $(p.A)")
+    println(io, "     Pitching amplitude Δα = $(p.Δα)")
+    println(io, "     Pitch-to-heave lag ϕ = $(p.ϕ)")
 end
 
 struct Oscillation <: Kinematics

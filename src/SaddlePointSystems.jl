@@ -56,7 +56,8 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
                                 conditioner::FP=x->x,
                                 issymmetric::Bool=false,
                                 isposdef::Bool=false,
-                                store::Bool=false) where {TU,TF,FA,FB1,FB2,FP}
+                                store::Bool=false,
+                                precompile::Bool=true) where {TU,TF,FA,FB1,FB2,FP}
     u,f = state
 
     optypes = (TU,TF,TU)
@@ -115,7 +116,9 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
                                 A⁻¹,A⁻¹B₁ᵀ,B₂A⁻¹,conditioner,S,S⁻¹,
                                 issymmetric,isposdef)
     # run once in order to precompile it
-    saddlesys\(u,f)
+    if precompile
+      saddlesys\(u,f)
+    end
 
     return saddlesys
 

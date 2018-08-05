@@ -115,7 +115,7 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
     end
     H = [Hlist[i] for i in indexin(dclist,unique(dclist))]
 
-    S = construct_saddlesys(plan_constraints,rk,H,u,f,0.0,issymmetric,isstored)
+    S = construct_saddlesys(plan_constraints,rk,H,u,f,0.0,issymmetric,isstored,precompile=false)
 
     htype,_ = typeof(H).parameters
     stype,_ = typeof(S).parameters
@@ -134,7 +134,7 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
                                 issymmetric,isstaticconstraints,isstaticmatrix,isstored)
 
     # pre-compile
-    ifherksys(0.0,u)
+    #ifherksys(0.0,u)
 
     return ifherksys
 end
@@ -150,7 +150,8 @@ end
 # saddle point system
 # plan_constraints should only compute B₁ᵀ and B₂ (and P if needed)
 function construct_saddlesys(plan_constraints::FC,rk::RKParams{NS},H::FH,
-                           u::TU,f::TF,t::Float64,issymmetric::Bool,isstored::Bool) where {FC,NS,FH,TU,TF}
+                           u::TU,f::TF,t::Float64,issymmetric::Bool,isstored::Bool;
+                           precompile::Bool=false) where {FC,NS,FH,TU,TF}
 
     sys = plan_constraints(u,t) # sys contains B₁ᵀ and B₂ before fixing them up
 
@@ -192,10 +193,10 @@ function construct_saddlesys(plan_constraints::FC,rk::RKParams{NS},H::FH,
     dclist = diff([0;rk.c])
     if TU <: Tuple
       Slist = [map((ui,fi,Hi,B₁ᵀi,B₂i) ->
-                  SaddleSystem((ui,fi),(Hi,B₁ᵀi,B₂i),issymmetric=issymmetric,isposdef=true,store=isstored),
+                  SaddleSystem((ui,fi),(Hi,B₁ᵀi,B₂i),issymmetric=issymmetric,isposdef=true,store=isstored,precompile=precompile),
                     u,f,H[i],B₁ᵀ,B₂) for i in indexin(unique(dclist),dclist)]
     else
-      Slist = [SaddleSystem((u,f),(H[i],B₁ᵀ,B₂),issymmetric=issymmetric,isposdef=true,store=isstored)
+      Slist = [SaddleSystem((u,f),(H[i],B₁ᵀ,B₂),issymmetric=issymmetric,isposdef=true,store=isstored,precompile=precompile)
                           for i in indexin(unique(dclist),dclist)]
     end
 
@@ -211,16 +212,16 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
   @get scheme (rk,rkdt,H,plan_constraints,r₁,r₂,qᵢ,w,fbuffer,ubuffer,
                 _isstaticconstraints,_issymmetric,_isstored)
 
+  # H[i] corresponds to H(i,i+1) = H((cᵢ - cᵢ₋₁)Δt)
+  # Each of the coefficients includes the time step size
+
+  f = deepcopy(fbuffer)
+
   if !_isstaticconstraints
     S = construct_saddlesys(plan_constraints,rk,H,u,f,t,_issymmetric,_isstored)
   else
     S = scheme.S
   end
-
-  # H[i] corresponds to H(i,i+1) = H((cᵢ - cᵢ₋₁)Δt)
-  # Each of the coefficients includes the time step size
-
-  f = deepcopy(fbuffer)
 
   i = 1
   for I in eachindex(u)
