@@ -15,6 +15,7 @@ struct Regularize{N,F}
 
   "buffer space"
   buffer :: Vector{Float64}
+  buffer2 :: Vector{Float64}
 
   "Discrete Delta function"
   ddf :: DDF
@@ -143,7 +144,7 @@ function Regularize(x::Vector{T},y::Vector{T},dx::T;
   end
 
   Regularize{length(x),filter}(x/dx+I0[1],y/dx+I0[2],1.0/(dx*dx),
-                      wtvec,zeros(T,n),DDF(ddftype=ddftype,dx=1.0),issymmetric)
+                      wtvec,zeros(T,n),zeros(T,n),DDF(ddftype=ddftype,dx=1.0),issymmetric)
 end
 
 Regularize(x::T,y::T,a...;b...) where {T<:Real} = Regularize([x],[y],a...;b...)
@@ -198,12 +199,14 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
         fill!(target.u,0.0)
         @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
           H.buffer .= H.ddf.(x-$shiftux-H.x,y-$shiftuy-H.y)
-          target.u[x,y] = dot(H.buffer,source.u.*H.wgt)*H.overdv
+          H.buffer2 .= source.u.*H.wgt
+          target.u[x,y] = dot(H.buffer,H.buffer2)*H.overdv
         end
         fill!(target.v,0.0)
         @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
           H.buffer .= H.ddf.(x-$shiftvx-H.x,y-$shiftvy-H.y)
-          target.v[x,y] = dot(H.buffer,source.v.*H.wgt)*H.overdv
+          H.buffer2 .= source.v.*H.wgt
+          target.v[x,y] = dot(H.buffer,H.buffer2)*H.overdv
         end
         target
   end
