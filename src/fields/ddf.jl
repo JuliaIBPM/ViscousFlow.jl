@@ -45,11 +45,11 @@ macro ddffunc(ddftype)
     fname = Symbol("ddf_",lowercase(string(ddftype)))
     return esc(quote
             abstract type $ddftype <: DDFType end
-            (::DDF{$ddftype,OVERDX})(x::T) where {OVERDX,T <: Real} =
+            @inline (::DDF{$ddftype,OVERDX})(x::T) where {OVERDX,T <: Real} =
                   $fname(abs(x)*OVERDX)*OVERDX
-            (::DDF{$ddftype,OVERDX})(x::T,y::T) where {OVERDX,T <: Real} =
+            @inline (::DDF{$ddftype,OVERDX})(x::T,y::T) where {OVERDX,T <: Real} =
                           $fname(abs(x)*OVERDX)*OVERDX*$fname(abs(y)*OVERDX)*OVERDX
-            (::DDF{$ddftype,OVERDX})(x::T,y::T,z::T) where {OVERDX,T <: Real} =
+            @inline (::DDF{$ddftype,OVERDX})(x::T,y::T,z::T) where {OVERDX,T <: Real} =
                           $fname(abs(x)*OVERDX)*OVERDX*$fname(abs(y)*OVERDX)*OVERDX*$fname(abs(z)*OVERDX)*OVERDX
             end)
 end
@@ -59,17 +59,17 @@ end
 roma1(r) = (1+sqrt(-3r^2+1))/3
 roma2(r) = (5-3r-sqrt(1-3(1-r)^2))/6
 
-ddf_roma(r::Real) = r > 1.5 ? 0.0 : r <= 0.5 ? roma1(r) : roma2(r)
+@inline ddf_roma(r::Real) = r > 1.5 ? 0.0 : r <= 0.5 ? roma1(r) : roma2(r)
 
 
 @ddffunc Goza
 
-ddf_goza(r::Real) = r > 14 ? 0.0 : exp(-π^2/36 * r^2)*sqrt(π/36)
+@inline ddf_goza(r::Real) = r > 14 ? 0.0 : exp(-π^2/36 * r^2)*sqrt(π/36)
 
 
 @ddffunc Witchhat
 
-ddf_witchhat(r::Real) = r > 1 ? 0.0 : 1-r
+@inline ddf_witchhat(r::Real) = r > 1 ? 0.0 : 1-r
 
 
 function Base.show(io::IO, ddf::DDF{C,OVERDX}) where {C<:DDFType,OVERDX}
