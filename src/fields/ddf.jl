@@ -1,6 +1,6 @@
 abstract type DDFType end
 
-struct DDF{C <: DDFType,DX} end
+struct DDF{C <: DDFType,OVERDX} end
 
 """
     DDF([ddftype=Fields.Roma],[dx=1.0])
@@ -36,7 +36,7 @@ julia> ddf.([-1,0,1])
 ```
 """
 function DDF(;dx::Real=1.0,ddftype=Roma)
-  DDF{ddftype,dx}()
+  DDF{ddftype,1.0/dx}()
 end
 
 # This macro creates an abstract type in the DDFType system for the named ddftype
@@ -45,12 +45,12 @@ macro ddffunc(ddftype)
     fname = Symbol("ddf_",lowercase(string(ddftype)))
     return esc(quote
             abstract type $ddftype <: DDFType end
-            (::DDF{$ddftype,DX})(x::T) where {DX,T <: Real} =
-                  $fname(abs(x)/DX)/DX
-            (::DDF{$ddftype,DX})(x::T,y::T) where {DX,T <: Real} =
-                          $fname(abs(x)/DX)/DX*$fname(abs(y)/DX)/DX
-            (::DDF{$ddftype,DX})(x::T,y::T,z::T) where {DX,T <: Real} =
-                          $fname(abs(x)/DX)/DX*$fname(abs(y)/DX)/DX*$fname(abs(z)/DX)/DX
+            (::DDF{$ddftype,OVERDX})(x::T) where {OVERDX,T <: Real} =
+                  $fname(abs(x)*OVERDX)*OVERDX
+            (::DDF{$ddftype,OVERDX})(x::T,y::T) where {OVERDX,T <: Real} =
+                          $fname(abs(x)*OVERDX)*OVERDX*$fname(abs(y)*OVERDX)*OVERDX
+            (::DDF{$ddftype,OVERDX})(x::T,y::T,z::T) where {OVERDX,T <: Real} =
+                          $fname(abs(x)*OVERDX)*OVERDX*$fname(abs(y)*OVERDX)*OVERDX*$fname(abs(z)*OVERDX)*OVERDX
             end)
 end
 
@@ -72,6 +72,6 @@ ddf_goza(r::Real) = r > 14 ? 0.0 : exp(-π^2/36 * r^2)*sqrt(π/36)
 ddf_witchhat(r::Real) = r > 1 ? 0.0 : 1-r
 
 
-function Base.show(io::IO, ddf::DDF{C,DX}) where {C<:DDFType,DX}
-    print(io, "Discrete delta function operator of type $C, with spacing $DX")
+function Base.show(io::IO, ddf::DDF{C,OVERDX}) where {C<:DDFType,OVERDX}
+    print(io, "Discrete delta function operator of type $C, with spacing $(1.0/OVERDX)")
 end
