@@ -200,13 +200,13 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
         H.buffer2 .= source.u.*H.wgt
         @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
           H.buffer .= H.ddf.(x-$shiftux-H.x,y-$shiftuy-H.y)
-          target.u[x,y] = dot(H.buffer,H.buffer2)
+          target.u[x,y] = At_mul_B(H.buffer,H.buffer2)
         end
         fill!(target.v,0.0)
         H.buffer2 .= source.v.*H.wgt
         @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
           H.buffer .= H.ddf.(x-$shiftvx-H.x,y-$shiftvy-H.y)
-          target.v[x,y] = dot(H.buffer,H.buffer2)
+          target.v[x,y] = At_mul_B(H.buffer,H.buffer2)
         end
         target
   end
@@ -232,13 +232,13 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
     target.u .= target.v .= zeros(Float64,N)
     @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
       H.buffer .= H.ddf.(x-$shiftux-H.x,y-$shiftuy-H.y)
-      w = dot(H.buffer,H.wgt)
+      w = At_mul_B(H.buffer,H.wgt)
       w = w ≢ 0.0 ? source.u[x,y]/w : 0.0
       target.u .+= H.buffer*w
     end
     @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
       H.buffer .= H.ddf.(x-$shiftvx-H.x,y-$shiftvy-H.y)
-      w = dot(H.buffer,H.wgt)
+      w = At_mul_B(H.buffer,H.wgt)
       w = w ≢ 0.0 ? source.v[x,y]/w : 0.0
       target.v .+= H.buffer*w
     end
@@ -356,7 +356,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
     H.buffer2 .= source.data.*H.wgt
     @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
       H.buffer .= H.ddf.(x-$shiftx-H.x,y-$shifty-H.y)
-      target[x,y] = dot(H.buffer,H.buffer2)
+      target[x,y] = At_mul_B(H.buffer,H.buffer2)
     end
     target
   end
@@ -378,7 +378,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
     target .= zeros(Float64,N)
     @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
       H.buffer .= H.ddf.(x-$shiftx-H.x,y-$shifty-H.y)
-      w = dot(H.buffer,H.wgt)
+      w = At_mul_B(H.buffer,H.wgt)
       w = w ≢ 0.0 ? source[x,y]/w : 0.0
       target .+= H.buffer*w
     end
