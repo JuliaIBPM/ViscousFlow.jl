@@ -96,14 +96,13 @@ function (scheme::IFRK{NS,FH,FR1,TU})(t::Float64,u::TU) where {NS,FH,FR1,TU <: T
   # Each of the coefficients includes the time step size
 
   i = 1
+  tᵢ₊₁ = t
   for I in eachindex(u)
     qᵢ[I] .= u[I]
   end
 
   if NS > 1
     # first stage, i = 1
-    tᵢ₊₁ = t + rk.c[i]
-
     w[i] = r₁(u,tᵢ₊₁)
     for I in eachindex(u)
       w[i][I] .*= rk.a[i,i]  # gᵢ
@@ -113,10 +112,10 @@ function (scheme::IFRK{NS,FH,FR1,TU})(t::Float64,u::TU) where {NS,FH,FR1,TU <: T
       w[i][I] .= H[i][I]*w[i][I] # H(i,i+1)gᵢ
       u[I] .= qᵢ[I] .+ w[i][I]
     end
+    tᵢ₊₁ = t + rk.c[i]
 
     # stages 2 through NS-1
     for i = 2:NS-1
-      tᵢ₊₁ = t + rk.c[i]
 
       w[i] = r₁(u,tᵢ₊₁)
       for I in eachindex(u)
@@ -134,6 +133,8 @@ function (scheme::IFRK{NS,FH,FR1,TU})(t::Float64,u::TU) where {NS,FH,FR1,TU <: T
           u[I] .+= rk.a[i,j]*w[j][I]
         end
       end
+      tᵢ₊₁ = t + rk.c[i]
+
 
     end
     i = NS
@@ -143,8 +144,7 @@ function (scheme::IFRK{NS,FH,FR1,TU})(t::Float64,u::TU) where {NS,FH,FR1,TU <: T
   end
 
   # final stage (assembly)
-  t = t + rk.c[i]
-  w[i] = r₁(u,t)
+  w[i] = r₁(u,tᵢ₊₁)
   for I in eachindex(u)
     w[i][I] .*= rk.a[i,i]
     u[I] .= qᵢ[I] .+ w[i][I] # r₁
@@ -153,6 +153,7 @@ function (scheme::IFRK{NS,FH,FR1,TU})(t::Float64,u::TU) where {NS,FH,FR1,TU <: T
     end
     u[I] .= H[i][I]*u[I]
   end
+  t = t + rk.c[i]
 
   return t, u
 
@@ -166,22 +167,21 @@ function (scheme::IFRK{NS,FH,FR1,TU})(t::Float64,u::TU) where {NS,FH,FR1,TU}
   # Each of the coefficients includes the time step size
 
   i = 1
+  tᵢ₊₁ = t
   qᵢ .= u
 
   if NS > 1
     # first stage, i = 1
-    tᵢ₊₁ = t + rk.c[i]
-
     w[i] .= rk.a[i,i].*r₁(u,tᵢ₊₁) # gᵢ
 
     # diffuse the scratch vectors
     qᵢ .= H[i]*qᵢ # qᵢ₊₁ = H(i,i+1)qᵢ
     w[i] .= H[i]*w[i] # H(i,i+1)gᵢ
     u .= qᵢ .+ w[i]
+    tᵢ₊₁ = t + rk.c[i]
 
     # stages 2 through NS-1
     for i = 2:NS-1
-      tᵢ₊₁ = t + rk.c[i]
       w[i-1] ./= rk.a[i-1,i-1] # w(i,i-1)
       w[i] .= rk.a[i,i].*r₁(u,tᵢ₊₁) # gᵢ
 
@@ -194,6 +194,7 @@ function (scheme::IFRK{NS,FH,FR1,TU})(t::Float64,u::TU) where {NS,FH,FR1,TU}
       for j = 1:i-1
         u .+= rk.a[i,j]*w[j]
       end
+      tᵢ₊₁ = t + rk.c[i]
 
     end
     i = NS
@@ -201,12 +202,12 @@ function (scheme::IFRK{NS,FH,FR1,TU})(t::Float64,u::TU) where {NS,FH,FR1,TU}
   end
 
   # final stage (assembly)
-  t = t + rk.c[i]
-  u .= qᵢ .+ rk.a[i,i].*r₁(u,t) # r₁
+  u .= qᵢ .+ rk.a[i,i].*r₁(u,tᵢ₊₁) # r₁
   for j = 1:i-1
     u .+= rk.a[i,j]*w[j] # r₁
   end
   u .= H[i]*u
+  t = t + rk.c[i]
 
   return t, u
 

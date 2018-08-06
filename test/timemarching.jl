@@ -24,7 +24,7 @@ import TimeMarching:RK31
     t,u = rk(t,u)
   end
 
-  @test norm(uhist-uex.(T)) ≈ 0.0285193767
+  @test norm(uhist-uex.(T)) ≈ 0.000494857145025
 
   end
 
@@ -49,7 +49,7 @@ import TimeMarching:RK31
     push!(uhist,u[1])
     t,u = ifrk(t,u)
   end
-  @test norm(uhist-uex.(T)) ≈ 0.0180654483
+  @test norm(uhist-uex.(T)) ≈ 0.0005014844449
 
   end
 
@@ -76,7 +76,7 @@ import TimeMarching:RK31
     t,u,_ = ifherk(t,u)
   end
 
-  @test norm(uhist-uex.(T)) ≈ 0.0285193767
+  @test norm(uhist-uex.(T)) ≈ 0.0004948571450253
 
   end
 
