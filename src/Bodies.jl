@@ -50,6 +50,8 @@ function RigidTransform(x::Tuple{Float64,Float64},α::Float64)
     RigidTransform(α,rot,x)
 end
 
+RigidTransform(x::Vector{Float64}) = RigidTransform((x[1],x[2]),x[3])
+
 RigidTransform(c::Complex128,α::Float64) = RigidTransform((real(c),imag(c)),α)
 
 function Base.show(io::IO, T::RigidTransform)

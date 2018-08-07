@@ -111,7 +111,13 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
     end
     H = [Hlist[i] for i in indexin(dclist,unique(dclist))]
 
-    S,_ = construct_saddlesys(plan_constraints,rk,H,u,f,0.0,tol,issymmetric,isstored,precompile=false)
+    # preform the saddle-point systems
+    # these are overwritten if B₁ᵀ and B₂ vary with time
+    Slist = [construct_saddlesys(plan_constraints,Hi,u,f,0.0,
+                    tol,issymmetric,isstored,precompile=false)[1] for Hi in Hlist]
+    S = [Slist[i] for i in indexin(dclist,unique(dclist))]
+
+    #S,_ = construct_saddlesys(plan_constraints,rk,H,u,f,0.0,tol,issymmetric,isstored,precompile=false)
 
     htype,_ = typeof(H).parameters
     stype,_ = typeof(S).parameters
@@ -143,11 +149,11 @@ function Base.show(io::IO, scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF}) where {NS,
 end
 
 # this function will call the plan_constraints function and return the
-# saddle point system
+# saddle point system for a single instance of H, (and B₁ᵀ and B₂)
 # plan_constraints should only compute B₁ᵀ and B₂ (and P if needed)
-function construct_saddlesys(plan_constraints::FC,rk::RKParams{NS},H::FH,
+function construct_saddlesys(plan_constraints::FC,H::FH,
                            u::TU,f::TF,t::Float64,tol::Float64,issymmetric::Bool,isstored::Bool;
-                           precompile::Bool=false) where {FC,NS,FH,TU,TF}
+                           precompile::Bool=false) where {FC,FH,TU,TF}
 
     sys = plan_constraints(u,t) # sys contains B₁ᵀ and B₂ before fixing them up
 
@@ -185,18 +191,17 @@ function construct_saddlesys(plan_constraints::FC,rk::RKParams{NS},H::FH,
     end
     B₁ᵀ, B₂ = ops
 
-
-    dclist = diff([0;rk.c])
     if TU <: Tuple
-      Slist = [map((ui,fi,Hi,B₁ᵀi,B₂i) ->
+      S = map((ui,fi,Hi,B₁ᵀi,B₂i) ->
                   SaddleSystem((ui,fi),(Hi,B₁ᵀi,B₂i),tol=tol,issymmetric=issymmetric,isposdef=true,store=isstored,precompile=precompile),
-                    u,f,H[i],B₁ᵀ,B₂) for i in indexin(unique(dclist),dclist)]
+                    u,f,H,B₁ᵀ,B₂)
     else
-      Slist = [SaddleSystem((u,f),(H[i],B₁ᵀ,B₂),tol=tol,issymmetric=issymmetric,isposdef=true,store=isstored,precompile=precompile)
-                          for i in indexin(unique(dclist),dclist)]
+      S = SaddleSystem((u,f),(H,B₁ᵀ,B₂),tol=tol,
+                issymmetric=issymmetric,isposdef=true,store=isstored,precompile=precompile)
     end
 
-    return [Slist[i] for i in indexin(dclist,unique(dclist))], ops
+    return S, ops
+
 
 
 end
@@ -221,9 +226,9 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
   end
 
   if !_isstaticconstraints
-    S,_ = construct_saddlesys(plan_constraints,rk,H,u,f,tᵢ₊₁,tol,_issymmetric,_isstored)
+    S,_ = construct_saddlesys(plan_constraints,H[i],u,f,tᵢ₊₁,tol,_issymmetric,_isstored)
   else
-    S = scheme.S
+    S = scheme.S[i]
   end
 
   if NS > 1
@@ -238,7 +243,8 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
       fbuffer[I] .= ftmp[I]
       # could solve this system for the whole tuple, too...
       fill!(f[I],0.0)
-      A_ldiv_B!((u[I],f[I]),S[i][I],(ubuffer[I],fbuffer[I]))
+      A_ldiv_B!((u[I],f[I]),S[I],(ubuffer[I],fbuffer[I]))
+      ubuffer[I] .= S[I].A⁻¹B₁ᵀf
       #tmp = S[i][I]\(ubuffer[I],fbuffer[I])  # solve saddle point system
       #u[I] .= tmp[1]
       #f[I] .= tmp[2]
@@ -249,17 +255,22 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
     end
     tᵢ₊₁ = t + rkdt.c[i]
 
-    if !_isstaticconstraints
-      S,_ = construct_saddlesys(plan_constraints,rk,H,u,f,tᵢ₊₁,tol,_issymmetric,_isstored)
-    end
+
 
     # stages 2 through NS-1
     for i = 2:NS-1
 
+      if !_isstaticconstraints
+        S,_ = construct_saddlesys(plan_constraints,H[i],u,f,tᵢ₊₁,tol,_issymmetric,_isstored)
+      else
+        S = scheme.S[i]
+      end
+
       w[i] = r₁(u,tᵢ₊₁)
       ftmp = r₂(u,tᵢ₊₁) # r₂
       for I in eachindex(u)
-        w[i-1][I] .= (w[i-1][I]-S[i-1][I].A⁻¹B₁ᵀf)./(rkdt.a[i-1,i-1]) # w(i,i-1)
+        #w[i-1][I] .= (w[i-1][I]-S[i-1][I].A⁻¹B₁ᵀf)./(rkdt.a[i-1,i-1]) # w(i,i-1)
+        w[i-1][I] .= (w[i-1][I]-ubuffer[I])./(rkdt.a[i-1,i-1]) # w(i,i-1)
 
         w[i][I] .*= rkdt.a[i,i] # gᵢ
 
@@ -269,7 +280,9 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
         end
         fbuffer[I] .= ftmp[I]
         fill!(f[I],0.0)
-        A_ldiv_B!((u[I],f[I]),S[i][I],(ubuffer[I],fbuffer[I]))
+        A_ldiv_B!((u[I],f[I]),S[I],(ubuffer[I],fbuffer[I]))
+        ubuffer[I] .= S[I].A⁻¹B₁ᵀf
+
         #tmp = S[i][I]\(ubuffer[I],fbuffer[I])  # solve saddle point system
         #u[I] .= tmp[1]
         #f[I] .= tmp[2]
@@ -282,14 +295,17 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
       end
       tᵢ₊₁ = t + rkdt.c[i]
 
-      if !_isstaticconstraints
-        S,_ = construct_saddlesys(plan_constraints,rk,H,u,f,tᵢ₊₁,tol,_issymmetric,_isstored)
-      end
-
     end
     i = NS
+    if !_isstaticconstraints
+      S,_ = construct_saddlesys(plan_constraints,H[i],u,f,tᵢ₊₁,tol,_issymmetric,_isstored)
+    else
+      S = scheme.S[i]
+    end
     for I in eachindex(u)
-      w[i-1][I] .= (w[i-1][I]-S[i-1][I].A⁻¹B₁ᵀf)./(rkdt.a[i-1,i-1]) # w(i,i-1)
+      #w[i-1][I] .= (w[i-1][I]-S[i-1][I].A⁻¹B₁ᵀf)./(rkdt.a[i-1,i-1]) # w(i,i-1)
+      w[i-1][I] .= (w[i-1][I]-ubuffer[I])./(rkdt.a[i-1,i-1]) # w(i,i-1)
+
     end
   end
 
@@ -305,7 +321,7 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
     end
     fbuffer[I] .= ftmp[I]
     fill!(f[I],0.0)
-    A_ldiv_B!((u[I],f[I]),S[i][I],(ubuffer[I],fbuffer[I]))
+    A_ldiv_B!((u[I],f[I]),S[I],(ubuffer[I],fbuffer[I]))
     #tmp = S[i][I]\(ubuffer[I],fbuffer[I])  # solve saddle point system
     #u[I] .= tmp[1]
     #f[I] .= tmp[2]
@@ -334,9 +350,9 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
   qᵢ .= u
 
   if !_isstaticconstraints
-    S,_ = construct_saddlesys(plan_constraints,rk,H,u,f,tᵢ₊₁,tol,_issymmetric,_isstored)
+    S,_ = construct_saddlesys(plan_constraints,H[i],u,f,tᵢ₊₁,tol,_issymmetric,_isstored)
   else
-    S = scheme.S
+    S = scheme.S[i]
   end
 
 
@@ -346,27 +362,33 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
     w[i] .= rkdt.a[i,i].*r₁(u,tᵢ₊₁) # gᵢ
     ubuffer .+= w[i] # r₁ = qᵢ + gᵢ
     fbuffer .= r₂(u,tᵢ₊₁) # r₂
-    u, f = S[i]\(ubuffer,fbuffer)  # solve saddle point system
+    u, f = S\(ubuffer,fbuffer)  # solve saddle point system
+    ubuffer .= S.A⁻¹B₁ᵀf
     tᵢ₊₁ = t + rkdt.c[i]
 
     # diffuse the scratch vectors
     qᵢ .= H[i]*qᵢ # qᵢ₊₁ = H(i,i+1)qᵢ
     w[i] .= H[i]*w[i] # H(i,i+1)gᵢ
 
-    if !_isstaticconstraints
-      S,_ = construct_saddlesys(plan_constraints,rk,H,u,f,tᵢ₊₁,tol,_issymmetric,_isstored)
-    end
+
 
     # stages 2 through NS-1
     for i = 2:NS-1
-      w[i-1] .= (w[i-1]-S[i-1].A⁻¹B₁ᵀf)./(rkdt.a[i-1,i-1]) # w(i,i-1)
+      if !_isstaticconstraints
+        S,_ = construct_saddlesys(plan_constraints,H[i],u,f,tᵢ₊₁,tol,_issymmetric,_isstored)
+      else
+        S = scheme.S[i]
+      end
+      w[i-1] .= (w[i-1]-ubuffer)./(rkdt.a[i-1,i-1]) # w(i,i-1)
+      #w[i-1] .= (w[i-1]-S[i-1].A⁻¹B₁ᵀf)./(rkdt.a[i-1,i-1]) # w(i,i-1)
       w[i] .= rkdt.a[i,i].*r₁(u,tᵢ₊₁) # gᵢ
       ubuffer .= qᵢ .+ w[i] # r₁
       for j = 1:i-1
         ubuffer .+= rkdt.a[i,j]*w[j] # r₁
       end
       fbuffer .= r₂(u,tᵢ₊₁) # r₂
-      u, f = S[i]\(ubuffer,fbuffer)  # solve saddle point system
+      u, f = S\(ubuffer,fbuffer)  # solve saddle point system
+      ubuffer .= S.A⁻¹B₁ᵀf
       tᵢ₊₁ = t + rkdt.c[i]
 
       #A_ldiv_B!((u,f),S[i],(ubuffer,fbuffer)) # solve saddle point system
@@ -377,13 +399,17 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
         w[j] .= H[i]*w[j] # for j = i, this sets H(i,i+1)gᵢ
       end
 
-      if !_isstaticconstraints
-        S,_ = construct_saddlesys(plan_constraints,rk,H,u,f,tᵢ₊₁,tol,_issymmetric,_isstored)
-      end
+
 
     end
     i = NS
-    w[i-1] .= (w[i-1]-S[i-1].A⁻¹B₁ᵀf)./(rkdt.a[i-1,i-1]) # w(i,i-1)
+    if !_isstaticconstraints
+      S,_ = construct_saddlesys(plan_constraints,H[i],u,f,tᵢ₊₁,tol,_issymmetric,_isstored)
+    else
+      S = scheme.S[i]
+    end
+    #w[i-1] .= (w[i-1]-S[i-1].A⁻¹B₁ᵀf)./(rkdt.a[i-1,i-1]) # w(i,i-1)
+    w[i-1] .= (w[i-1]-ubuffer)./(rkdt.a[i-1,i-1]) # w(i,i-1)
   end
 
   # final stage (assembly)
@@ -392,7 +418,7 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
     ubuffer .+= rkdt.a[i,j]*w[j] # r₁
   end
   fbuffer .= r₂(u,tᵢ₊₁) # r₂
-  u, f = S[i]\(ubuffer,fbuffer)  # solve saddle point system
+  u, f = S\(ubuffer,fbuffer)  # solve saddle point system
   #A_ldiv_B!((u,f),S[i],(ubuffer,fbuffer)) # solve saddle point system
   f ./= rkdt.a[i,i]
   t = t + rkdt.c[i]

@@ -19,18 +19,22 @@ struct SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,Storage}
     P :: FP
     S  :: LinearMap
     S⁻¹ :: Nullable{Factorization{Float64}}
+    tol :: Float64
     _issymmetric :: Bool
     _isposdef :: Bool
 end
 
 """
-    SaddleSystem((u,f),(A⁻¹,B₁ᵀ,B₂);[issymmetric=false],[isposdef=false],[conditioner=Identity],[store=false])
+    SaddleSystem((u,f),(A⁻¹,B₁ᵀ,B₂);[tol=1e-3],[issymmetric=false],[isposdef=false],[conditioner=Identity],[store=false])
 
 Construct the computational operators for a saddle-point system of the form
 \$[A B₁ᵀ; B₂ 0][u;f]\$. Note that the constituent operators are passed in as a
 tuple in the order seen here. Each of these operators could act on its corresponding
 data type in a function-like way, e.g. `A⁻¹(u)`, or in a matrix-like way, e.g.,
 `A⁻¹*u`.
+
+The optional argument `tol` sets the tolerance for iterative solution (if
+  applicable). Its default is 1e-3.
 
 The optional argument `conditioner` can be used to supply a function that acts
 upon the result `f` to 'condition' it (e.g. filter it). It is, by default, set
@@ -53,6 +57,7 @@ resulting solution is somewhat noiser, too.
             acting on `u` and returning type `f`
 """
 function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
+                                tol::Float64=1e-3,
                                 conditioner::FP=x->x,
                                 issymmetric::Bool=false,
                                 isposdef::Bool=false,
@@ -114,7 +119,7 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
     saddlesys = SaddleSystem{typeof(A⁻¹),typeof(A⁻¹B₁ᵀ),typeof(B₂A⁻¹),typeof(conditioner),TU,TF,N,store}(
                                 ubuffer,fbuffer,tmpvec,tmpvecout,
                                 A⁻¹,A⁻¹B₁ᵀ,B₂A⁻¹,conditioner,S,S⁻¹,
-                                issymmetric,isposdef)
+                                tol,issymmetric,isposdef)
     # run once in order to precompile it
     if precompile
       saddlesys\(u,f)
@@ -155,7 +160,8 @@ function A_ldiv_B!(state::Tuple{TU,TF},
   rf .-= sys.B₂A⁻¹r₁
   if N > 0
     sys.tmpvec .= rf
-    cg!(sys.tmpvecout,sys.S,sys.tmpvec,tol=1e-3)
+    sys.tmpvecout .= f
+    cg!(sys.tmpvecout,sys.S,sys.tmpvec,tol=sys.tol)
     f .= sys.tmpvecout
     f .= sys.P(f)
   end
