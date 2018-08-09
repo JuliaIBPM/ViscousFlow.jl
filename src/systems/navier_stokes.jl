@@ -75,11 +75,14 @@ function Base.show(io::IO, sys::NavierStokes{NX,NY,N,isstatic}) where {NX,NY,N,i
     print(io, "Navier-Stokes system on a grid of size $NX x $NY")
 end
 
+# Basic operators for any Navier-Stokes system
 
-Fields.plan_intfact(t,w,sys::NavierStokes{NX,NY}) where {NX,NY} =
-        Fields.plan_intfact(t/(sys.Re*sys.Δx^2),w)
+# Integrating factor -- rescale the time-step size
+Fields.plan_intfact(Δt,w,sys::NavierStokes{NX,NY}) where {NX,NY} =
+        Fields.plan_intfact(Δt/(sys.Re*sys.Δx^2),w)
 
-function TimeMarching.r₁(w,t,sys::NavierStokes{NX,NY}) where {NX,NY}
+# RHS of Navier-Stokes (non-linear convective term)
+function TimeMarching.r₁(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY}) where {NX,NY}
 
   Ww = sys.Ww
   Qq = sys.Qq
@@ -94,12 +97,9 @@ function TimeMarching.r₁(w,t,sys::NavierStokes{NX,NY}) where {NX,NY}
 
 end
 
-function TimeMarching.r₁(u::Tuple{Nodes{Dual,NX,NY},Vector{Float64}},t,sys::NavierStokes{NX,NY},
-                            motion::RigidBodyMotions.RigidBodyMotion) where {NX,NY}
-    _,ċ,_,_,α̇,_ = motion(t)
-    return TimeMarching.r₁(u[1],t,sys), [real(ċ),imag(ċ),α̇]
-end
+# Operators for a system with a body
 
+# RHS of a stationary body with no surface velocity
 function TimeMarching.r₂(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY,N,true}) where {NX,NY,N}
     ΔV = VectorData(sys.X̃)
     ΔV.u .-= sys.U∞[1]
@@ -107,96 +107,25 @@ function TimeMarching.r₂(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY,N,true
     return ΔV
 end
 
-function TimeMarching.r₂(u::Tuple{Nodes{Dual,NX,NY},Vector{Float64}},t,sys::NavierStokes{NX,NY,N,false},
-                            motion::RigidBodyMotions.RigidBodyMotion) where {NX,NY,N}
-
-  # for now, just assume that there is only one body. will fix later.
-  xc, yc, α = u[2]
-  T = Bodies.RigidTransform((xc,yc),α)
-  x, y = T(sys.X̃.u,sys.X̃.v)
-
-  ΔV = VectorData(sys.X̃)
-  _,ċ,_,_,α̇,_ = motion(t)
-  for i = 1:N
-      Δz = (x[i]-xc)+im*(y[i]-yc)
-      ċi = ċ + im*α̇*Δz
-      ΔV.u[i] = real(ċi)
-      ΔV.v[i] = imag(ċi)
-  end
-  ΔV.u .-= sys.U∞[1]
-  ΔV.v .-= sys.U∞[2]
-  return ΔV, Vector{Float64}()
-end
-
-
+# Constraint operators, using stored regularization and interpolation operators
+# B₁ᵀ = CᵀEᵀ, B₂ = -ECL⁻¹
 TimeMarching.B₁ᵀ(f,sys::NavierStokes{NX,NY,N,C}) where {NX,NY,N,C} = Curl()*(get(sys.Hmat)*f)
 TimeMarching.B₂(w,sys::NavierStokes{NX,NY,N,C}) where {NX,NY,N,C} = -(get(sys.Emat)*(Curl()*(sys.L\w)))
 
+# Constraint operators, using non-stored regularization and interpolation operators
 TimeMarching.B₁ᵀ(f::VectorData{N},regop::Regularize,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,N} = Curl()*regop(sys.Fq,f)
 TimeMarching.B₂(w::Nodes{Dual,NX,NY},regop::Regularize,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,N} = -(regop(sys.Vb,Curl()*(sys.L\w)))
 
-
-
+# Constraint operator constructors
+# Constructor using stored operators
 TimeMarching.plan_constraints(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY,N,true}) where {NX,NY,N} =
                     (f -> TimeMarching.B₁ᵀ(f,sys),w -> TimeMarching.B₂(w,sys))
 
-function TimeMarching.plan_constraints(u::Tuple{Nodes{Dual,NX,NY},Vector{Float64}},t,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,N}
+# Constructor using non-stored operators
+function TimeMarching.plan_constraints(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,N}
+  regop = Regularize(sys.X̃,sys.Δx;issymmetric=true)
 
-  # for now, just assume that there is only one body. will fix later.
-
-  xc, yc, α = u[2]
-  T = Bodies.RigidTransform((xc,yc),α)
-  # should be able to save some time and memory allocation here...
-  x, y = T(sys.X̃.u,sys.X̃.v)
-  X = VectorData(x,y)
-  regop = Regularize(X,sys.Δx;issymmetric=true)
-  if sys._isstore
-    Hmat, Emat = RegularizationMatrix(regop,VectorData{N}(),Edges{Primal,NX,NY}())
-    sys.Hmat = Hmat
-    sys.Emat = Emat
-    return (f->TimeMarching.B₁ᵀ(f,sys), f->zeros(Float64,size(u[2]))),
-           (w->TimeMarching.B₂(w,sys), u->Vector{Float64}())
-  else
-    return (f->TimeMarching.B₁ᵀ(f,regop,sys), f->zeros(Float64,size(u[2]))),
-           (w->TimeMarching.B₂(w,regop,sys), u->Vector{Float64}())
-  end
-
-
-
+  return f -> TimeMarching.B₁ᵀ(f,regop,sys),w -> TimeMarching.B₂(w,regop,sys)
 end
 
-# Here, need to write plan_constraints functions that compute B₁ᵀand B₂ for
-# cases with and without static bodies
-
-#=
-
-function r₁(Ñ::Nodes{Dual,NX, NY}, w, t, sys::NavierStokes{NX, NY}) where {NX, NY}
-    Cs           = sys.Cs
-    Ww = Ww_QCs  = sys.Ww
-    QCs          = sys.QCs
-    s = Ñ
-
-    A_mul_B!(s, sys.invlap, w)
-    curl!(Cs, s)
-    Fields.shift!(QCs, Cs)
-    QCs.u .-= sys.U∞[1]
-    QCs.v .-= sys.U∞[2]
-
-    Fields.shift!(Ww, w)
-    Ww.u[:,1] = 0; Ww.u[:,end] = 0
-    Ww.v[1,:] = 0; Ww.v[end,:] = 0
-
-    #fill!(Ñ, 0)
-    Ñ[:,1] = 0; Ñ[:,end] = 0
-    Ñ[1,:] = 0; Ñ[end,:] = 0
-    product!(Ww_QCs, Ww, QCs)
-    divergence!(Ñ, Ww_QCs)
-    Δx⁻¹ = 1/sys.Δx
-    scale!(Ñ, Δx⁻¹)
-
-    Ñ
-end
-
-A⁻¹(out, u, sys::NavierStokes) = A_mul_B!(out, sys.E, u)
-
-=#
+include("navierstokes/movingbody.jl")
