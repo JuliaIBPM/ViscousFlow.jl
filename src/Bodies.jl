@@ -278,6 +278,7 @@ julia> p = Polygon(w);
 ```
 """
 mutable struct NACA4{N} <: Body{N}
+  len :: Float64
   camber :: Float64
   pos :: Float64
   thick :: Float64
@@ -382,7 +383,7 @@ x̃ = real.(w)
 ỹ = imag.(w)
 
 
-NACA4{length(x̃)}(cam,pos,t,(0.0,0.0),0.0,x̃,ỹ,x̃,ỹ)
+NACA4{length(x̃)}(len,cam,pos,t,(0.0,0.0),0.0,x̃,ỹ,x̃,ỹ)
 
 end
 

@@ -266,6 +266,47 @@ function (p::Oscillation)(t)
     #return [p.ċ(t),0.0], [p.c̈(t),0.0], α̇
 end
 
+struct OscilX <: Kinematics
+    "Angular frequency"
+    Ω :: Float64
+
+    "Mean velocity"
+    Umean :: Float64
+
+    "Velocity amplitude"
+    Ux:: Float64
+
+    "Velocity phase"
+    ϕx :: Float64
+
+    cx::Profile
+    ċx::Profile
+    c̈x::Profile
+
+end
+
+function OscilX(Ω,Umean,Ux,ϕx)
+    Δtx = ϕx/Ω
+    px = ConstantProfile(0.0)
+    ṗx = ConstantProfile(Umean) + Ux*(Sinusoid(Ω) << Δtx)
+    p̈x = d_dt(ṗx)
+
+    OscilX(Ω, Umean, Ux, ϕx, px, ṗx, p̈x)
+end
+
+function (p::OscilX)(t)
+    α = 0.0
+    α̇ = 0.0
+    α̈ = 0.0
+
+    c = Complex128(p.cx(t))
+    ċ = Complex128(p.ċx(t))
+    c̈ = Complex128(p.c̈x(t))
+    return c, ċ, c̈, α, α̇, α̈
+
+    #return [p.ċ(t),0.0], [p.c̈(t),0.0], α̇
+end
+
 #=
 Profiles
 =#

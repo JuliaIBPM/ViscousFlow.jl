@@ -97,6 +97,23 @@ function TimeMarching.r₁(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY}) wher
 
 end
 
+# RHS of Navier-Stokes (non-linear convective term)
+function TimeMarching.r₁(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY},U∞::RigidBodyMotions.RigidBodyMotion) where {NX,NY}
+
+  Ww = sys.Ww
+  Qq = sys.Qq
+  L = sys.L
+  Δx⁻¹ = 1/sys.Δx
+
+  shift!(Qq,curl(L\w)) # -velocity, on dual edges
+  _,ċ,_,_,_,_ = U∞(t)
+  Qq.u .-= real(ċ)
+  Qq.v .-= imag(ċ)
+
+  return scale!(divergence(Qq∘shift!(Ww,w)),Δx⁻¹) # -∇⋅(wu)
+
+end
+
 # Operators for a system with a body
 
 # RHS of a stationary body with no surface velocity
@@ -104,6 +121,14 @@ function TimeMarching.r₂(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY,N,true
     ΔV = VectorData(sys.X̃)
     ΔV.u .-= sys.U∞[1]
     ΔV.v .-= sys.U∞[2]
+    return ΔV
+end
+
+function TimeMarching.r₂(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY,N,true},U∞::RigidBodyMotions.RigidBodyMotion) where {NX,NY,N}
+    ΔV = VectorData(sys.X̃)
+    _,ċ,_,_,_,_ = U∞(t)
+    ΔV.u .-= real(ċ)
+    ΔV.v .-= imag(ċ)
     return ΔV
 end
 
