@@ -387,6 +387,12 @@ NACA4{length(x̃)}(len,cam,pos,t,(0.0,0.0),0.0,x̃,ỹ,x̃,ỹ)
 
 end
 
+function Base.show(io::IO, body::NACA4{N}) where {N}
+    println(io, "NACA 4-digit airfoil with $N points and length $(body.len) and thickness $(body.thick)")
+    println(io, "   Current position: ($(body.cent[1]),$(body.cent[2]))")
+    println(io, "   Current angle (rad): $(body.α)")
+end
+
 
 #=
 export Body

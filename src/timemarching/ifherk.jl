@@ -341,6 +341,8 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
                     _isstaticconstraints,_issymmetric,_isstored)
 
 
+  f = deepcopy(fbuffer)
+
   # H[i] corresponds to H(i,i+1) = H((cᵢ - cᵢ₋₁)Δt)
   # Each of the coefficients includes the time step size
 
