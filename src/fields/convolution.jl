@@ -36,12 +36,12 @@ julia> C*reshape(1:12, 3, 4)
 ```
 """
 struct CircularConvolution{M, N, K, KI}
-    Ĝ::Matrix{Complex128}
+    Ĝ::Matrix{ComplexF64}
     F::K
     F⁻¹::KI
 
     paddedSpace::Matrix{Float64}
-    Â::Matrix{Complex128}
+    Â::Matrix{ComplexF64}
 end
 
 function Base.show(io::IO, c::CircularConvolution{M, N}) where {M, N}

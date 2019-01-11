@@ -52,7 +52,7 @@ end
 
 RigidTransform(x::Vector{Float64}) = RigidTransform((x[1],x[2]),x[3])
 
-RigidTransform(c::Complex128,α::Float64) = RigidTransform((real(c),imag(c)),α)
+RigidTransform(c::ComplexF64,α::Float64) = RigidTransform((real(c),imag(c)),α)
 
 function Base.show(io::IO, T::RigidTransform)
     name = "Rigid-body transform"
@@ -257,7 +257,7 @@ function Base.show(io::IO, body::Plate{N}) where {N}
 end
 
 """
-    NACA4(cam,pos,thick[;np=20][,Zc=0.0+0.0im][,len=1.0]) -> Vector{Complex128}
+    NACA4(cam,pos,thick[;np=20][,Zc=0.0+0.0im][,len=1.0]) -> Vector{ComplexF64}
 
 Generates the vertices of a NACA 4-digit airfoil of chord length 1. The
 relative camber is specified by `cam`, the position of
@@ -376,7 +376,7 @@ for ipan = 1:npan
     xpan[ipan] = 0.5*(xpan1+xpan2)
     ypan[ipan] = 0.5*(ypan1+ypan2)
 end
-w = Complex128[1;flipdim(xpan,1)+im*flipdim(ypan,1)]*len
+w = ComplexF64[1;flipdim(xpan,1)+im*flipdim(ypan,1)]*len
 w -=mean(w)
 
 x̃ = real.(w)

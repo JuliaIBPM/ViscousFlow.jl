@@ -35,9 +35,9 @@ The first six fields are meant as a cache of the current kinematics
 while the `kin` field can be used to find the plate kinematics at any time.
 """
 mutable struct RigidBodyMotion
-    c::Complex128
-    ċ::Complex128
-    c̈::Complex128
+    c::ComplexF64
+    ċ::ComplexF64
+    c̈::ComplexF64
     α::Float64
     α̇::Float64
     α̈::Float64
@@ -54,7 +54,7 @@ RigidBodyMotion(kin::Kinematics) = RigidBodyMotion(kin(0)..., kin)
 function (m::RigidBodyMotion)(t,x̃::Tuple{Float64,Float64})
   # This expects coordinates in body's own coordinate system
   #
-  z̃ = Complex128(x̃[1],x̃[2])
+  z̃ = ComplexF64(x̃[1],x̃[2])
   m.c, m.ċ, m.c̈, m.α, m.α̇, m.α̈ = m.kin(t)
   z = exp(im*m.α)*z̃
   return m.c + z, m.ċ + im*m.α̇*z, m.c̈ + (im*m.α̈-m.α̇^2)*z
@@ -258,9 +258,9 @@ function (p::Oscillation)(t)
     α̇ = 0.0
     α̈ = 0.0
 
-    c = Complex128(p.cx(t)) + im*Complex128(p.cy(t))
-    ċ = Complex128(p.ċx(t)) + im*Complex128(p.ċy(t))
-    c̈ = Complex128(p.c̈x(t)) + im*Complex128(p.c̈y(t))
+    c = ComplexF64(p.cx(t)) + im*ComplexF64(p.cy(t))
+    ċ = ComplexF64(p.ċx(t)) + im*ComplexF64(p.ċy(t))
+    c̈ = ComplexF64(p.c̈x(t)) + im*ComplexF64(p.c̈y(t))
     return c, ċ, c̈, α, α̇, α̈
 
     #return [p.ċ(t),0.0], [p.c̈(t),0.0], α̇
@@ -299,9 +299,9 @@ function (p::OscilX)(t)
     α̇ = 0.0
     α̈ = 0.0
 
-    c = Complex128(p.cx(t))
-    ċ = Complex128(p.ċx(t))
-    c̈ = Complex128(p.c̈x(t))
+    c = ComplexF64(p.cx(t))
+    ċ = ComplexF64(p.ċx(t))
+    c̈ = ComplexF64(p.c̈x(t))
     return c, ċ, c̈, α, α̇, α̈
 
     #return [p.ċ(t),0.0], [p.c̈(t),0.0], α̇
