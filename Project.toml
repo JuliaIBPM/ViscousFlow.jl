@@ -1,0 +1,8 @@
+name = "Whirl"
+uuid = "c33d41be-15db-11e9-2457-8b3af3449526"
+authors = ["Jeff Eldredge <jdeldre@g.ucla.edu>"]
+version = "0.1.0"
+
+[deps]
+Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
