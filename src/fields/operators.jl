@@ -3,7 +3,10 @@ include("lgf.jl")
 include("intfact.jl")
 include("ddf.jl")
 
-import Base: *, \, A_mul_B!, At_mul_B!, A_ldiv_B!
+using LinearAlgebra
+
+import Base: *, \
+import LinearAlgebra: mul!, ldiv!
 
 # laplacian
 
@@ -193,7 +196,7 @@ function Base.show(io::IO, L::Laplacian{NX, NY, R, DX, inplace}) where {NX, NY, 
     print(io, "Discrete$isinplace Laplacian$inverse on a $nodedims grid with spacing $DX")
 end
 
-A_mul_B!(out::Nodes{T,NX,NY}, L::Laplacian, s::Nodes{T,NX,NY}) where {T<:CellType,NX,NY} = laplacian!(out, s)
+mul!(out::Nodes{T,NX,NY}, L::Laplacian, s::Nodes{T,NX,NY}) where {T<:CellType,NX,NY} = laplacian!(out, s)
 *(L::Laplacian{MX,MY,R,DX,false}, s::Nodes{T,NX,NY}) where {MX,MY,R,DX,T <: CellType,NX,NY} =
       laplacian(s)
 function (*)(L::Laplacian{MX,MY,R,DX,true}, s::Nodes{T,NX,NY}) where {MX,MY,R,DX,T <: CellType,NX,NY}
@@ -202,11 +205,11 @@ end
 #L::Laplacian * s::Nodes{T,NX,NY} where {T <: CellType, NX,NY} = laplacian(s)
 
 
-function A_ldiv_B!(out::Nodes{T,NX, NY},
+function ldiv!(out::Nodes{T,NX, NY},
                    L::Laplacian{MX, MY, true, DX, inplace},
                    s::Nodes{T, NX, NY}) where {T <: CellType, NX, NY, MX, MY, DX, inplace}
 
-    A_mul_B!(out.data, get(L.conv), s.data)
+    mul!(out.data, get(L.conv), s.data)
 
     # Adjust the behavior at large distance to match continuous kernel
     out.data .-= (sum(s.data)/2π)*(γ+log(8)/2-log(DX))
@@ -214,10 +217,10 @@ function A_ldiv_B!(out::Nodes{T,NX, NY},
 end
 
 \(L::Laplacian{MX,MY,R,DX,false},s::Nodes{T,NX,NY}) where {MX,MY,R,DX,T <: CellType,NX,NY} =
-  A_ldiv_B!(Nodes(T,s), L, s)
+  ldiv!(Nodes(T,s), L, s)
 
 \(L::Laplacian{MX,MY,R,DX,true},s::Nodes{T,NX,NY}) where {MX,MY,R,DX,T <: CellType,NX,NY} =
-  A_ldiv_B!(s, L, deepcopy(s))
+  ldiv!(s, L, deepcopy(s))
 
 # Integrating factor
 
@@ -298,25 +301,25 @@ function Base.show(io::IO, E::IntFact{NX, NY, a, inplace}) where {NX, NY, a, inp
     print(io, "$isinplace with parameter $a on a $nodedims grid")
 end
 
-function A_mul_B!(out::Nodes{T,NX, NY},
+function mul!(out::Nodes{T,NX, NY},
                    E::IntFact{MX, MY, a, inplace},
                    s::Nodes{T, NX, NY}) where {T <: CellType, NX, NY, MX, MY, a, inplace}
 
-    A_mul_B!(out.data, get(E.conv), s.data)
+    mul!(out.data, get(E.conv), s.data)
     out
 end
 
-function A_mul_B!(out::Nodes{T,NX, NY},
+function mul!(out::Nodes{T,NX, NY},
                    E::IntFact{MX, MY, 0.0, inplace},
                    s::Nodes{T, NX, NY}) where {T <: CellType, NX, NY, MX, MY, inplace}
     out .= deepcopy(s)
 end
 
 *(E::IntFact{MX,MY,a,false},s::Nodes{T,NX,NY}) where {MX,MY,a,T <: CellType, NX,NY} =
-  A_mul_B!(Nodes(T,s), E, s)
+  mul!(Nodes(T,s), E, s)
 
 *(E::IntFact{MX,MY,a,true},s::Nodes{T,NX,NY}) where {MX,MY,a,T <: CellType, NX,NY} =
-    A_mul_B!(s, E, deepcopy(s))
+    mul!(s, E, deepcopy(s))
 
 
 # Identity

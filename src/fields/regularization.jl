@@ -164,7 +164,7 @@ end
 Construct and store a matrix representation of regularization associated with `H`
 for data of type `f` to data of type `u`. The resulting matrix `Hmat` can then be
 used to apply on point data of type `f` to regularize it to grid data of type `u`,
-using `A_mul_B!(u,Hmat,f)`. It can also be used as just `Hmat*f`.
+using `mul!(u,Hmat,f)`. It can also be used as just `Hmat*f`.
 
 If `H` is a symmetric regularization and interpolation operator, then this
 actually returns a tuple `Hmat, Emat`, where `Emat` is the interpolation matrix.
@@ -180,7 +180,7 @@ end
 Construct and store a matrix representation of interpolation associated with `H`
 for data of type `u` to data of type `f`. The resulting matrix `Emat` can then be
 used to apply on grid data of type `u` to interpolate it to point data of type `f`,
-using `A_mul_B!(f,Emat,u)`. It can also be used as just `Emat*u`.
+using `mul!(f,Emat,u)`. It can also be used as just `Emat*u`.
 """
 struct InterpolationMatrix{TU,TF} <: AbstractMatrix{Float64}
   M :: SparseMatrixCSC{Float64,Int64}
@@ -325,7 +325,7 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
     InterpolationMatrix{$ctype,$ftype}(Emat)
   end
 
-  @eval function A_mul_B!(u::$ctype,Hmat::RegularizationMatrix{$ctype,$ftype},f::$ftype) where {NX,NY,N}
+  @eval function mul!(u::$ctype,Hmat::RegularizationMatrix{$ctype,$ftype},f::$ftype) where {NX,NY,N}
     fill!(u,0.0)
     I,J,V = findnz(Hmat.M)
     for (cnt,v) in enumerate(V)
@@ -334,7 +334,7 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
     u
   end
 
-  @eval function A_mul_B!(f::$ftype,Emat::InterpolationMatrix{$ctype,$ftype},u::$ctype) where {NX,NY,N}
+  @eval function mul!(f::$ftype,Emat::InterpolationMatrix{$ctype,$ftype},u::$ctype) where {NX,NY,N}
     fill!(f,0.0)
     I,J,V = findnz(Emat.M)
     for (cnt,v) in enumerate(V)
@@ -445,7 +445,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
     InterpolationMatrix{$ctype,$ftype}(Emat)
   end
 
-  @eval function A_mul_B!(u::$ctype,Hmat::RegularizationMatrix{$ctype,$ftype},f::$ftype) where {NX,NY,N}
+  @eval function mul!(u::$ctype,Hmat::RegularizationMatrix{$ctype,$ftype},f::$ftype) where {NX,NY,N}
     fill!(u,0.0)
     I,J,V = findnz(Hmat.M)
     for (cnt,v) in enumerate(V)
@@ -455,7 +455,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
 
   end
 
-  @eval function A_mul_B!(f::$ftype,Emat::InterpolationMatrix{$ctype,$ftype},u::$ctype) where {NX,NY,N}
+  @eval function mul!(f::$ftype,Emat::InterpolationMatrix{$ctype,$ftype},u::$ctype) where {NX,NY,N}
     fill!(f,0.0)
     I,J,V = findnz(Emat.M)
     for (cnt,v) in enumerate(V)
@@ -469,10 +469,10 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
 end
 
 (*)(Hmat::RegularizationMatrix{TU,TF},src::TF) where {TU,TF<:Union{ScalarData,VectorData}} =
-        A_mul_B!(TU(),Hmat,src)
+        mul!(TU(),Hmat,src)
 
 (*)(Emat::InterpolationMatrix{TU,TF},src::TU) where {TU<:Union{Nodes,Edges},TF<:Union{ScalarData,VectorData}} =
-                A_mul_B!(TF(),Emat,src)
+                mul!(TF(),Emat,src)
 
 
 function Base.show(io::IO, H::RegularizationMatrix{TU,TF}) where {TU,TF}

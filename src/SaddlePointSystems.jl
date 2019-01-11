@@ -1,10 +1,12 @@
 module SaddlePointSystems
 
+using LinearAlgebra
 using LinearMaps
 using IterativeSolvers
 using ..Fields
 
-import Base: *, \, A_mul_B!, A_ldiv_B!
+import Base: *, \
+import LinearAlgebra: ldiv!
 
 export SaddleSystem
 
@@ -140,7 +142,7 @@ end
 
 
 """
-    A_ldiv_B!(state,sys::SaddleSystem,rhs)
+    ldiv!(state,sys::SaddleSystem,rhs)
 
 Solve a saddle-point system. `rhs` is a tuple of the right-hand side `(ru,rf)`.
 Output `state`, a tuple (u,f), is updated. Note that `sys` is also mutated:
@@ -150,7 +152,7 @@ of the solution.
 A shorthand can be used for this operation: `state = sys\rhs`
 """
 # non-stored matrix
-function A_ldiv_B!(state::Tuple{TU,TF},
+function ldiv!(state::Tuple{TU,TF},
                     sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,false},
                     rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,FP,N}
 
@@ -172,7 +174,7 @@ function A_ldiv_B!(state::Tuple{TU,TF},
 end
 
 # stored matrix
-function A_ldiv_B!(state::Tuple{TU,TF},
+function ldiv!(state::Tuple{TU,TF},
                     sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,true},
                     rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,FP,N}
 
@@ -182,7 +184,7 @@ function A_ldiv_B!(state::Tuple{TU,TF},
   rf .-= sys.B₂A⁻¹r₁
   if N > 0
     sys.tmpvec .= rf
-    A_ldiv_B!(get(sys.S⁻¹),sys.tmpvec)
+    ldiv!(get(sys.S⁻¹),sys.tmpvec)
     f .= sys.tmpvec
     f .= sys.P(f)
   end
@@ -194,18 +196,18 @@ end
 
 
 \(sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,Storage},rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,FP,N,Storage} =
-      A_ldiv_B!(similar.(rhs),sys,rhs)
+      ldiv!(similar.(rhs),sys,rhs)
 
 
 # solving tuples of systems
-function A_ldiv_B!(state,sys::NTuple{M,SaddleSystem},rhs) where {M}
+function ldiv!(state,sys::NTuple{M,SaddleSystem},rhs) where {M}
   for (i,sysi) in enumerate(sys)
-    A_ldiv_B!(state[i],sysi,rhs[i])
+    ldiv!(state[i],sysi,rhs[i])
   end
   state
 end
 
 \(sys::NTuple{M,SaddleSystem},rhs) where {M} =
-      A_ldiv_B!(deepcopy.(rhs),sys,rhs)
+      ldiv!(deepcopy.(rhs),sys,rhs)
 
 end

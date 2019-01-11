@@ -243,7 +243,7 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
       fbuffer[I] .= ftmp[I]
       # could solve this system for the whole tuple, too...
       fill!(f[I],0.0)
-      A_ldiv_B!((u[I],f[I]),S[I],(ubuffer[I],fbuffer[I]))
+      ldiv!((u[I],f[I]),S[I],(ubuffer[I],fbuffer[I]))
       ubuffer[I] .= S[I].A⁻¹B₁ᵀf
       #tmp = S[i][I]\(ubuffer[I],fbuffer[I])  # solve saddle point system
       #u[I] .= tmp[1]
@@ -280,7 +280,7 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
         end
         fbuffer[I] .= ftmp[I]
         fill!(f[I],0.0)
-        A_ldiv_B!((u[I],f[I]),S[I],(ubuffer[I],fbuffer[I]))
+        ldiv!((u[I],f[I]),S[I],(ubuffer[I],fbuffer[I]))
         ubuffer[I] .= S[I].A⁻¹B₁ᵀf
 
         #tmp = S[i][I]\(ubuffer[I],fbuffer[I])  # solve saddle point system
@@ -321,7 +321,7 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
     end
     fbuffer[I] .= ftmp[I]
     fill!(f[I],0.0)
-    A_ldiv_B!((u[I],f[I]),S[I],(ubuffer[I],fbuffer[I]))
+    ldiv!((u[I],f[I]),S[I],(ubuffer[I],fbuffer[I]))
     #tmp = S[i][I]\(ubuffer[I],fbuffer[I])  # solve saddle point system
     #u[I] .= tmp[1]
     #f[I] .= tmp[2]
@@ -393,7 +393,7 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
       ubuffer .= S.A⁻¹B₁ᵀf
       tᵢ₊₁ = t + rkdt.c[i]
 
-      #A_ldiv_B!((u,f),S[i],(ubuffer,fbuffer)) # solve saddle point system
+      #ldiv!((u,f),S[i],(ubuffer,fbuffer)) # solve saddle point system
 
       # diffuse the scratch vectors
       qᵢ .= H[i]*qᵢ # qᵢ₊₁ = H(i,i+1)qᵢ
@@ -421,7 +421,7 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
   end
   fbuffer .= r₂(u,tᵢ₊₁) # r₂
   u, f = S\(ubuffer,fbuffer)  # solve saddle point system
-  #A_ldiv_B!((u,f),S[i],(ubuffer,fbuffer)) # solve saddle point system
+  #ldiv!((u,f),S[i],(ubuffer,fbuffer)) # solve saddle point system
   f ./= rkdt.a[i,i]
   t = t + rkdt.c[i]
 
