@@ -1,13 +1,14 @@
 using FastGaussQuadrature
 using Serialization
+using LinearAlgebra
 
 const GL_NODES, GL_WEIGHTS = gausslegendre(100)
-const LGF_DIR  = joinpath(@__DIR__, "../../cache")
+const LGF_DIR  = joinpath(@__DIR__, "cache")
 const LGF_FILE = joinpath(LGF_DIR, "lgftable.dat")
 
 function load_lgf(N)
     if isfile(LGF_FILE)
-        G = open(Serialization.deserialize, LGF_FILE, "r")
+        G = deserialize(open(LGF_FILE, "r"))
         if size(G,1) ≥ N
             return G
         end
@@ -16,7 +17,7 @@ function load_lgf(N)
 end
 
 function build_lgf(N)
-    info("Building and caching LGF table")
+    @info "Building and caching LGF table"
 
     g = zeros(N, N)
     for y in 0:N-1, x in 0:y
@@ -25,13 +26,14 @@ function build_lgf(N)
 
     G = Symmetric(g)
     mkpath(LGF_DIR)
-    open(LGF_FILE, "w") do f
-        Serialization.serialize(f, G)
-    end
+    #open(LGF_FILE, "w") do f
+    #    serialize(f, G)
+    #end
+    serialize(open(LGF_FILE,"w"),G)
     G
 end
 
-quadgauss(f::Function) = dot(GL_WEIGHTS, f(GL_NODES))
+quadgauss(f::Function) = LinearAlgebra.dot(GL_WEIGHTS, f(GL_NODES))
 
 function lgf(i, j)
     if i == j ==0
