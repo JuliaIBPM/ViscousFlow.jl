@@ -19,6 +19,9 @@ the grid), but these are not distinguished in these basic definitions and operat
 module Fields
 
 import Base: @propagate_inbounds, shift!, show, summary
+
+using FFTW
+
 export Primal, Dual, Edges, Nodes,
        EdgeGradient, NodePair,
        Points, ScalarData, VectorData,
@@ -50,7 +53,7 @@ macro wraparray(wrapper, field)
           function summary(io::IO, A::$wrapper)
             println(io, "$(typeof(A)) data")
             print(io, "Printing in grid orientation (lower left is (1,1))")
-          end           
+          end
         end
 
         @propagate_inbounds Base.getindex(A::$wrapper, i::Int) = A.$field[i]

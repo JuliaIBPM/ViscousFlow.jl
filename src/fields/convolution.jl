@@ -1,8 +1,6 @@
 import Base: *
 import LinearAlgebra: mul!
 
-using FFTW
-
 """
     CircularConvolution{M, N}
 
