@@ -211,7 +211,7 @@ function ldiv!(out::Nodes{T,NX, NY},
                    L::Laplacian{MX, MY, true, DX, inplace},
                    s::Nodes{T, NX, NY}) where {T <: CellType, NX, NY, MX, MY, DX, inplace}
 
-    mul!(out.data, get(L.conv), s.data)
+    mul!(out.data, L.conv, s.data)
 
     # Adjust the behavior at large distance to match continuous kernel
     out.data .-= (sum(s.data)/2π)*(γ+log(8)/2-log(DX))
@@ -308,7 +308,7 @@ function mul!(out::Nodes{T,NX, NY},
                    E::IntFact{MX, MY, a, inplace},
                    s::Nodes{T, NX, NY}) where {T <: CellType, NX, NY, MX, MY, a, inplace}
 
-    mul!(out.data, get(E.conv), s.data)
+    mul!(out.data, E.conv, s.data)
     out
 end
 

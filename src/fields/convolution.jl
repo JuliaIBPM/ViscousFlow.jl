@@ -1,6 +1,8 @@
 import Base: *
 import LinearAlgebra: mul!
 
+using FFTW
+
 """
     CircularConvolution{M, N}
 
@@ -50,7 +52,7 @@ end
 
 function CircularConvolution(G::AbstractMatrix{Float64}, fftw_flags = FFTW.ESTIMATE)
     M, N = size(G)
-    paddedSpace = Matrix{Float64}(2M-1, 2N-1)
+    paddedSpace = Matrix{Float64}(undef, 2M-1, 2N-1)
     F = FFTW.plan_rfft(paddedSpace, flags = fftw_flags)
 
     mirror!(paddedSpace, G)
