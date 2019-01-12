@@ -65,16 +65,16 @@ end
 function mul!(out, C::CircularConvolution{M, N}, B) where {M, N}
     @assert size(out) == size(B) == (M, N)
 
-    inds = CartesianRange((M,N))
+    inds = CartesianIndices((M,N))
     fill!(C.paddedSpace, 0)
-    copy!(C.paddedSpace, inds, B, inds)
+    copyto!(C.paddedSpace, inds, B, inds)
     mul!(C.Â, C.F, C.paddedSpace)
 
     C.Â .*= C.Ĝ
 
     mul!(C.paddedSpace, C.F⁻¹, C.Â)
 
-    copy!(out, inds, C.paddedSpace, CartesianRange((M:2M-1,N:2N-1)))
+    copyto!(out, inds, C.paddedSpace, CartesianIndices((M:2M-1,N:2N-1)))
 end
 
 C::CircularConvolution * B = mul!(similar(B), C, B)
