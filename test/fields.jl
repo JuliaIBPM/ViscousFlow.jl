@@ -217,7 +217,7 @@ end
 
     @testset "Integrating factor" begin
         s = Nodes{Dual, 30, 40}()
-        s[15,15] .= 1.0
+        s[15,15] = 1.0
 
         E2 = plan_intfact(2,s)
         E4 = plan_intfact(4,s)

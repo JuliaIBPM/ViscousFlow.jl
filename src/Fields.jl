@@ -21,6 +21,7 @@ module Fields
 import Base: @propagate_inbounds, shift!, show, summary
 
 using FFTW
+using SpecialFunctions
 
 export Primal, Dual, Edges, Nodes,
        EdgeGradient, NodePair,
