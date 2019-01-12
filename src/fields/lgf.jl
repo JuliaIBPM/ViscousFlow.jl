@@ -1,4 +1,5 @@
 using FastGaussQuadrature
+using Serialization
 
 const GL_NODES, GL_WEIGHTS = gausslegendre(100)
 const LGF_DIR  = joinpath(@__DIR__, "../../cache")
@@ -6,7 +7,7 @@ const LGF_FILE = joinpath(LGF_DIR, "lgftable.dat")
 
 function load_lgf(N)
     if isfile(LGF_FILE)
-        G = open(deserialize, LGF_FILE, "r")
+        G = open(Serialization.deserialize, LGF_FILE, "r")
         if size(G,1) ≥ N
             return G
         end
@@ -25,7 +26,7 @@ function build_lgf(N)
     G = Symmetric(g)
     mkpath(LGF_DIR)
     open(LGF_FILE, "w") do f
-        serialize(f, G)
+        Serialization.serialize(f, G)
     end
     G
 end
