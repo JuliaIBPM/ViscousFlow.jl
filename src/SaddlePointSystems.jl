@@ -153,10 +153,10 @@ of the solution.
 
 A shorthand can be used for this operation: `state = sys\rhs`
 """
-# non-stored matrix
 function ldiv!(state::Tuple{TU,TF},
                     sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,false},
                     rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,FP,N}
+  # non-stored matrix
 
   ru, rf = rhs
   u, f = state

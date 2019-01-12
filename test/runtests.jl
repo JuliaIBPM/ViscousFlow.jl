@@ -1,5 +1,6 @@
 using Test
 using TestSetExtensions
+using Distributed
 
 using Whirl
 #import Whirl
