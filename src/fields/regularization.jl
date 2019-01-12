@@ -309,9 +309,9 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
     fill!(g,1.0)
     H(v,g)
     wtu = sparsevec(v.u)
-    wtu.nzval .= 1./wtu.nzval
+    wtu.nzval .= 1 ./ wtu.nzval
     wtv = sparsevec(v.v)
-    wtv.nzval .= 1./wtv.nzval
+    wtv.nzval .= 1 ./ wtv.nzval
     fill!(g,0.0)
     for i = 1:N
       g.u[i] = 1.0/H.wgt[i]  # unscale for interpolation
@@ -435,7 +435,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
     v = deepcopy(u)
     fill!(g,1.0)
     wt = sparsevec(H(v,g))
-    wt.nzval .= 1./wt.nzval
+    wt.nzval .= 1 ./ wt.nzval
     fill!(g,0.0)
     for i = 1:N
       g[i] = 1.0/H.wgt[i]  # unscale for interpolation
