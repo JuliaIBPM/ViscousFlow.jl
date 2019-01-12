@@ -158,7 +158,7 @@ Same as [`plan_laplacian`](@ref), but operates in-place on data.
 function plan_laplacian! end
 
 struct Laplacian{NX, NY, R, DX, inplace}
-    conv::Nullable{CircularConvolution{NX, NY}}
+    conv::Union{CircularConvolution{NX, NY},Nothing}
 end
 
 
@@ -169,11 +169,13 @@ for (lf,inplace) in ((:plan_laplacian,false),
                    with_inverse = false, fftw_flags = FFTW.ESTIMATE, dx = 1.0)
         NX, NY = dims
         if !with_inverse
-            return Laplacian{NX, NY, false, dx, $inplace}(Nullable())
+            #return Laplacian{NX, NY, false, dx, $inplace}(Nullable())
+            return Laplacian{NX, NY, false, dx, $inplace}(nothing)
         end
 
         G = view(LGF_TABLE, 1:NX, 1:NY)
-        Laplacian{NX, NY, true, dx, $inplace}(Nullable(CircularConvolution(G, fftw_flags)))
+        #Laplacian{NX, NY, true, dx, $inplace}(Nullable(CircularConvolution(G, fftw_flags)))
+        Laplacian{NX, NY, true, dx, $inplace}(CircularConvolution(G, fftw_flags))
     end
 
     @eval function $lf(nx::Int, ny::Int;
@@ -266,7 +268,7 @@ function plan_intfact! end
 
 
 struct IntFact{NX, NY, a, inplace}
-    conv::Nullable{CircularConvolution{NX, NY}}
+    conv::Union{CircularConvolution{NX, NY},Nothing}
 end
 
 for (lf,inplace) in ((:plan_intfact,false),
@@ -276,7 +278,7 @@ for (lf,inplace) in ((:plan_intfact,false),
         NX, NY = dims
 
         if a == 0
-          return IntFact{NX, NY, 0.0, $inplace}(Nullable{CircularConvolution{NX, NY}}())
+          return IntFact{NX, NY, 0.0, $inplace}(Union{CircularConvolution{NX, NY},Nothing}())
         end
 
         #qtab = [intfact(x, y, a) for x in 0:NX-1, y in 0:NY-1]
@@ -285,7 +287,8 @@ for (lf,inplace) in ((:plan_intfact,false),
           Nmax += 1
         end
         qtab = [max(x,y) <= Nmax ? intfact(x, y, a) : 0.0 for x in 0:NX-1, y in 0:NY-1]
-        IntFact{NX, NY, a, $inplace}(Nullable(CircularConvolution(qtab, fftw_flags)))
+        #IntFact{NX, NY, a, $inplace}(Nullable(CircularConvolution(qtab, fftw_flags)))
+        IntFact{NX, NY, a, $inplace}(CircularConvolution(qtab, fftw_flags))
       end
 
       @eval $lf(a::Real,nodes::Nodes{T,NX,NY}; fftw_flags = FFTW.ESTIMATE) where {T<:CellType,NX,NY} =

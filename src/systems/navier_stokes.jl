@@ -23,8 +23,8 @@ mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
     X̃::VectorData{N}
 
     # Pre-stored regularization and interpolation matrices (if present)
-    Hmat::Nullable{RegularizationMatrix}
-    Emat::Nullable{InterpolationMatrix}
+    Hmat::Union{RegularizationMatrix,Nothing}
+    Emat::Union{InterpolationMatrix,Nothing}
 
 
     # Scratch space
@@ -62,8 +62,11 @@ function NavierStokes(dims::Tuple{Int, Int}, Re, Δx, Δt;
       regop = Regularize(X̃,Δx;issymmetric=true)
       Hmat, Emat = RegularizationMatrix(regop,VectorData{N}(),Edges{Primal,NX,NY}())
     else
-      Hmat = Nullable{RegularizationMatrix}()
-      Emat = Nullable{InterpolationMatrix}()
+      #Hmat = Nullable{RegularizationMatrix}()
+      #Emat = Nullable{InterpolationMatrix}()
+      Hmat = nothing
+      Emat = nothing
+
     end
 
     # should be able to set up time marching operator here...

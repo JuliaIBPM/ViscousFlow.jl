@@ -20,7 +20,7 @@ struct SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,Storage}
     B₂A⁻¹ :: FBA
     P :: FP
     S  :: LinearMap
-    S⁻¹ :: Nullable{Factorization{Float64}}
+    S⁻¹ :: Union{Factorization{Float64},Nothing}
     tol :: Float64
     _issymmetric :: Bool
     _isposdef :: Bool
@@ -109,9 +109,11 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
         Smat[1:N,i] .= fbuffer
         f[i] = 0.0
       end
-      S⁻¹ = Nullable(factorize(Smat))
+      #S⁻¹ = Nullable(factorize(Smat))
+      S⁻¹ = factorize(Smat)
     else
-      S⁻¹ = Nullable()
+      #S⁻¹ = Nullable()
+      S⁻¹ = nothing
     end
 
     A⁻¹B₁ᵀ(f::TF) = (A⁻¹∘B₁ᵀ)(f)
