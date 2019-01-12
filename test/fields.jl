@@ -183,7 +183,7 @@ end
 @testset "Fields" begin
     @testset "Hadamard Product" begin
         edges_p  = Edges{Primal, 30, 40}()
-        edges_p.u .= rand(size(edges_p.u))
+        edges_p.u .= rand(Float64,size(edges_p.u))
 
         # Should be safe for the output to be the same as the input
         edges_p2 = edges_p ∘ edges_p

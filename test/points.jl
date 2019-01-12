@@ -135,7 +135,7 @@ using Fields
   H(w2,f)
   @test w ≈ w2
 
-  w .= rand(size(w))
+  w .= rand(Float64,size(w))
   f2 = ScalarData(f)
   A_mul_B!(f,Emat,w)
   H(f2,w)
@@ -160,8 +160,8 @@ using Fields
   H(p2,f)
   @test p.u ≈ p2.u && p.v ≈ p2.v
 
-  p.u .= rand(size(p.u))
-  p.v .= rand(size(p.v))
+  p.u .= rand(Float64,size(p.u))
+  p.v .= rand(Float64,size(p.v))
   f2 = VectorData(f)
   A_mul_B!(f,Emat,p)
   H(f2,p)
@@ -181,8 +181,8 @@ using Fields
   H(p2,f)
   @test p.u ≈ p2.u && p.v ≈ p2.v
 
-  p.u .= rand(size(p.u))
-  p.v .= rand(size(p.v))
+  p.u .= rand(Float64,size(p.u))
+  p.v .= rand(Float64,size(p.v))
   A_mul_B!(f,Emat,p)
   H(f2,p)
   @test f.u ≈ f2.u && f.v ≈ f2.v
@@ -200,8 +200,8 @@ using Fields
   H(p2,f)
   @test p.u ≈ p2.u && p.v ≈ p2.v
 
-  p.u .= rand(size(p.u))
-  p.v .= rand(size(p.v))
+  p.u .= rand(Float64,size(p.u))
+  p.v .= rand(Float64,size(p.v))
   A_mul_B!(f,Emat,p)
   H(f2,p)
   @test f.u ≈ f2.u && f.v ≈ f2.v
