@@ -1,7 +1,7 @@
 import Whirl: Fields
-using Fields
+#using Fields
 
-immutable Not{T}
+struct Not{T}
   idx::T
 end
 import Base: to_indices, uncolon, tail, _maybetail
