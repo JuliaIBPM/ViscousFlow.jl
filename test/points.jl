@@ -1,4 +1,5 @@
 import Whirl: Fields
+using LinearAlgebra
 
 @testset "Point-Field Routines" begin
 
@@ -105,21 +106,21 @@ import Whirl: Fields
   f .= rand(n)
 
   w2 = Nodes(Dual,(nx,ny))
-  A_mul_B!(w,Hmat,f)
+  mul!(w,Hmat,f)
   H(w2,f)
   @test w ≈ w2
 
-  @test_throws MethodError A_mul_B!(f,Hmat,w)
+  @test_throws MethodError mul!(f,Hmat,w)
 
   f2 = ScalarData(f)
-  A_mul_B!(f,Emat,w)
+  mul!(f,Emat,w)
   H(f2,w)
   @test f ≈ f2
 
   w .= rand(nx,ny)
   Ẽmat = InterpolationMatrix(H̃,w,f)
 
-  A_mul_B!(f,Ẽmat,w)
+  mul!(f,Ẽmat,w)
   H̃(f2,w)
   @test f ≈ f2
 
@@ -130,18 +131,18 @@ import Whirl: Fields
 
 
   w2 = Nodes(Primal,(nx,ny))
-  A_mul_B!(w,Hmat,f)
+  mul!(w,Hmat,f)
   H(w2,f)
   @test w ≈ w2
 
   w .= rand(Float64,size(w))
   f2 = ScalarData(f)
-  A_mul_B!(f,Emat,w)
+  mul!(f,Emat,w)
   H(f2,w)
   @test f ≈ f2
 
   f2 = ScalarData(f)
-  A_mul_B!(f,Ẽmat,w)
+  mul!(f,Ẽmat,w)
   H̃(f2,w)
   @test f ≈ f2
 
@@ -155,18 +156,18 @@ import Whirl: Fields
   Ẽmat = InterpolationMatrix(H̃,p,f)
 
   p2 = Edges(Dual,(nx,ny))
-  A_mul_B!(p,Hmat,f)
+  mul!(p,Hmat,f)
   H(p2,f)
   @test p.u ≈ p2.u && p.v ≈ p2.v
 
   p.u .= rand(Float64,size(p.u))
   p.v .= rand(Float64,size(p.v))
   f2 = VectorData(f)
-  A_mul_B!(f,Emat,p)
+  mul!(f,Emat,p)
   H(f2,p)
   @test f.u ≈ f2.u && f.v ≈ f2.v
 
-  A_mul_B!(f,Ẽmat,p)
+  mul!(f,Ẽmat,p)
   H̃(f2,p)
   @test f.u ≈ f2.u && f.v ≈ f2.v
 
@@ -176,17 +177,17 @@ import Whirl: Fields
   Emat = InterpolationMatrix(H,p,f)
   Ẽmat = InterpolationMatrix(H̃,p,f)
 
-  A_mul_B!(p,Hmat,f)
+  mul!(p,Hmat,f)
   H(p2,f)
   @test p.u ≈ p2.u && p.v ≈ p2.v
 
   p.u .= rand(Float64,size(p.u))
   p.v .= rand(Float64,size(p.v))
-  A_mul_B!(f,Emat,p)
+  mul!(f,Emat,p)
   H(f2,p)
   @test f.u ≈ f2.u && f.v ≈ f2.v
 
-  A_mul_B!(f,Ẽmat,p)
+  mul!(f,Ẽmat,p)
   H̃(f2,p)
   @test f.u ≈ f2.u && f.v ≈ f2.v
 
@@ -195,17 +196,17 @@ import Whirl: Fields
   Hmat = RegularizationMatrix(H,f,p)
   Emat = InterpolationMatrix(H,p,f)
   Ẽmat = InterpolationMatrix(H̃,p,f)
-  A_mul_B!(p,Hmat,f)
+  mul!(p,Hmat,f)
   H(p2,f)
   @test p.u ≈ p2.u && p.v ≈ p2.v
 
   p.u .= rand(Float64,size(p.u))
   p.v .= rand(Float64,size(p.v))
-  A_mul_B!(f,Emat,p)
+  mul!(f,Emat,p)
   H(f2,p)
   @test f.u ≈ f2.u && f.v ≈ f2.v
 
-  A_mul_B!(f,Ẽmat,p)
+  mul!(f,Ẽmat,p)
   H̃(f2,p)
   @test f.u ≈ f2.u && f.v ≈ f2.v
 
