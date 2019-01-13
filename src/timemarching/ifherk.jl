@@ -83,7 +83,7 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
    ops = []
    # check for methods for r₁ and r₂
    for (i,typ) in enumerate(optypes)
-     if method_exists(rhs[i],typ)
+     if hasmethod(rhs[i],typ)
        push!(ops,rhs[i])
      else
        error("No valid operator for $(opnames[i]) supplied")
@@ -168,9 +168,9 @@ function construct_saddlesys(plan_constraints::FC,H::FH,
         opsi = ()
         for I in eachindex(sys[i])
           typI = (typ[1].parameters[I],)
-          if method_exists(sys[i][I],typI)
+          if hasmethod(sys[i][I],typI)
             opsi = (opsi...,sys[i][I])
-          elseif method_exists(*,(typeof(sys[i][I]),typI...))
+          elseif hasmethod(*,(typeof(sys[i][I]),typI...))
             # generate a method that acts on TU
             opsi = (opsi...,x->sys[i][I]*x)
           else
@@ -179,9 +179,9 @@ function construct_saddlesys(plan_constraints::FC,H::FH,
         end
         push!(ops,opsi)
       else
-        if method_exists(sys[i],typ)
+        if hasmethod(sys[i],typ)
           push!(ops,sys[i])
-        elseif method_exists(*,(typeof(sys[i]),typ...))
+        elseif hasmethod(*,(typeof(sys[i]),typ...))
           # generate a method that acts on TU
           push!(ops,x->sys[i]*x)
         else

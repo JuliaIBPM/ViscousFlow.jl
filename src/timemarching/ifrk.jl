@@ -41,7 +41,7 @@ function (::Type{IFRK})(u::TU,Δt::Float64,
                           rk::RKParams{NS}=RK31) where {TU,FI,FR1,NS}
 
     # check for methods for r₁ and r₂
-    if method_exists(rhs,(TU,Float64))
+    if hasmethod(rhs,(TU,Float64))
         r₁ = rhs
     else
         error("No valid operator for r₁ supplied")

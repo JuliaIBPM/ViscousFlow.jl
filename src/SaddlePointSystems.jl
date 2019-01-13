@@ -73,9 +73,9 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
 
     # check for methods
     for (i,typ) in enumerate(optypes)
-      if method_exists(sys[i],Tuple{typ})
+      if hasmethod(sys[i],Tuple{typ})
         push!(ops,sys[i])
-      elseif method_exists(*,Tuple{typeof(sys[i]),typ})
+      elseif hasmethod(*,Tuple{typeof(sys[i]),typ})
         # generate a method that acts on TU
         push!(ops,x->sys[i]*x)
       else

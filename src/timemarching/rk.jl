@@ -35,7 +35,7 @@ function (::Type{RK})(u::TU,Δt::Float64,rhs::FR1;
                           rk::RKParams{NS}=RK31) where {TU,FR1,NS}
 
     # check for methods for r₁ and r₂
-    if method_exists(rhs,(TU,Float64))
+    if hasmethod(rhs,(TU,Float64))
         r₁ = rhs
     else
         error("No valid operator for r₁ supplied")
