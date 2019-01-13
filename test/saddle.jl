@@ -2,6 +2,7 @@ import Whirl: Fields, SaddlePointSystems
 
 using Compat
 using Compat.LinearAlgebra
+using Compat: range
 
 @testset "Saddle-Point Systems" begin
 
