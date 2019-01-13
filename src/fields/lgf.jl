@@ -1,5 +1,6 @@
 using FastGaussQuadrature
 using Compat.Serialization
+using Compat: @info
 
 const GL_NODES, GL_WEIGHTS = gausslegendre(100)
 const LGF_DIR  = joinpath(@__DIR__, "cache")
@@ -32,7 +33,7 @@ function build_lgf(N)
     G
 end
 
-quadgauss(f::Function) = LinearAlgebra.dot(GL_WEIGHTS, f(GL_NODES))
+quadgauss(f::Function) = dot(GL_WEIGHTS, f(GL_NODES))
 
 function lgf(i, j)
     if i == j ==0
