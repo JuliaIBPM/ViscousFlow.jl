@@ -96,7 +96,7 @@ function TimeMarching.r₁(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY}) wher
   Qq.u .-= sys.U∞[1]
   Qq.v .-= sys.U∞[2]
 
-  return scale!(divergence(Qq∘shift!(Ww,w)),Δx⁻¹) # -∇⋅(wu)
+  return rmul!(divergence(Qq∘shift!(Ww,w)),Δx⁻¹) # -∇⋅(wu)
 
 end
 
@@ -113,7 +113,7 @@ function TimeMarching.r₁(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY},U∞:
   Qq.u .-= real(ċ)
   Qq.v .-= imag(ċ)
 
-  return scale!(divergence(Qq∘shift!(Ww,w)),Δx⁻¹) # -∇⋅(wu)
+  return rmul!(divergence(Qq∘shift!(Ww,w)),Δx⁻¹) # -∇⋅(wu)
 
 end
 

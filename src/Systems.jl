@@ -7,6 +7,8 @@ using ..Bodies
 #import Whirl: r₁
 #import Whirl: plan_intfact
 
+using LinearAlgebra
+
 
 
 include("systems/navier_stokes.jl")
