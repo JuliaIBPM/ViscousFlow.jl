@@ -1,4 +1,4 @@
-import Base: size
+import Base: size, show, summary
 
 #abstract type Points <: AbstractArray{Float64} end
 
@@ -131,20 +131,38 @@ Base.size(A::VectorData) = size(A.u).+size(A.v)
    i > N ? A.v[i-N] = convert(Float64, v) : A.u[i] = convert(Float64, v)
 
 
-function Base.show(io::IO, pts::ScalarData{N}) where {N}
-    println(io, "$N points of scalar-valued data")
-end
+#function show(io::IO, pts::ScalarData{N}) where {N}
+#    println(io, "$N points of scalar-valued data")
+#end
 
-function Base.show(io::IO, ::MIME"text/plain", pts::ScalarData{N}) where {N}
-    println(io, "$N points of scalar-valued data")
-    Base.showarray(io,pts.data,false;header=false)
-end
+#show(io::IO, A::$wrapper) = show(io,flipdim(transpose(A.$field),1))
+#function summary(io::IO, A::$wrapper)
+#  println(io, "$(typeof(A)) data")
+#  print(io, "Printing in grid orientation (lower left is (1,1))")
+#end
 
-function Base.show(io::IO, pts::VectorData{N}) where {N}
-    println(io, "$N points of vector-valued data")
-end
+show(io::IO, pts::ScalarData{N}) where {N} = show(io,pts.data)
+show(io::IO, ::MIME"text/plain", pts::ScalarData{N}) where {N} =
+  show(io,pts.data)
+summary(io::IO, pts::ScalarData{N}) where {N} = print(io,"$N points of scalar-valued data")
 
-function Base.show(io::IO, ::MIME"text/plain", pts::VectorData{N}) where {N}
-    println(io, "$N points of vector-valued data")
-    Base.showarray(io,hcat(pts.u,pts.v),false;header=false)
-end
+
+#function Base.show(io::IO, ::MIME"text/plain", pts::ScalarData{N}) where {N}
+#    println(io, "$N points of scalar-valued data")
+#    Base.showarray(io,pts.data,false;header=false)
+#end
+
+#function show(io::IO, pts::VectorData{N}) where {N}
+#    println(io, "$N points of vector-valued data")
+#end
+
+show(io::IO, pts::VectorData{N}) where {N} = show(io,hcat(pts.u,pts.v))
+show(io::IO, ::MIME"text/plain", pts::VectorData{N}) where {N} =
+  show(io,hcat(pts.u,pts.v))
+summary(io::IO, pts::VectorData{N}) where {N} = print(io,"$N points of vector-valued data")
+
+
+#function Base.show(io::IO, ::MIME"text/plain", pts::VectorData{N}) where {N}
+#    println(io, "$N points of vector-valued data")
+#    Base.showarray(io,hcat(pts.u,pts.v),false;header=false)
+#end
