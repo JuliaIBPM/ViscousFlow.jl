@@ -1,6 +1,7 @@
 import Whirl: Fields, SaddlePointSystems
 
-using LinearAlgebra
+using Compat
+using Compat.LinearAlgebra
 
 @testset "Saddle-Point Systems" begin
 

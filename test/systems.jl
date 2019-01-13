@@ -1,6 +1,7 @@
 import Whirl: Systems
 
-using LinearAlgebra
+using Compat
+using Compat.LinearAlgebra
 
 @testset "Lamb-Oseen vortex" begin
 

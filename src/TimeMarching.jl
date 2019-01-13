@@ -2,6 +2,9 @@ module TimeMarching
 
 import Whirl:@get
 
+using Compat
+using Compat: hasmethod
+
 export System, Constrained, Unconstrained, RK, IFRK, IFHERK, r₁, r₂, B₂, B₁ᵀ,
           plan_constraints
 
