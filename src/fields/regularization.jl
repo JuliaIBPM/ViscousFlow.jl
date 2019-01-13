@@ -145,7 +145,7 @@ function Regularize(x::Vector{T},y::Vector{T},dx::T;
     fill!(wtvec,1.0)
   end
 
-  Regularize{length(x),filter}(x/dx+I0[1],y/dx+I0[2],1.0/(dx*dx),
+  Regularize{length(x),filter}(x/dx.+I0[1],y/dx.+I0[2],1.0/(dx*dx),
                       wtvec,zeros(T,n),zeros(T,n),DDF(ddftype=ddftype,dx=1.0),issymmetric)
 end
 
@@ -201,14 +201,14 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
         fill!(target.u,0.0)
         H.buffer2 .= source.u.*H.wgt
         @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
-          H.buffer .= H.ddf.(x-$shiftux-H.x,y-$shiftuy-H.y)
-          target.u[x,y] = At_mul_B(H.buffer,H.buffer2)
+          H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
+          target.u[x,y] = transpose(H.buffer)*H.buffer2
         end
         fill!(target.v,0.0)
         H.buffer2 .= source.v.*H.wgt
         @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
-          H.buffer .= H.ddf.(x-$shiftvx-H.x,y-$shiftvy-H.y)
-          target.v[x,y] = At_mul_B(H.buffer,H.buffer2)
+          H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
+          target.v[x,y] = transpose(H.buffer)*H.buffer2
         end
         target
   end
@@ -234,13 +234,13 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
     target.u .= target.v .= zeros(Float64,N)
     @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
       H.buffer .= H.ddf.(x-$shiftux-H.x,y-$shiftuy-H.y)
-      w = At_mul_B(H.buffer,H.wgt)
+      w = transpose(H.buffer)*H.wgt
       w = w ≢ 0.0 ? source.u[x,y]/w : 0.0
       target.u .+= H.buffer*w
     end
     @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
       H.buffer .= H.ddf.(x-$shiftvx-H.x,y-$shiftvy-H.y)
-      w = At_mul_B(H.buffer,H.wgt)
+      w = transpose(H.buffer)*H.wgt
       w = w ≢ 0.0 ? source.v[x,y]/w : 0.0
       target.v .+= H.buffer*w
     end
@@ -358,7 +358,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
     H.buffer2 .= source.data.*H.wgt
     @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
       H.buffer .= H.ddf.(x-$shiftx-H.x,y-$shifty-H.y)
-      target[x,y] = At_mul_B(H.buffer,H.buffer2)
+      target[x,y] = transpose(H.buffer)*H.buffer2
     end
     target
   end
@@ -380,7 +380,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
     target .= zeros(Float64,N)
     @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
       H.buffer .= H.ddf.(x-$shiftx-H.x,y-$shifty-H.y)
-      w = At_mul_B(H.buffer,H.wgt)
+      w = transpose(H.buffer)*H.wgt
       w = w ≢ 0.0 ? source[x,y]/w : 0.0
       target .+= H.buffer*w
     end
