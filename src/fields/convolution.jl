@@ -1,5 +1,4 @@
 import Base: *
-import LinearAlgebra: mul!
 
 """
     CircularConvolution{M, N}

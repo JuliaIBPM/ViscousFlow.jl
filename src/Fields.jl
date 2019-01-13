@@ -20,9 +20,19 @@ module Fields
 
 import Base: @propagate_inbounds, shift!, show, summary
 
+using Compat
 using FFTW
 using SpecialFunctions
-using LinearAlgebra
+using Compat.LinearAlgebra
+
+@static if VERSION < v"0.7-"
+  mul!(x,B,y) = A_mul_B!(x,B,y)
+  copyto!(dts,src) = copy!(dts,src)
+  rmul!(B,x) = scale!(B,x)
+  ldiv!(x,B,y) = A_ldiv_B!(x,B,y)
+else
+  import LinearAlgebra: mul!, ldiv!
+end
 
 export Primal, Dual, Edges, Nodes,
        EdgeGradient, NodePair,

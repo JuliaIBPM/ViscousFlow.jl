@@ -4,7 +4,6 @@ include("intfact.jl")
 include("ddf.jl")
 
 import Base: *, \
-import LinearAlgebra: mul!, ldiv!
 
 # laplacian
 

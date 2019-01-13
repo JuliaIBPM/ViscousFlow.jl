@@ -1,6 +1,5 @@
 using FastGaussQuadrature
-using Serialization
-using LinearAlgebra
+using Compat.Serialization
 
 const GL_NODES, GL_WEIGHTS = gausslegendre(100)
 const LGF_DIR  = joinpath(@__DIR__, "cache")
