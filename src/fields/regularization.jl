@@ -357,7 +357,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
     fill!(target,0.0)
     H.buffer2 .= source.data.*H.wgt
     @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
-      H.buffer .= H.ddf.(x-$shiftx-H.x,y-$shifty-H.y)
+      H.buffer .= H.ddf.(x.-$shiftx.-H.x,y.-$shifty.-H.y)
       target[x,y] = transpose(H.buffer)*H.buffer2
     end
     target
