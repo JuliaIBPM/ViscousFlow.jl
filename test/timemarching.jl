@@ -1,7 +1,7 @@
 import Whirl: Fields, TimeMarching
-using Fields
-using TimeMarching
-import TimeMarching:RK31
+import Whirl.TimeMarching:RK31
+
+using LinearAlgebra
 
 @testset "Time Marching" begin
 
