@@ -110,12 +110,12 @@ function VectorData(u::Vector{T},v::Vector{T}) where {T <: Real}
   VectorData{length(u)}(convert.(Float64,u),convert.(Float64,v))
 end
 
-ScalarData(x::ScalarData) = ScalarData(zeros(x.data))
+ScalarData(x::ScalarData) = ScalarData(zero(x.data))
 ScalarData(n::Int) = ScalarData(zeros(Float64,n))
-ScalarData(x::VectorData) = ScalarData(zeros(x.u))
-VectorData(x::VectorData) = VectorData(zeros(x.u),zeros(x.v))
+ScalarData(x::VectorData) = ScalarData(zero(x.u))
+VectorData(x::VectorData) = VectorData(zero(x.u),zero(x.v))
 VectorData(n::Int) = VectorData(zeros(Float64,n),zeros(Float64,n))
-VectorData(x::ScalarData) = VectorData(zeros(x.data),zeros(x.data))
+VectorData(x::ScalarData) = VectorData(zero(x.data),zero(x.data))
 (::Type{ScalarData{N}})() where {N} = ScalarData(N)
 (::Type{VectorData{N}})() where {N} = VectorData(N)
 
