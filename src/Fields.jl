@@ -22,6 +22,7 @@ import Base: @propagate_inbounds, shift!, show, summary
 
 using FFTW
 using SpecialFunctions
+using LinearAlgebra
 
 export Primal, Dual, Edges, Nodes,
        EdgeGradient, NodePair,

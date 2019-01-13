@@ -1,6 +1,9 @@
-using Test
-#using TestSetExtensions
-#using Distributed
+using Compat.Test
+using Compat
+
+#using Test
+##using TestSetExtensions
+##using Distributed
 
 using Whirl
 #import Whirl

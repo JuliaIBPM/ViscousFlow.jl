@@ -3,8 +3,6 @@ include("lgf.jl")
 include("intfact.jl")
 include("ddf.jl")
 
-using LinearAlgebra
-
 import Base: *, \
 import LinearAlgebra: mul!, ldiv!
 
