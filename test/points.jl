@@ -1,5 +1,11 @@
 import Whirl: Fields
-using LinearAlgebra
+using Compat
+using Compat.LinearAlgebra
+
+#if VERSION < v"0.7-"
+#  import Base: A_mul_B!
+#  mul!(x,B,y) = A_mul_B!(x,B,y)
+#end
 
 @testset "Point-Field Routines" begin
 
@@ -109,7 +115,7 @@ using LinearAlgebra
   mul!(w,Hmat,f)
   H(w2,f)
   @test w ≈ w2
-
+#=
   @test_throws MethodError mul!(f,Hmat,w)
 
   f2 = ScalarData(f)
@@ -209,7 +215,7 @@ using LinearAlgebra
   mul!(f,Ẽmat,p)
   H̃(f2,p)
   @test f.u ≈ f2.u && f.v ≈ f2.v
-
+=#
   end
 
 

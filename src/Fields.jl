@@ -28,13 +28,13 @@ using Compat.SparseArrays
 using Compat: copyto!
 
 @static if VERSION < v"0.7-"
+  import Base: A_mul_B!, A_ldiv_B!, scale!
   mul!(x,B,y) = A_mul_B!(x,B,y)
-  #copyto!(dst,src) = copy!(dst,src)
-  #copyto!(dst,Rdest,src,Rsrc) = copy!(dst,Rdest,src,Rsrc)
   rmul!(B,x) = scale!(B,x)
   ldiv!(x,B,y) = A_ldiv_B!(x,B,y)
   CartesianIndices(R) = CartesianRange(R)
   const GAMMA = γ
+  export mul!, ldiv!, rmul!
 else
   import LinearAlgebra: mul!, ldiv!
   const GAMMA = MathConstants.γ
