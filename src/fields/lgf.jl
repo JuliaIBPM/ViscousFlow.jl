@@ -43,10 +43,10 @@ function lgf(i, j)
             if x == -1
                 return sqrt(2)abs(i)
             else
-                t = (x+1)/2
-                return 0.5real((1 -
-                                ( (t-sqrt(1im))./(t+sqrt(1im)) ).^(j+abs(i)).*
-                                ( (t+sqrt(-1im))./(t-sqrt(-1im)) ).^(j-abs(i)) ))./t
+                t = (x .+ 1)./2
+                return 0.5real((1 .-
+                                ( (t.-sqrt(1im))./(t.+sqrt(1im)) ).^(j.+abs(i)).*
+                                ( (t.+sqrt(-1im))./(t.-sqrt(-1im)) ).^(j.-abs(i)) ))./t
             end
 
         end
