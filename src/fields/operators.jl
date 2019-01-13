@@ -211,7 +211,7 @@ function ldiv!(out::Nodes{T,NX, NY},
     mul!(out.data, L.conv, s.data)
 
     # Adjust the behavior at large distance to match continuous kernel
-    out.data .-= (sum(s.data)/2π)*(MathConstants.γ+log(8)/2-log(DX))
+    out.data .-= (sum(s.data)/2π)*(GAMMA+log(8)/2-log(DX))
     out
 end
 

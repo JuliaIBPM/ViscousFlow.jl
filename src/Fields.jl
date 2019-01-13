@@ -34,8 +34,10 @@ using Compat: copyto!
   rmul!(B,x) = scale!(B,x)
   ldiv!(x,B,y) = A_ldiv_B!(x,B,y)
   CartesianIndices(R) = CartesianRange(R)
+  const GAMMA = γ
 else
   import LinearAlgebra: mul!, ldiv!
+  const GAMMA = MathConstants.γ
 end
 
 export Primal, Dual, Edges, Nodes,
