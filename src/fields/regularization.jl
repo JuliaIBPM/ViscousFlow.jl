@@ -157,7 +157,7 @@ function Base.show(io::IO, H::Regularize{N,F}) where {N,F}
     filter = F ? "filtered" : "non-filtered"
     op = H._issymmetric ? "Symmetric regularization/interpolation" : "Regularization/interpolation"
     println(io, "$op operator with $filter interpolation")
-    println(io, "  $N points in grid with cell area $(sprint(showcompact,1.0/H.overdv))")
+    println(io, "  $N points in grid with cell area $(sprint(show,1.0/H.overdv;context=:compact => true)))")
 end
 
 """
@@ -218,11 +218,11 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
                                        source::$ctype) where {N,NX,NY}
     target.u .= target.v .= zeros(Float64,N)
     @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
-      H.buffer .= H.ddf.(x-$shiftux-H.x,y-$shiftuy-H.y)
+      H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
       target.u .+= H.buffer*source.u[x,y]
     end
     @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
-      H.buffer .= H.ddf.(x-$shiftvx-H.x,y-$shiftvy-H.y)
+      H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
       target.v .+= H.buffer*source.v[x,y]
     end
     target
@@ -233,13 +233,13 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
                                       source::$ctype) where {N,NX,NY}
     target.u .= target.v .= zeros(Float64,N)
     @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
-      H.buffer .= H.ddf.(x-$shiftux-H.x,y-$shiftuy-H.y)
+      H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
       w = transpose(H.buffer)*H.wgt
       w = w ≢ 0.0 ? source.u[x,y]/w : 0.0
       target.u .+= H.buffer*w
     end
     @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
-      H.buffer .= H.ddf.(x-$shiftvx-H.x,y-$shiftvy-H.y)
+      H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
       w = transpose(H.buffer)*H.wgt
       w = w ≢ 0.0 ? source.v[x,y]/w : 0.0
       target.v .+= H.buffer*w
@@ -368,7 +368,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
                                        source::$ctype) where {N,NX,NY}
     target .= zeros(Float64,N)
     @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
-      H.buffer .= H.ddf.(x-$shiftx-H.x,y-$shifty-H.y)
+      H.buffer .= H.ddf.(x.-$shiftx.-H.x,y.-$shifty.-H.y)
       target .+= H.buffer*source[x,y]
     end
     target
@@ -379,7 +379,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
                                        source::$ctype) where {N,NX,NY}
     target .= zeros(Float64,N)
     @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
-      H.buffer .= H.ddf.(x-$shiftx-H.x,y-$shifty-H.y)
+      H.buffer .= H.ddf.(x.-$shiftx.-H.x,y.-$shifty.-H.y)
       w = transpose(H.buffer)*H.wgt
       w = w ≢ 0.0 ? source[x,y]/w : 0.0
       target .+= H.buffer*w
