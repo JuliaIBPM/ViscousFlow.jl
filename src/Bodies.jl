@@ -2,6 +2,8 @@ module Bodies
 
 import Base:diff,length
 
+using Compat
+
 export Body,RigidTransform,Ellipse,Plate
 
 abstract type Body{N} end

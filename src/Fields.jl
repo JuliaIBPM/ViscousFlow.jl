@@ -25,12 +25,15 @@ using FFTW
 using SpecialFunctions
 using Compat.LinearAlgebra
 using Compat.SparseArrays
+using Compat: copyto!
 
 @static if VERSION < v"0.7-"
   mul!(x,B,y) = A_mul_B!(x,B,y)
-  copyto!(dts,src) = copy!(dts,src)
+  #copyto!(dst,src) = copy!(dst,src)
+  #copyto!(dst,Rdest,src,Rsrc) = copy!(dst,Rdest,src,Rsrc)
   rmul!(B,x) = scale!(B,x)
   ldiv!(x,B,y) = A_ldiv_B!(x,B,y)
+  CartesianIndices(R) = CartesianRange(R)
 else
   import LinearAlgebra: mul!, ldiv!
 end

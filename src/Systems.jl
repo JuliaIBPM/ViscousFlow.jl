@@ -7,7 +7,8 @@ using ..Bodies
 #import Whirl: r₁
 #import Whirl: plan_intfact
 
-using LinearAlgebra
+using Compat
+using Compat.LinearAlgebra
 
 
 
