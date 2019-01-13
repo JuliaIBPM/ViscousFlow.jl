@@ -24,6 +24,7 @@ using Compat
 using FFTW
 using SpecialFunctions
 using Compat.LinearAlgebra
+using Compat.SparseArrays
 
 @static if VERSION < v"0.7-"
   mul!(x,B,y) = A_mul_B!(x,B,y)

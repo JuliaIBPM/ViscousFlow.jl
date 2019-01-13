@@ -11,7 +11,7 @@ using Whirl
 #@test isempty(detect_ambiguities(Whirl))
 
 include("fields.jl")
-#include("points.jl")
+include("points.jl")
 #include("timemarching.jl")
 #include("saddle.jl")
 #include("systems.jl")

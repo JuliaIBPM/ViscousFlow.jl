@@ -1,4 +1,3 @@
-using SparseArrays
 
 
 struct Regularize{N,F}
