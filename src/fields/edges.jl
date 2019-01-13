@@ -219,8 +219,8 @@ end
 function Base.show(io::IO, ::MIME"text/plain", edges::Edges{T, NX, NY}) where {T, NX, NY}
     println(io,"$(typeof(edges)) data")
     println(io,"u (in grid orientation):")
-    Base.showarray(io,flipdim(transpose(edges.u),1),false;header=false)
+    #Base.showarray(io,flipdim(transpose(edges.u),1),false;header=false)
     println(io)
     println(io,"v (in grid orientation):")
-    Base.showarray(io,flipdim(transpose(edges.v),1),false;header=false)
+    #Base.showarray(io,flipdim(transpose(edges.v),1),false;header=false)
 end
