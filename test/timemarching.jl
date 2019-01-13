@@ -66,7 +66,7 @@ using LinearAlgebra
   TimeMarching.r₁(u::Vector{Float64},t::Float64) = cos(ω*t)
   TimeMarching.r₂(u::Vector{Float64},t::Float64) = Vector{Float64}()
   TimeMarching.plan_constraints(u::Vector{Float64},t::Float64) = f -> zeros(Float64,1), u -> Vector{Float64}()
-  Fields.plan_intfact(t::Float64,u::Vector{Float64}) = eye(1)
+  Fields.plan_intfact(t::Float64,u::Vector{Float64}) = Matrix(1.0I,1,1)
   ifherk = IFHERK(u,f,Δt,plan_intfact,plan_constraints,(r₁,r₂),rk=TimeMarching.RK31)
 
   u = [u₀]
