@@ -1,6 +1,5 @@
 import Whirl: Fields
 using FFTW
-#using Fields
 
 struct Not{T}
   idx::T

@@ -1,5 +1,4 @@
 import Whirl: Fields
-using Fields
 
 @testset "Point-Field Routines" begin
 
@@ -12,8 +11,8 @@ using Fields
   end
 
   n = 10
-  x = 0.5 + 0.2*rand(n)
-  y = 0.5 + 0.2*rand(n)
+  x = 0.5 .+ 0.2*rand(n)
+  y = 0.5 .+ 0.2*rand(n)
   X = VectorData(x,y)
 
   nx = 12; ny = 12
