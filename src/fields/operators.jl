@@ -278,7 +278,7 @@ for (lf,inplace) in ((:plan_intfact,false),
         NX, NY = dims
 
         if a == 0
-          return IntFact{NX, NY, 0.0, $inplace}(Union{CircularConvolution{NX, NY},Nothing}())
+          return IntFact{NX, NY, 0.0, $inplace}(nothing)
         end
 
         #qtab = [intfact(x, y, a) for x in 0:NX-1, y in 0:NY-1]
