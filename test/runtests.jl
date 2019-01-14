@@ -3,10 +3,8 @@ using Compat
 
 #using Test
 ##using TestSetExtensions
-##using Distributed
 
 using Whirl
-#import Whirl
 
 #@test isempty(detect_ambiguities(Whirl))
 
