@@ -216,11 +216,20 @@ function Base.show(io::IO, edges::Edges{T, NX, NY}) where {T, NX, NY}
     print(io, "  Internal v-faces: $vdims")
 end
 
-function Base.show(io::IO, ::MIME"text/plain", edges::Edges{T, NX, NY}) where {T, NX, NY}
+function Base.show(io::IO, m::MIME"text/plain", edges::Edges)
     println(io,"$(typeof(edges)) data")
-    println(io,"u (in grid orientation):")
-    #Base.showarray(io,flipdim(transpose(edges.u),1),false;header=false)
+    println(io,"u (in grid orientation)")
+    show(io,m,reverse(transpose(edges.u),dims=1))
     println(io)
-    println(io,"v (in grid orientation):")
-    #Base.showarray(io,flipdim(transpose(edges.v),1),false;header=false)
+    println(io,"v (in grid orientation)")
+    show(io,m,reverse(transpose(edges.v),dims=1))
 end
+
+# function Base.show(io::IO, ::MIME"text/plain", edges::Edges{T, NX, NY}) where {T, NX, NY}
+#     println(io,"$(typeof(edges)) data")
+#     println(io,"u (in grid orientation):")
+#     #Base.showarray(io,flipdim(transpose(edges.u),1),false;header=false)
+#     println(io)
+#     println(io,"v (in grid orientation):")
+#     #Base.showarray(io,flipdim(transpose(edges.v),1),false;header=false)
+# end

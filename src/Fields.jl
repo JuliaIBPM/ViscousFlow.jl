@@ -25,7 +25,7 @@ using FFTW
 using SpecialFunctions
 using Compat.LinearAlgebra
 using Compat.SparseArrays
-using Compat: copyto!
+using Compat: copyto!, reverse
 
 @static if VERSION < v"0.7-"
   import Base: A_mul_B!, A_ldiv_B!, scale!
@@ -67,11 +67,15 @@ macro wraparray(wrapper, field)
         Base.indices(A::$wrapper) = indices(A.$field)
 
         if $N > 1
-          show(io::IO, A::$wrapper) = show(io,flipdim(transpose(A.$field),1))
-          function summary(io::IO, A::$wrapper)
+          function Base.show(io::IO, m::MIME"text/plain", A::$wrapper)
             println(io, "$(typeof(A)) data")
-            print(io, "Printing in grid orientation (lower left is (1,1))")
+            println(io, "Printing in grid orientation (lower left is (1,1))")
+            show(io,m, reverse(transpose(A.$field),dims=1))
           end
+          #function Base.summary(io::IO, A::$wrapper)
+          #  println(io, "$(typeof(A)) data")
+          #  print(io, "Printing in grid orientation (lower left is (1,1))")
+          #end
         end
 
         @propagate_inbounds Base.getindex(A::$wrapper, i::Int) = A.$field[i]

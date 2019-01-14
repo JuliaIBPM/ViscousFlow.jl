@@ -476,10 +476,10 @@ end
                 mul!(TF(),Emat,src)
 
 
-function Base.show(io::IO, H::RegularizationMatrix{TU,TF}) where {TU,TF}
+function Base.summary(io::IO, H::RegularizationMatrix{TU,TF}) where {TU,TF}
     print(io, "Regularization matrix acting on type $TF and returning type $TU")
 end
 
-function Base.show(io::IO, H::InterpolationMatrix{TU,TF}) where {TU,TF}
+function Base.summary(io::IO, H::InterpolationMatrix{TU,TF}) where {TU,TF}
     print(io, "Interpolation matrix acting on type $TU and returning type $TF")
 end
