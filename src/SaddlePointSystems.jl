@@ -191,7 +191,7 @@ function ldiv!(state::Tuple{TU,TF},
   rf .-= sys.B₂A⁻¹r₁
   if N > 0
     sys.tmpvec .= rf
-    ldiv!(get(sys.S⁻¹),sys.tmpvec)
+    ldiv!(sys.S⁻¹,sys.tmpvec)
     f .= sys.tmpvec
     f .= sys.P(f)
   end
