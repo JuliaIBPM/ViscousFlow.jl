@@ -156,7 +156,7 @@ function Base.show(io::IO, H::Regularize{N,F}) where {N,F}
     filter = F ? "filtered" : "non-filtered"
     op = H._issymmetric ? "Symmetric regularization/interpolation" : "Regularization/interpolation"
     println(io, "$op operator with $filter interpolation")
-    println(io, "  $N points in grid with cell area $(sprint(show,1.0/H.overdv;context=:compact => true)))")
+    println(io, "  $N points in grid with cell area $(sprint(show,1.0/H.overdv;context=:compact => true))")
 end
 
 """
