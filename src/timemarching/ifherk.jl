@@ -166,13 +166,13 @@ function construct_saddlesys(plan_constraints::FC,H::FH,
     for (i,typ) in enumerate(optypes)
       if TU <: Tuple
         opsi = ()
-        for I in eachindex(sys[i])
-          typI = (typ[1].parameters[I],)
-          if hasmethod(sys[i][I],typI)
-            opsi = (opsi...,sys[i][I])
-          elseif hasmethod(*,(typeof(sys[i][I]),typI...))
+        for el in eachindex(sys[i])
+          typI = (typ[1].parameters[el],)
+          if hasmethod(sys[i][el],typI)
+            opsi = (opsi...,sys[i][el])
+          elseif hasmethod(*,(typeof(sys[i][el]),typI...))
             # generate a method that acts on TU
-            opsi = (opsi...,x->sys[i][I]*x)
+            opsi = (opsi...,x->sys[i][el]*x)
           else
             error("No valid operator for $(opnames[i]) supplied")
           end
@@ -220,9 +220,9 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
 
   i = 1
   tᵢ₊₁ = t
-  for I in eachindex(u)
-    ubuffer[I] .= u[I]
-    qᵢ[I] .= u[I]
+  for el in eachindex(u)
+    ubuffer[el] .= u[el]
+    qᵢ[el] .= u[el]
   end
 
   if !_isstaticconstraints
@@ -236,22 +236,22 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
 
     w[i] = r₁(u,tᵢ₊₁)
     ftmp = r₂(u,tᵢ₊₁) # r₂ # seems like a memory re-allocation...
-    for I in eachindex(u)
-      w[i][I] .*= rkdt.a[i,i]  # gᵢ
+    for el in eachindex(u)
+      w[i][el] .*= rkdt.a[i,i]  # gᵢ
 
-      ubuffer[I] .+= w[i][I] # r₁ = qᵢ + gᵢ
-      fbuffer[I] .= ftmp[I]
+      ubuffer[el] .+= w[i][el] # r₁ = qᵢ + gᵢ
+      fbuffer[el] .= ftmp[el]
       # could solve this system for the whole tuple, too...
-      fill!(f[I],0.0)
-      ldiv!((u[I],f[I]),S[I],(ubuffer[I],fbuffer[I]))
-      ubuffer[I] .= S[I].A⁻¹B₁ᵀf
-      #tmp = S[i][I]\(ubuffer[I],fbuffer[I])  # solve saddle point system
-      #u[I] .= tmp[1]
-      #f[I] .= tmp[2]
+      fill!(f[el],0.0)
+      ldiv!((u[el],f[el]),S[el],(ubuffer[el],fbuffer[el]))
+      ubuffer[el] .= S[el].A⁻¹B₁ᵀf
+      #tmp = S[i][el]\(ubuffer[el],fbuffer[el])  # solve saddle point system
+      #u[el] .= tmp[1]
+      #f[el] .= tmp[2]
 
       # diffuse the scratch vectors
-      qᵢ[I] .= H[i][I]*qᵢ[I] # qᵢ₊₁ = H(i,i+1)qᵢ
-      w[i][I] .= H[i][I]*w[i][I] # H(i,i+1)gᵢ
+      qᵢ[el] .= H[i][el]*qᵢ[el] # qᵢ₊₁ = H(i,i+1)qᵢ
+      w[i][el] .= H[i][el]*w[i][el] # H(i,i+1)gᵢ
     end
     tᵢ₊₁ = t + rkdt.c[i]
 
@@ -268,29 +268,29 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
 
       w[i] = r₁(u,tᵢ₊₁)
       ftmp = r₂(u,tᵢ₊₁) # r₂
-      for I in eachindex(u)
-        #w[i-1][I] .= (w[i-1][I]-S[i-1][I].A⁻¹B₁ᵀf)./(rkdt.a[i-1,i-1]) # w(i,i-1)
-        w[i-1][I] .= (w[i-1][I]-ubuffer[I])./(rkdt.a[i-1,i-1]) # w(i,i-1)
+      for el in eachindex(u)
+        #w[i-1][el] .= (w[i-1][el]-S[i-1][el].A⁻¹B₁ᵀf)./(rkdt.a[i-1,i-1]) # w(i,i-1)
+        w[i-1][el] .= (w[i-1][el]-ubuffer[el])./(rkdt.a[i-1,i-1]) # w(i,i-1)
 
-        w[i][I] .*= rkdt.a[i,i] # gᵢ
+        w[i][el] .*= rkdt.a[i,i] # gᵢ
 
-        ubuffer[I] .= qᵢ[I] .+ w[i][I] # r₁
+        ubuffer[el] .= qᵢ[el] .+ w[i][el] # r₁
         for j = 1:i-1
-          ubuffer[I] .+= rkdt.a[i,j]*w[j][I] # r₁
+          ubuffer[el] .+= rkdt.a[i,j]*w[j][el] # r₁
         end
-        fbuffer[I] .= ftmp[I]
-        fill!(f[I],0.0)
-        ldiv!((u[I],f[I]),S[I],(ubuffer[I],fbuffer[I]))
-        ubuffer[I] .= S[I].A⁻¹B₁ᵀf
+        fbuffer[el] .= ftmp[el]
+        fill!(f[el],0.0)
+        ldiv!((u[el],f[el]),S[el],(ubuffer[el],fbuffer[el]))
+        ubuffer[el] .= S[el].A⁻¹B₁ᵀf
 
-        #tmp = S[i][I]\(ubuffer[I],fbuffer[I])  # solve saddle point system
-        #u[I] .= tmp[1]
-        #f[I] .= tmp[2]
+        #tmp = S[i][el]\(ubuffer[el],fbuffer[el])  # solve saddle point system
+        #u[el] .= tmp[1]
+        #f[el] .= tmp[2]
 
         # diffuse the scratch vectors
-        qᵢ[I] .= H[i][I]*qᵢ[I] # qᵢ₊₁ = H(i,i+1)qᵢ
+        qᵢ[el] .= H[i][el]*qᵢ[el] # qᵢ₊₁ = H(i,i+1)qᵢ
         for j = 1:i
-          w[j][I] .= H[i][I]*w[j][I] # for j = i, this sets H(i,i+1)gᵢ
+          w[j][el] .= H[i][el]*w[j][el] # for j = i, this sets H(i,i+1)gᵢ
         end
       end
       tᵢ₊₁ = t + rkdt.c[i]
@@ -302,9 +302,9 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
     else
       S = scheme.S[i]
     end
-    for I in eachindex(u)
-      #w[i-1][I] .= (w[i-1][I]-S[i-1][I].A⁻¹B₁ᵀf)./(rkdt.a[i-1,i-1]) # w(i,i-1)
-      w[i-1][I] .= (w[i-1][I]-ubuffer[I])./(rkdt.a[i-1,i-1]) # w(i,i-1)
+    for el in eachindex(u)
+      #w[i-1][el] .= (w[i-1][el]-S[i-1][el].A⁻¹B₁ᵀf)./(rkdt.a[i-1,i-1]) # w(i,i-1)
+      w[i-1][el] .= (w[i-1][el]-ubuffer[el])./(rkdt.a[i-1,i-1]) # w(i,i-1)
 
     end
   end
@@ -312,20 +312,20 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
   # final stage (assembly)
   w[i] = r₁(u,tᵢ₊₁)
   ftmp = r₂(u,tᵢ₊₁) # r₂
-  for I in eachindex(u)
-    w[i][I] .*= rkdt.a[i,i]
+  for el in eachindex(u)
+    w[i][el] .*= rkdt.a[i,i]
 
-    ubuffer[I] .= qᵢ[I] .+ w[i][I] # r₁
+    ubuffer[el] .= qᵢ[el] .+ w[i][el] # r₁
     for j = 1:i-1
-      ubuffer[I] .+= rkdt.a[i,j]*w[j][I] # r₁
+      ubuffer[el] .+= rkdt.a[i,j]*w[j][el] # r₁
     end
-    fbuffer[I] .= ftmp[I]
-    fill!(f[I],0.0)
-    ldiv!((u[I],f[I]),S[I],(ubuffer[I],fbuffer[I]))
-    #tmp = S[i][I]\(ubuffer[I],fbuffer[I])  # solve saddle point system
-    #u[I] .= tmp[1]
-    #f[I] .= tmp[2]
-    f[I] ./= rkdt.a[i,i]
+    fbuffer[el] .= ftmp[el]
+    fill!(f[el],0.0)
+    ldiv!((u[el],f[el]),S[el],(ubuffer[el],fbuffer[el]))
+    #tmp = S[i][el]\(ubuffer[el],fbuffer[el])  # solve saddle point system
+    #u[el] .= tmp[1]
+    #f[el] .= tmp[2]
+    f[el] ./= rkdt.a[i,i]
   end
   t = t + rkdt.c[i]
 
