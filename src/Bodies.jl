@@ -206,7 +206,7 @@ function Plate(len::Float64,N::Int;λ::Float64=1.0)
     Jϕa = [sqrt(sin(ϕ)^2+λ^2*cos(ϕ)^2) for ϕ in range(π-Δϕ/2,stop=Δϕ/2,length=N-1)]
     Jϕ = len*Jϕa/Δϕ/sum(Jϕa)
     x̃ = -0.5*len .+ Δϕ*cumsum([0.0; Jϕ])
-    ỹ = zeros(x̃)
+    ỹ = zero(x̃)
 
     Plate{N}(len,0.0,(0.0,0.0),0.0,x̃,ỹ,x̃,ỹ)
 
