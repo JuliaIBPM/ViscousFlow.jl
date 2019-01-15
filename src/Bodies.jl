@@ -3,7 +3,7 @@ module Bodies
 import Base:diff,length
 
 using Compat
-using Compat: range
+using Compat: range, reverse
 
 export Body,RigidTransform,Ellipse,Plate
 
@@ -205,7 +205,7 @@ function Plate(len::Float64,N::Int;λ::Float64=1.0)
     Δϕ = π/(N-1)
     Jϕa = [sqrt(sin(ϕ)^2+λ^2*cos(ϕ)^2) for ϕ in range(π-Δϕ/2,stop=Δϕ/2,length=N-1)]
     Jϕ = len*Jϕa/Δϕ/sum(Jϕa)
-    x̃ = -0.5*len + Δϕ*cumsum([0.0; Jϕ])
+    x̃ = -0.5*len .+ Δϕ*cumsum([0.0; Jϕ])
     ỹ = zeros(x̃)
 
     Plate{N}(len,0.0,(0.0,0.0),0.0,x̃,ỹ,x̃,ỹ)
@@ -219,7 +219,7 @@ function Plate(len::Float64,thick::Float64,N::Int;λ::Float64=1.0)
     Δϕ = π/N
     Jϕa = [sqrt(sin(ϕ)^2+λ^2*cos(ϕ)^2) for ϕ in range(π-Δϕ/2,stop=Δϕ/2,length=N)]
     Jϕ = len*Jϕa/Δϕ/sum(Jϕa)
-    xtopface = -0.5*len + Δϕ*cumsum([0.0; Jϕ])
+    xtopface = -0.5*len .+ Δϕ*cumsum([0.0; Jϕ])
     xtop = 0.5*(xtopface[1:N] + xtopface[2:N+1])
 
 
@@ -240,7 +240,7 @@ function Plate(len::Float64,thick::Float64,N::Int;λ::Float64=1.0)
       push!(x̃,xedge[i])
       push!(ỹ,yedge[i])
     end
-    for xi in flipdim(xtop,1)
+    for xi in reverse(xtop,dims=1)
       push!(x̃,xi)
       push!(ỹ,-0.5*thick)
     end
@@ -351,16 +351,16 @@ end
 xrc = rt*cos(θ0)
 yrc = rt*sin(θ0)
 θle = collect(0:π/50:2π)
-xlec = xrc+rt*cos.(θle)
-ylec = yrc+rt*sin.(θle)
+xlec = xrc .+ rt*cos.(θle)
+ylec = yrc .+ rt*sin.(θle)
 
 # Assemble data
 coords = [xu yu xl yl x yc]
 cole = [xlec ylec]
 
 # Close the trailing edge
-xpanold = [0.5*(xl[np]+xu[np]); flipdim(xl[2:np-1],1); xu[1:np-1]]
-ypanold = [0.5*(yl[np]+yu[np]); flipdim(yl[2:np-1],1); yu[1:np-1]]
+xpanold = [0.5*(xl[np]+xu[np]); reverse(xl[2:np-1],dims=1); xu[1:np-1]]
+ypanold = [0.5*(yl[np]+yu[np]); reverse(yl[2:np-1],dims=1); yu[1:np-1]]
 
 xpan = zeros(npan)
 ypan = zeros(npan)
@@ -379,7 +379,7 @@ for ipan = 1:npan
     xpan[ipan] = 0.5*(xpan1+xpan2)
     ypan[ipan] = 0.5*(ypan1+ypan2)
 end
-w = ComplexF64[1;flipdim(xpan,1)+im*flipdim(ypan,1)]*len
+w = ComplexF64[1;reverse(xpan,dims=1)+im*reverse(ypan,dims=1)]*len
 w -=mean(w)
 
 x̃ = real.(w)
