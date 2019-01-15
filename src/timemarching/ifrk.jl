@@ -59,9 +59,9 @@ function (::Type{IFRK})(u::TU,Δt::Float64,
     if TU <: Tuple
       (FI <: Tuple && length(plan_intfact) == length(u)) ||
                 error("plan_intfact argument must be a tuple")
-      Hlist = [map((plan,ui) -> plan(dc*Δt,ui),plan_intfact,u) for dc in unique(dclist)]
+      Hlist = map(dc -> map((plan,ui) -> plan(dc*Δt,ui),plan_intfact,u),unique(dclist))                
     else
-      Hlist = [plan_intfact(dc*Δt,u) for dc in unique(dclist)]
+      Hlist = map(dc -> plan_intfact(dc*Δt,u),unique(dclist))
     end
 
     H = [Hlist[i] for i in indexin(dclist,unique(dclist))]
