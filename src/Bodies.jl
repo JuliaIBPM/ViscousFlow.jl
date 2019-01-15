@@ -3,6 +3,7 @@ module Bodies
 import Base:diff,length
 
 using Compat
+using Compat: range
 
 export Body,RigidTransform,Ellipse,Plate
 
@@ -154,7 +155,7 @@ end
 function Ellipse(a::Float64,b::Float64,N::Int)
     x̃ = zeros(N)
     ỹ = zeros(N)
-    θ = linspace(0,2π,N+1)
+    θ = range(0,stop=2π,length=N+1)
     @. x̃ = a*cos(θ[1:N])
     @. ỹ = b*sin(θ[1:N])
 
@@ -202,7 +203,7 @@ function Plate(len::Float64,N::Int;λ::Float64=1.0)
     #x = [[len*(-0.5 + 1.0*(i-1)/(N-1)),0.0] for i=1:N]
 
     Δϕ = π/(N-1)
-    Jϕa = [sqrt(sin(ϕ)^2+λ^2*cos(ϕ)^2) for ϕ in linspace(π-Δϕ/2,Δϕ/2,N-1)]
+    Jϕa = [sqrt(sin(ϕ)^2+λ^2*cos(ϕ)^2) for ϕ in range(π-Δϕ/2,stop=Δϕ/2,length=N-1)]
     Jϕ = len*Jϕa/Δϕ/sum(Jϕa)
     x̃ = -0.5*len + Δϕ*cumsum([0.0; Jϕ])
     ỹ = zeros(x̃)
@@ -216,7 +217,7 @@ function Plate(len::Float64,thick::Float64,N::Int;λ::Float64=1.0)
 
     # set up points on flat sides
     Δϕ = π/N
-    Jϕa = [sqrt(sin(ϕ)^2+λ^2*cos(ϕ)^2) for ϕ in linspace(π-Δϕ/2,Δϕ/2,N)]
+    Jϕa = [sqrt(sin(ϕ)^2+λ^2*cos(ϕ)^2) for ϕ in range(π-Δϕ/2,stop=Δϕ/2,length=N)]
     Jϕ = len*Jϕa/Δϕ/sum(Jϕa)
     xtopface = -0.5*len + Δϕ*cumsum([0.0; Jϕ])
     xtop = 0.5*(xtopface[1:N] + xtopface[2:N+1])
@@ -224,8 +225,8 @@ function Plate(len::Float64,thick::Float64,N::Int;λ::Float64=1.0)
 
     Δsₑ = Δϕ*Jϕ[1]
     Nₑ = 2*floor(Int,0.25*π*thick/Δsₑ)
-    xedgeface = [0.5*len + 0.5*thick*cos(ϕ) for ϕ in linspace(π/2,-π/2,Nₑ+1)]
-    yedgeface = [          0.5*thick*sin(ϕ) for ϕ in linspace(π/2,-π/2,Nₑ+1)]
+    xedgeface = [0.5*len + 0.5*thick*cos(ϕ) for ϕ in range(π/2,stop=-π/2,length=Nₑ+1)]
+    yedgeface = [          0.5*thick*sin(ϕ) for ϕ in range(π/2,stop=-π/2,length=Nₑ+1)]
     xedge = 0.5*(xedgeface[1:Nₑ]+xedgeface[2:Nₑ+1])
     yedge = 0.5*(yedgeface[1:Nₑ]+yedgeface[2:Nₑ+1])
 
