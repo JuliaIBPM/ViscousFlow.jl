@@ -3,6 +3,7 @@ module Bodies
 import Base:diff,length
 
 using Compat
+using Compat.Statistics: mean
 using Compat: range, reverse
 
 export Body,RigidTransform,Ellipse,Plate
@@ -380,7 +381,7 @@ for ipan = 1:npan
     ypan[ipan] = 0.5*(ypan1+ypan2)
 end
 w = ComplexF64[1;reverse(xpan,dims=1)+im*reverse(ypan,dims=1)]*len
-w -=mean(w)
+w .-= mean(w)
 
 x̃ = real.(w)
 ỹ = imag.(w)
