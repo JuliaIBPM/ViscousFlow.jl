@@ -328,19 +328,36 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
 
   @eval function mul!(u::$ctype,Hmat::RegularizationMatrix{$ctype,$ftype},f::$ftype) where {NX,NY,N}
     fill!(u,0.0)
-    I,J,V = findnz(Hmat.M)
-    for (cnt,v) in enumerate(V)
-      u[I[cnt]] += v*f[J[cnt]]
+    nzv = Hmat.M.nzval
+    rv = Hmat.M.rowval
+    @inbounds for col = 1:Hmat.M.n
+      fj = f[col]
+      for j = Hmat.M.colptr[col]:(Hmat.M.colptr[col + 1] - 1)
+          u[rv[j]] += nzv[j]*fj
+      end
     end
+    #I,J,V = findnz(Hmat.M)
+    #for (cnt,v) in enumerate(V)
+    #  u[I[cnt]] += v*f[J[cnt]]
+    #end
     u
   end
 
   @eval function mul!(f::$ftype,Emat::InterpolationMatrix{$ctype,$ftype},u::$ctype) where {NX,NY,N}
     fill!(f,0.0)
-    I,J,V = findnz(Emat.M)
-    for (cnt,v) in enumerate(V)
-      f[J[cnt]] .+= v*u[I[cnt]]
+    nzv = Emat.M.nzval
+    rv = Emat.M.rowval
+    @inbounds for col = 1:Emat.M.n
+        tmp = zero(eltype(f))
+        for j = Emat.M.colptr[col]:(Emat.M.colptr[col + 1] - 1)
+            tmp += transpose(nzv[j])*u[rv[j]]
+        end
+        f[col] += tmp
     end
+    #I,J,V = findnz(Emat.M)
+    #for (cnt,v) in enumerate(V)
+    #  f[J[cnt]] .+= v*u[I[cnt]]
+    #end
     f
   end
 
@@ -448,20 +465,37 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
 
   @eval function mul!(u::$ctype,Hmat::RegularizationMatrix{$ctype,$ftype},f::$ftype) where {NX,NY,N}
     fill!(u,0.0)
-    I,J,V = findnz(Hmat.M)
-    for (cnt,v) in enumerate(V)
-      u[I[cnt]] += v*f[J[cnt]]
+    nzv = Hmat.M.nzval
+    rv = Hmat.M.rowval
+    @inbounds for col = 1:Hmat.M.n
+      fj = f[col]
+      for j = Hmat.M.colptr[col]:(Hmat.M.colptr[col + 1] - 1)
+          u[rv[j]] += nzv[j]*fj
+      end
     end
+    #I,J,V = findnz(Hmat.M)
+    #for (cnt,v) in enumerate(V)
+    #  u[I[cnt]] += v*f[J[cnt]]
+    #end
     u
 
   end
 
   @eval function mul!(f::$ftype,Emat::InterpolationMatrix{$ctype,$ftype},u::$ctype) where {NX,NY,N}
     fill!(f,0.0)
-    I,J,V = findnz(Emat.M)
-    for (cnt,v) in enumerate(V)
-      f[J[cnt]] += v*u[I[cnt]]
+    nzv = Emat.M.nzval
+    rv = Emat.M.rowval
+    @inbounds for col = 1:Emat.M.n
+        tmp = zero(eltype(f))
+        for j = Emat.M.colptr[col]:(Emat.M.colptr[col + 1] - 1)
+            tmp += transpose(nzv[j])*u[rv[j]]
+        end
+        f[col] += tmp
     end
+    #I,J,V = findnz(Emat.M)
+    #for (cnt,v) in enumerate(V)
+    #  f[J[cnt]] += v*u[I[cnt]]
+    #end
     f
 
   end
