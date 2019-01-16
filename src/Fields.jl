@@ -25,18 +25,20 @@ using FFTW
 using SpecialFunctions
 using Compat.LinearAlgebra
 using Compat.SparseArrays
-using Compat: copyto!, reverse, parentindices
+using Compat: copyto!, reverse
 
 @static if VERSION < v"0.7-"
-  import Base: A_mul_B!, A_ldiv_B!, scale!
+  import Base: A_mul_B!, A_ldiv_B!, scale!, parentindexes
   mul!(x,B,y) = A_mul_B!(x,B,y)
   rmul!(B,x) = scale!(B,x)
   ldiv!(x,B,y) = A_ldiv_B!(x,B,y)
+  parentindices(A) = parentindexes(A)
   CartesianIndices(R) = CartesianRange(R)
   const GAMMA = γ
-  export mul!, ldiv!, rmul!
+  export mul!, ldiv!, rmul!, parentindices
 else
   import LinearAlgebra: mul!, ldiv!
+  import Base: parentindices
   const GAMMA = MathConstants.γ
 end
 
