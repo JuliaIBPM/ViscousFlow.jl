@@ -1,10 +1,17 @@
 module SaddlePointSystems
 
+using Compat
+using Compat.LinearAlgebra
 using LinearMaps
 using IterativeSolvers
 using ..Fields
 
-import Base: *, \, A_mul_B!, A_ldiv_B!
+import Base: *, \
+@static if VERSION < v"0.7-"
+  ldiv!(x,B,y) = A_ldiv_B!(x,B,y)
+else
+  import LinearAlgebra: ldiv!
+end
 
 export SaddleSystem
 
@@ -18,7 +25,7 @@ struct SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,Storage}
     B₂A⁻¹ :: FBA
     P :: FP
     S  :: LinearMap
-    S⁻¹ :: Nullable{Factorization{Float64}}
+    S⁻¹ :: Union{Factorization{Float64},Nothing}
     tol :: Float64
     _issymmetric :: Bool
     _isposdef :: Bool
@@ -71,9 +78,9 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
 
     # check for methods
     for (i,typ) in enumerate(optypes)
-      if method_exists(sys[i],Tuple{typ})
+      if hasmethod(sys[i],Tuple{typ})
         push!(ops,sys[i])
-      elseif method_exists(*,Tuple{typeof(sys[i]),typ})
+      elseif hasmethod(*,Tuple{typeof(sys[i]),typ})
         # generate a method that acts on TU
         push!(ops,x->sys[i]*x)
       else
@@ -107,9 +114,11 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
         Smat[1:N,i] .= fbuffer
         f[i] = 0.0
       end
-      S⁻¹ = Nullable(factorize(Smat))
+      #S⁻¹ = Nullable(factorize(Smat))
+      S⁻¹ = factorize(Smat)
     else
-      S⁻¹ = Nullable()
+      #S⁻¹ = Nullable()
+      S⁻¹ = nothing
     end
 
     A⁻¹B₁ᵀ(f::TF) = (A⁻¹∘B₁ᵀ)(f)
@@ -140,7 +149,7 @@ end
 
 
 """
-    A_ldiv_B!(state,sys::SaddleSystem,rhs)
+    ldiv!(state,sys::SaddleSystem,rhs)
 
 Solve a saddle-point system. `rhs` is a tuple of the right-hand side `(ru,rf)`.
 Output `state`, a tuple (u,f), is updated. Note that `sys` is also mutated:
@@ -149,10 +158,10 @@ of the solution.
 
 A shorthand can be used for this operation: `state = sys\rhs`
 """
-# non-stored matrix
-function A_ldiv_B!(state::Tuple{TU,TF},
+function ldiv!(state::Tuple{TU,TF},
                     sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,false},
                     rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,FP,N}
+  # non-stored matrix
 
   ru, rf = rhs
   u, f = state
@@ -172,7 +181,7 @@ function A_ldiv_B!(state::Tuple{TU,TF},
 end
 
 # stored matrix
-function A_ldiv_B!(state::Tuple{TU,TF},
+function ldiv!(state::Tuple{TU,TF},
                     sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,true},
                     rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,FP,N}
 
@@ -182,7 +191,7 @@ function A_ldiv_B!(state::Tuple{TU,TF},
   rf .-= sys.B₂A⁻¹r₁
   if N > 0
     sys.tmpvec .= rf
-    A_ldiv_B!(get(sys.S⁻¹),sys.tmpvec)
+    ldiv!(sys.S⁻¹,sys.tmpvec)
     f .= sys.tmpvec
     f .= sys.P(f)
   end
@@ -194,18 +203,18 @@ end
 
 
 \(sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,Storage},rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,FP,N,Storage} =
-      A_ldiv_B!(similar.(rhs),sys,rhs)
+      ldiv!(similar.(rhs),sys,rhs)
 
 
 # solving tuples of systems
-function A_ldiv_B!(state,sys::NTuple{M,SaddleSystem},rhs) where {M}
+function ldiv!(state,sys::NTuple{M,SaddleSystem},rhs) where {M}
   for (i,sysi) in enumerate(sys)
-    A_ldiv_B!(state[i],sysi,rhs[i])
+    ldiv!(state[i],sysi,rhs[i])
   end
   state
 end
 
 \(sys::NTuple{M,SaddleSystem},rhs) where {M} =
-      A_ldiv_B!(deepcopy.(rhs),sys,rhs)
+      ldiv!(deepcopy.(rhs),sys,rhs)
 
 end

@@ -1,6 +1,8 @@
 import Whirl: Fields, SaddlePointSystems
-using Fields
-using SaddlePointSystems
+
+using Compat
+using Compat.LinearAlgebra
+using Compat: range
 
 @testset "Saddle-Point Systems" begin
 
@@ -13,10 +15,10 @@ L = plan_laplacian(size(w),with_inverse=true)
 #L⁻¹(w::T) where {T} = L\w
 
 n = 128
-θ = linspace(0,2π,n+1)
+θ = range(0,stop=2π,length=n+1)
 R = 0.5
-xb = 1.0 + R*cos.(θ[1:n])
-yb = 1.0 + R*sin.(θ[1:n])
+xb = 1.0 .+ R*cos.(θ[1:n])
+yb = 1.0 .+ R*sin.(θ[1:n])
 ds = (2π/n)*R
 X = VectorData(xb,yb)
 f = ScalarData(X)
@@ -28,7 +30,7 @@ PS = SaddleSystem((w,f),(x->L\x,Hmat,Emat),issymmetric=true,isposdef=true)
 
 ψb = ScalarData(X)
 w = Nodes(Dual,(nx,ny))
-ψb .= -(xb-1)
+ψb .= -(xb .- 1)
 f .= ones(Float64,n)*ds
 ψ = Nodes(Dual,w)
 ψ,f = PS\(w,ψb)

@@ -18,7 +18,28 @@ the grid), but these are not distinguished in these basic definitions and operat
 
 module Fields
 
-import Base: @propagate_inbounds, shift!
+import Base: @propagate_inbounds, show, summary
+
+using Compat
+using FFTW
+using SpecialFunctions
+using Compat.LinearAlgebra
+using Compat.SparseArrays
+using Compat: copyto!, reverse, parentindices
+
+@static if VERSION < v"0.7-"
+  import Base: A_mul_B!, A_ldiv_B!, scale!
+  mul!(x,B,y) = A_mul_B!(x,B,y)
+  rmul!(B,x) = scale!(B,x)
+  ldiv!(x,B,y) = A_ldiv_B!(x,B,y)
+  CartesianIndices(R) = CartesianRange(R)
+  const GAMMA = γ
+  export mul!, ldiv!, rmul!
+else
+  import LinearAlgebra: mul!, ldiv!
+  const GAMMA = MathConstants.γ
+end
+
 export Primal, Dual, Edges, Nodes,
        EdgeGradient, NodePair,
        Points, ScalarData, VectorData,
@@ -27,6 +48,7 @@ export Primal, Dual, Edges, Nodes,
        laplacian, laplacian!, plan_laplacian, plan_laplacian!,
        plan_intfact,plan_intfact!,Identity,
        product, product!, ∘,
+       shift!,
        coordinates,
        DDF, Regularize, RegularizationMatrix, InterpolationMatrix,
        CircularConvolution
@@ -43,14 +65,18 @@ macro wraparray(wrapper, field)
     quote
         Base.parent(A::$wrapper) = A.$field
         Base.size(A::$wrapper) = size(A.$field)
-        Base.indices(A::$wrapper) = indices(A.$field)
+        Base.parentindices(A::$wrapper) = parentindices(A.$field)
 
         if $N > 1
-          function Base.show(io::IO, ::MIME"text/plain", A::$wrapper)
-            println(io,"$(typeof(A)) data")
-            println(io,"Printing in grid orientation (lower left is (1,1)):")
-            Base.showarray(io,flipdim(transpose(A.$field),1),false;header=false)
+          function Base.show(io::IO, m::MIME"text/plain", A::$wrapper)
+            println(io, "$(typeof(A)) data")
+            println(io, "Printing in grid orientation (lower left is (1,1))")
+            show(io,m, reverse(transpose(A.$field),dims=1))
           end
+          #function Base.summary(io::IO, A::$wrapper)
+          #  println(io, "$(typeof(A)) data")
+          #  print(io, "Printing in grid orientation (lower left is (1,1))")
+          #end
         end
 
         @propagate_inbounds Base.getindex(A::$wrapper, i::Int) = A.$field[i]

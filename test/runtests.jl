@@ -1,17 +1,23 @@
-using Base.Test
-using TestSetExtensions
+using Compat.Test
+using Compat
+
+#using Test
+##using TestSetExtensions
 
 using Whirl
-#import Whirl
 
-@test isempty(detect_ambiguities(Whirl))
+#@test isempty(detect_ambiguities(Whirl))
 
-@testset ExtendedTestSet "All tests" begin
-    @includetests ARGS
-end
+include("fields.jl")
+include("points.jl")
+include("timemarching.jl")
+include("saddle.jl")
+include("systems.jl")
 
-#include("fields.jl")
-#include("gaussian_vortex.jl")
+
+#@testset ExtendedTestSet "All tests" begin
+#    @includetests ARGS
+#end
 
 #if isempty(ARGS)
 #    include("../docs/make.jl")

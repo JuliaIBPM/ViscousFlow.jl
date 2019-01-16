@@ -1,7 +1,7 @@
 import Whirl: Fields
-using Fields
+using FFTW
 
-immutable Not{T}
+struct Not{T}
   idx::T
 end
 import Base: to_indices, uncolon, tail, _maybetail
@@ -183,7 +183,7 @@ end
 @testset "Fields" begin
     @testset "Hadamard Product" begin
         edges_p  = Edges{Primal, 30, 40}()
-        edges_p.u .= rand(size(edges_p.u))
+        edges_p.u .= rand(Float64,size(edges_p.u))
 
         # Should be safe for the output to be the same as the input
         edges_p2 = edges_p ∘ edges_p
@@ -216,7 +216,7 @@ end
 
     @testset "Integrating factor" begin
         s = Nodes{Dual, 30, 40}()
-        s[15,15] .= 1.0
+        s[15,15] = 1.0
 
         E2 = plan_intfact(2,s)
         E4 = plan_intfact(4,s)

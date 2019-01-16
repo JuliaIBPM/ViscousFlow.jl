@@ -1,4 +1,5 @@
 
+
 struct Regularize{N,F}
 
   "x values of points, normalized to grid index space"
@@ -143,7 +144,7 @@ function Regularize(x::Vector{T},y::Vector{T},dx::T;
     fill!(wtvec,1.0)
   end
 
-  Regularize{length(x),filter}(x/dx+I0[1],y/dx+I0[2],1.0/(dx*dx),
+  Regularize{length(x),filter}(x/dx.+I0[1],y/dx.+I0[2],1.0/(dx*dx),
                       wtvec,zeros(T,n),zeros(T,n),DDF(ddftype=ddftype,dx=1.0),issymmetric)
 end
 
@@ -155,7 +156,7 @@ function Base.show(io::IO, H::Regularize{N,F}) where {N,F}
     filter = F ? "filtered" : "non-filtered"
     op = H._issymmetric ? "Symmetric regularization/interpolation" : "Regularization/interpolation"
     println(io, "$op operator with $filter interpolation")
-    println(io, "  $N points in grid with cell area $(sprint(showcompact,1.0/H.overdv))")
+    println(io, "  $N points in grid with cell area $(sprint(show,1.0/H.overdv;context=:compact => true))")
 end
 
 """
@@ -164,7 +165,7 @@ end
 Construct and store a matrix representation of regularization associated with `H`
 for data of type `f` to data of type `u`. The resulting matrix `Hmat` can then be
 used to apply on point data of type `f` to regularize it to grid data of type `u`,
-using `A_mul_B!(u,Hmat,f)`. It can also be used as just `Hmat*f`.
+using `mul!(u,Hmat,f)`. It can also be used as just `Hmat*f`.
 
 If `H` is a symmetric regularization and interpolation operator, then this
 actually returns a tuple `Hmat, Emat`, where `Emat` is the interpolation matrix.
@@ -180,7 +181,7 @@ end
 Construct and store a matrix representation of interpolation associated with `H`
 for data of type `u` to data of type `f`. The resulting matrix `Emat` can then be
 used to apply on grid data of type `u` to interpolate it to point data of type `f`,
-using `A_mul_B!(f,Emat,u)`. It can also be used as just `Emat*u`.
+using `mul!(f,Emat,u)`. It can also be used as just `Emat*u`.
 """
 struct InterpolationMatrix{TU,TF} <: AbstractMatrix{Float64}
   M :: SparseMatrixCSC{Float64,Int64}
@@ -199,14 +200,14 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
         fill!(target.u,0.0)
         H.buffer2 .= source.u.*H.wgt
         @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
-          H.buffer .= H.ddf.(x-$shiftux-H.x,y-$shiftuy-H.y)
-          target.u[x,y] = At_mul_B(H.buffer,H.buffer2)
+          H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
+          target.u[x,y] = transpose(H.buffer)*H.buffer2
         end
         fill!(target.v,0.0)
         H.buffer2 .= source.v.*H.wgt
         @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
-          H.buffer .= H.ddf.(x-$shiftvx-H.x,y-$shiftvy-H.y)
-          target.v[x,y] = At_mul_B(H.buffer,H.buffer2)
+          H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
+          target.v[x,y] = transpose(H.buffer)*H.buffer2
         end
         target
   end
@@ -216,11 +217,11 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
                                        source::$ctype) where {N,NX,NY}
     target.u .= target.v .= zeros(Float64,N)
     @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
-      H.buffer .= H.ddf.(x-$shiftux-H.x,y-$shiftuy-H.y)
+      H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
       target.u .+= H.buffer*source.u[x,y]
     end
     @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
-      H.buffer .= H.ddf.(x-$shiftvx-H.x,y-$shiftvy-H.y)
+      H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
       target.v .+= H.buffer*source.v[x,y]
     end
     target
@@ -231,14 +232,14 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
                                       source::$ctype) where {N,NX,NY}
     target.u .= target.v .= zeros(Float64,N)
     @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
-      H.buffer .= H.ddf.(x-$shiftux-H.x,y-$shiftuy-H.y)
-      w = At_mul_B(H.buffer,H.wgt)
+      H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
+      w = transpose(H.buffer)*H.wgt
       w = w ≢ 0.0 ? source.u[x,y]/w : 0.0
       target.u .+= H.buffer*w
     end
     @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
-      H.buffer .= H.ddf.(x-$shiftvx-H.x,y-$shiftvy-H.y)
-      w = At_mul_B(H.buffer,H.wgt)
+      H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
+      w = transpose(H.buffer)*H.wgt
       w = w ≢ 0.0 ? source.v[x,y]/w : 0.0
       target.v .+= H.buffer*w
     end
@@ -309,9 +310,9 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
     fill!(g,1.0)
     H(v,g)
     wtu = sparsevec(v.u)
-    wtu.nzval .= 1./wtu.nzval
+    wtu.nzval .= 1 ./ wtu.nzval
     wtv = sparsevec(v.v)
-    wtv.nzval .= 1./wtv.nzval
+    wtv.nzval .= 1 ./ wtv.nzval
     fill!(g,0.0)
     for i = 1:N
       g.u[i] = 1.0/H.wgt[i]  # unscale for interpolation
@@ -325,21 +326,38 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
     InterpolationMatrix{$ctype,$ftype}(Emat)
   end
 
-  @eval function A_mul_B!(u::$ctype,Hmat::RegularizationMatrix{$ctype,$ftype},f::$ftype) where {NX,NY,N}
+  @eval function mul!(u::$ctype,Hmat::RegularizationMatrix{$ctype,$ftype},f::$ftype) where {NX,NY,N}
     fill!(u,0.0)
-    I,J,V = findnz(Hmat.M)
-    for (cnt,v) in enumerate(V)
-      u[I[cnt]] += v*f[J[cnt]]
+    nzv = Hmat.M.nzval
+    rv = Hmat.M.rowval
+    @inbounds for col = 1:Hmat.M.n
+      fj = f[col]
+      for j = Hmat.M.colptr[col]:(Hmat.M.colptr[col + 1] - 1)
+          u[rv[j]] += nzv[j]*fj
+      end
     end
+    #I,J,V = findnz(Hmat.M)
+    #for (cnt,v) in enumerate(V)
+    #  u[I[cnt]] += v*f[J[cnt]]
+    #end
     u
   end
 
-  @eval function A_mul_B!(f::$ftype,Emat::InterpolationMatrix{$ctype,$ftype},u::$ctype) where {NX,NY,N}
+  @eval function mul!(f::$ftype,Emat::InterpolationMatrix{$ctype,$ftype},u::$ctype) where {NX,NY,N}
     fill!(f,0.0)
-    I,J,V = findnz(Emat.M)
-    for (cnt,v) in enumerate(V)
-      f[J[cnt]] .+= v*u[I[cnt]]
+    nzv = Emat.M.nzval
+    rv = Emat.M.rowval
+    @inbounds for col = 1:Emat.M.n
+        tmp = zero(eltype(f))
+        for j = Emat.M.colptr[col]:(Emat.M.colptr[col + 1] - 1)
+            tmp += transpose(nzv[j])*u[rv[j]]
+        end
+        f[col] += tmp
     end
+    #I,J,V = findnz(Emat.M)
+    #for (cnt,v) in enumerate(V)
+    #  f[J[cnt]] .+= v*u[I[cnt]]
+    #end
     f
   end
 
@@ -355,8 +373,8 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
     fill!(target,0.0)
     H.buffer2 .= source.data.*H.wgt
     @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
-      H.buffer .= H.ddf.(x-$shiftx-H.x,y-$shifty-H.y)
-      target[x,y] = At_mul_B(H.buffer,H.buffer2)
+      H.buffer .= H.ddf.(x.-$shiftx.-H.x,y.-$shifty.-H.y)
+      target[x,y] = transpose(H.buffer)*H.buffer2
     end
     target
   end
@@ -366,7 +384,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
                                        source::$ctype) where {N,NX,NY}
     target .= zeros(Float64,N)
     @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
-      H.buffer .= H.ddf.(x-$shiftx-H.x,y-$shifty-H.y)
+      H.buffer .= H.ddf.(x.-$shiftx.-H.x,y.-$shifty.-H.y)
       target .+= H.buffer*source[x,y]
     end
     target
@@ -377,8 +395,8 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
                                        source::$ctype) where {N,NX,NY}
     target .= zeros(Float64,N)
     @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
-      H.buffer .= H.ddf.(x-$shiftx-H.x,y-$shifty-H.y)
-      w = At_mul_B(H.buffer,H.wgt)
+      H.buffer .= H.ddf.(x.-$shiftx.-H.x,y.-$shifty.-H.y)
+      w = transpose(H.buffer)*H.wgt
       w = w ≢ 0.0 ? source[x,y]/w : 0.0
       target .+= H.buffer*w
     end
@@ -435,7 +453,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
     v = deepcopy(u)
     fill!(g,1.0)
     wt = sparsevec(H(v,g))
-    wt.nzval .= 1./wt.nzval
+    wt.nzval .= 1 ./ wt.nzval
     fill!(g,0.0)
     for i = 1:N
       g[i] = 1.0/H.wgt[i]  # unscale for interpolation
@@ -445,22 +463,39 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
     InterpolationMatrix{$ctype,$ftype}(Emat)
   end
 
-  @eval function A_mul_B!(u::$ctype,Hmat::RegularizationMatrix{$ctype,$ftype},f::$ftype) where {NX,NY,N}
+  @eval function mul!(u::$ctype,Hmat::RegularizationMatrix{$ctype,$ftype},f::$ftype) where {NX,NY,N}
     fill!(u,0.0)
-    I,J,V = findnz(Hmat.M)
-    for (cnt,v) in enumerate(V)
-      u[I[cnt]] += v*f[J[cnt]]
+    nzv = Hmat.M.nzval
+    rv = Hmat.M.rowval
+    @inbounds for col = 1:Hmat.M.n
+      fj = f[col]
+      for j = Hmat.M.colptr[col]:(Hmat.M.colptr[col + 1] - 1)
+          u[rv[j]] += nzv[j]*fj
+      end
     end
+    #I,J,V = findnz(Hmat.M)
+    #for (cnt,v) in enumerate(V)
+    #  u[I[cnt]] += v*f[J[cnt]]
+    #end
     u
 
   end
 
-  @eval function A_mul_B!(f::$ftype,Emat::InterpolationMatrix{$ctype,$ftype},u::$ctype) where {NX,NY,N}
+  @eval function mul!(f::$ftype,Emat::InterpolationMatrix{$ctype,$ftype},u::$ctype) where {NX,NY,N}
     fill!(f,0.0)
-    I,J,V = findnz(Emat.M)
-    for (cnt,v) in enumerate(V)
-      f[J[cnt]] += v*u[I[cnt]]
+    nzv = Emat.M.nzval
+    rv = Emat.M.rowval
+    @inbounds for col = 1:Emat.M.n
+        tmp = zero(eltype(f))
+        for j = Emat.M.colptr[col]:(Emat.M.colptr[col + 1] - 1)
+            tmp += transpose(nzv[j])*u[rv[j]]
+        end
+        f[col] += tmp
     end
+    #I,J,V = findnz(Emat.M)
+    #for (cnt,v) in enumerate(V)
+    #  f[J[cnt]] += v*u[I[cnt]]
+    #end
     f
 
   end
@@ -469,16 +504,16 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
 end
 
 (*)(Hmat::RegularizationMatrix{TU,TF},src::TF) where {TU,TF<:Union{ScalarData,VectorData}} =
-        A_mul_B!(TU(),Hmat,src)
+        mul!(TU(),Hmat,src)
 
 (*)(Emat::InterpolationMatrix{TU,TF},src::TU) where {TU<:Union{Nodes,Edges},TF<:Union{ScalarData,VectorData}} =
-                A_mul_B!(TF(),Emat,src)
+                mul!(TF(),Emat,src)
 
 
-function Base.show(io::IO, H::RegularizationMatrix{TU,TF}) where {TU,TF}
+function Base.summary(io::IO, H::RegularizationMatrix{TU,TF}) where {TU,TF}
     print(io, "Regularization matrix acting on type $TF and returning type $TU")
 end
 
-function Base.show(io::IO, H::InterpolationMatrix{TU,TF}) where {TU,TF}
+function Base.summary(io::IO, H::InterpolationMatrix{TU,TF}) where {TU,TF}
     print(io, "Interpolation matrix acting on type $TU and returning type $TF")
 end

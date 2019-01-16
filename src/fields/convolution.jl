@@ -1,4 +1,4 @@
-import Base: A_mul_B!, *
+import Base: *
 
 """
     CircularConvolution{M, N}
@@ -35,12 +35,12 @@ julia> C*reshape(1:12, 3, 4)
 ```
 """
 struct CircularConvolution{M, N, K, KI}
-    Ĝ::Matrix{Complex128}
+    Ĝ::Matrix{ComplexF64}
     F::K
     F⁻¹::KI
 
     paddedSpace::Matrix{Float64}
-    Â::Matrix{Complex128}
+    Â::Matrix{ComplexF64}
 end
 
 function Base.show(io::IO, c::CircularConvolution{M, N}) where {M, N}
@@ -49,7 +49,7 @@ end
 
 function CircularConvolution(G::AbstractMatrix{Float64}, fftw_flags = FFTW.ESTIMATE)
     M, N = size(G)
-    paddedSpace = Matrix{Float64}(2M-1, 2N-1)
+    paddedSpace = Matrix{Float64}(undef, 2M-1, 2N-1)
     F = FFTW.plan_rfft(paddedSpace, flags = fftw_flags)
 
     mirror!(paddedSpace, G)
@@ -61,22 +61,22 @@ function CircularConvolution(G::AbstractMatrix{Float64}, fftw_flags = FFTW.ESTIM
     CircularConvolution{M, N, typeof(F), typeof(F⁻¹)}(Ĝ, F, F⁻¹, paddedSpace, Â)
 end
 
-function A_mul_B!(out, C::CircularConvolution{M, N}, B) where {M, N}
+function mul!(out, C::CircularConvolution{M, N}, B) where {M, N}
     @assert size(out) == size(B) == (M, N)
 
-    inds = CartesianRange((M,N))
+    inds = CartesianIndices((M,N))
     fill!(C.paddedSpace, 0)
-    copy!(C.paddedSpace, inds, B, inds)
-    A_mul_B!(C.Â, C.F, C.paddedSpace)
+    copyto!(C.paddedSpace, inds, B, inds)
+    mul!(C.Â, C.F, C.paddedSpace)
 
     C.Â .*= C.Ĝ
 
-    A_mul_B!(C.paddedSpace, C.F⁻¹, C.Â)
+    mul!(C.paddedSpace, C.F⁻¹, C.Â)
 
-    copy!(out, inds, C.paddedSpace, CartesianRange((M:2M-1,N:2N-1)))
+    copyto!(out, inds, C.paddedSpace, CartesianIndices((M:2M-1,N:2N-1)))
 end
 
-C::CircularConvolution * B = A_mul_B!(similar(B), C, B)
+C::CircularConvolution * B = mul!(similar(B), C, B)
 
 function mirror!(A, a::AbstractArray{T,2}) where {T}
     Nr, Nc = size(a)

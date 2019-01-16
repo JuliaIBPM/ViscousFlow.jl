@@ -2,6 +2,10 @@ module Bodies
 
 import Base:diff,length
 
+using Compat
+using Compat.Statistics: mean
+using Compat: range, reverse
+
 export Body,RigidTransform,Ellipse,Plate
 
 abstract type Body{N} end
@@ -52,7 +56,7 @@ end
 
 RigidTransform(x::Vector{Float64}) = RigidTransform((x[1],x[2]),x[3])
 
-RigidTransform(c::Complex128,α::Float64) = RigidTransform((real(c),imag(c)),α)
+RigidTransform(c::ComplexF64,α::Float64) = RigidTransform((real(c),imag(c)),α)
 
 function Base.show(io::IO, T::RigidTransform)
     name = "Rigid-body transform"
@@ -152,7 +156,7 @@ end
 function Ellipse(a::Float64,b::Float64,N::Int)
     x̃ = zeros(N)
     ỹ = zeros(N)
-    θ = linspace(0,2π,N+1)
+    θ = range(0,stop=2π,length=N+1)
     @. x̃ = a*cos(θ[1:N])
     @. ỹ = b*sin(θ[1:N])
 
@@ -200,10 +204,10 @@ function Plate(len::Float64,N::Int;λ::Float64=1.0)
     #x = [[len*(-0.5 + 1.0*(i-1)/(N-1)),0.0] for i=1:N]
 
     Δϕ = π/(N-1)
-    Jϕa = [sqrt(sin(ϕ)^2+λ^2*cos(ϕ)^2) for ϕ in linspace(π-Δϕ/2,Δϕ/2,N-1)]
+    Jϕa = [sqrt(sin(ϕ)^2+λ^2*cos(ϕ)^2) for ϕ in range(π-Δϕ/2,stop=Δϕ/2,length=N-1)]
     Jϕ = len*Jϕa/Δϕ/sum(Jϕa)
-    x̃ = -0.5*len + Δϕ*cumsum([0.0; Jϕ])
-    ỹ = zeros(x̃)
+    x̃ = -0.5*len .+ Δϕ*cumsum([0.0; Jϕ])
+    ỹ = zero(x̃)
 
     Plate{N}(len,0.0,(0.0,0.0),0.0,x̃,ỹ,x̃,ỹ)
 
@@ -214,16 +218,16 @@ function Plate(len::Float64,thick::Float64,N::Int;λ::Float64=1.0)
 
     # set up points on flat sides
     Δϕ = π/N
-    Jϕa = [sqrt(sin(ϕ)^2+λ^2*cos(ϕ)^2) for ϕ in linspace(π-Δϕ/2,Δϕ/2,N)]
+    Jϕa = [sqrt(sin(ϕ)^2+λ^2*cos(ϕ)^2) for ϕ in range(π-Δϕ/2,stop=Δϕ/2,length=N)]
     Jϕ = len*Jϕa/Δϕ/sum(Jϕa)
-    xtopface = -0.5*len + Δϕ*cumsum([0.0; Jϕ])
+    xtopface = -0.5*len .+ Δϕ*cumsum([0.0; Jϕ])
     xtop = 0.5*(xtopface[1:N] + xtopface[2:N+1])
 
 
     Δsₑ = Δϕ*Jϕ[1]
     Nₑ = 2*floor(Int,0.25*π*thick/Δsₑ)
-    xedgeface = [0.5*len + 0.5*thick*cos(ϕ) for ϕ in linspace(π/2,-π/2,Nₑ+1)]
-    yedgeface = [          0.5*thick*sin(ϕ) for ϕ in linspace(π/2,-π/2,Nₑ+1)]
+    xedgeface = [0.5*len + 0.5*thick*cos(ϕ) for ϕ in range(π/2,stop=-π/2,length=Nₑ+1)]
+    yedgeface = [          0.5*thick*sin(ϕ) for ϕ in range(π/2,stop=-π/2,length=Nₑ+1)]
     xedge = 0.5*(xedgeface[1:Nₑ]+xedgeface[2:Nₑ+1])
     yedge = 0.5*(yedgeface[1:Nₑ]+yedgeface[2:Nₑ+1])
 
@@ -237,7 +241,7 @@ function Plate(len::Float64,thick::Float64,N::Int;λ::Float64=1.0)
       push!(x̃,xedge[i])
       push!(ỹ,yedge[i])
     end
-    for xi in flipdim(xtop,1)
+    for xi in reverse(xtop,dims=1)
       push!(x̃,xi)
       push!(ỹ,-0.5*thick)
     end
@@ -257,7 +261,7 @@ function Base.show(io::IO, body::Plate{N}) where {N}
 end
 
 """
-    NACA4(cam,pos,thick[;np=20][,Zc=0.0+0.0im][,len=1.0]) -> Vector{Complex128}
+    NACA4(cam,pos,thick[;np=20][,Zc=0.0+0.0im][,len=1.0]) -> Vector{ComplexF64}
 
 Generates the vertices of a NACA 4-digit airfoil of chord length 1. The
 relative camber is specified by `cam`, the position of
@@ -348,16 +352,16 @@ end
 xrc = rt*cos(θ0)
 yrc = rt*sin(θ0)
 θle = collect(0:π/50:2π)
-xlec = xrc+rt*cos.(θle)
-ylec = yrc+rt*sin.(θle)
+xlec = xrc .+ rt*cos.(θle)
+ylec = yrc .+ rt*sin.(θle)
 
 # Assemble data
 coords = [xu yu xl yl x yc]
 cole = [xlec ylec]
 
 # Close the trailing edge
-xpanold = [0.5*(xl[np]+xu[np]); flipdim(xl[2:np-1],1); xu[1:np-1]]
-ypanold = [0.5*(yl[np]+yu[np]); flipdim(yl[2:np-1],1); yu[1:np-1]]
+xpanold = [0.5*(xl[np]+xu[np]); reverse(xl[2:np-1],dims=1); xu[1:np-1]]
+ypanold = [0.5*(yl[np]+yu[np]); reverse(yl[2:np-1],dims=1); yu[1:np-1]]
 
 xpan = zeros(npan)
 ypan = zeros(npan)
@@ -376,8 +380,8 @@ for ipan = 1:npan
     xpan[ipan] = 0.5*(xpan1+xpan2)
     ypan[ipan] = 0.5*(ypan1+ypan2)
 end
-w = Complex128[1;flipdim(xpan,1)+im*flipdim(ypan,1)]*len
-w -=mean(w)
+w = ComplexF64[1;reverse(xpan,dims=1)+im*reverse(ypan,dims=1)]*len
+w .-= mean(w)
 
 x̃ = real.(w)
 ỹ = imag.(w)
@@ -385,6 +389,12 @@ ỹ = imag.(w)
 
 NACA4{length(x̃)}(len,cam,pos,t,(0.0,0.0),0.0,x̃,ỹ,x̃,ỹ)
 
+end
+
+function Base.show(io::IO, body::NACA4{N}) where {N}
+    println(io, "NACA 4-digit airfoil with $N points and length $(body.len) and thickness $(body.thick)")
+    println(io, "   Current position: ($(body.cent[1]),$(body.cent[2]))")
+    println(io, "   Current angle (rad): $(body.α)")
 end
 
 

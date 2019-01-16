@@ -23,8 +23,8 @@ mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
     X̃::VectorData{N}
 
     # Pre-stored regularization and interpolation matrices (if present)
-    Hmat::Nullable{RegularizationMatrix}
-    Emat::Nullable{InterpolationMatrix}
+    Hmat::Union{RegularizationMatrix,Nothing}
+    Emat::Union{InterpolationMatrix,Nothing}
 
 
     # Scratch space
@@ -62,8 +62,11 @@ function NavierStokes(dims::Tuple{Int, Int}, Re, Δx, Δt;
       regop = Regularize(X̃,Δx;issymmetric=true)
       Hmat, Emat = RegularizationMatrix(regop,VectorData{N}(),Edges{Primal,NX,NY}())
     else
-      Hmat = Nullable{RegularizationMatrix}()
-      Emat = Nullable{InterpolationMatrix}()
+      #Hmat = Nullable{RegularizationMatrix}()
+      #Emat = Nullable{InterpolationMatrix}()
+      Hmat = nothing
+      Emat = nothing
+
     end
 
     # should be able to set up time marching operator here...
@@ -93,7 +96,7 @@ function TimeMarching.r₁(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY}) wher
   Qq.u .-= sys.U∞[1]
   Qq.v .-= sys.U∞[2]
 
-  return scale!(divergence(Qq∘shift!(Ww,w)),Δx⁻¹) # -∇⋅(wu)
+  return rmul!(divergence(Qq∘shift!(Ww,w)),Δx⁻¹) # -∇⋅(wu)
 
 end
 
@@ -110,7 +113,7 @@ function TimeMarching.r₁(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY},U∞:
   Qq.u .-= real(ċ)
   Qq.v .-= imag(ċ)
 
-  return scale!(divergence(Qq∘shift!(Ww,w)),Δx⁻¹) # -∇⋅(wu)
+  return rmul!(divergence(Qq∘shift!(Ww,w)),Δx⁻¹) # -∇⋅(wu)
 
 end
 
@@ -134,8 +137,8 @@ end
 
 # Constraint operators, using stored regularization and interpolation operators
 # B₁ᵀ = CᵀEᵀ, B₂ = -ECL⁻¹
-TimeMarching.B₁ᵀ(f,sys::NavierStokes{NX,NY,N,C}) where {NX,NY,N,C} = Curl()*(get(sys.Hmat)*f)
-TimeMarching.B₂(w,sys::NavierStokes{NX,NY,N,C}) where {NX,NY,N,C} = -(get(sys.Emat)*(Curl()*(sys.L\w)))
+TimeMarching.B₁ᵀ(f,sys::NavierStokes{NX,NY,N,C}) where {NX,NY,N,C} = Curl()*(sys.Hmat*f)
+TimeMarching.B₂(w,sys::NavierStokes{NX,NY,N,C}) where {NX,NY,N,C} = -(sys.Emat*(Curl()*(sys.L\w)))
 
 # Constraint operators, using non-stored regularization and interpolation operators
 TimeMarching.B₁ᵀ(f::VectorData{N},regop::Regularize,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,N} = Curl()*regop(sys.Fq,f)

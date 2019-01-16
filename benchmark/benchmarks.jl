@@ -70,7 +70,7 @@ end
     celldims = (500, 500)
 
     nodes = DualNodes(celldims)
-    nodes .= rand(size(nodes))
+    nodes .= rand(Float64,size(nodes))
 
     edges = Edges(Primal, nodes)
     edges.u .= reshape(1:length(edges.u), size(edges.u))
