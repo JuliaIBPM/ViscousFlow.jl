@@ -6,8 +6,11 @@ using DocStringExtensions
 import ForwardDiff
 import Base: +, *, -, >>, <<, show
 
+using Compat
+using Compat: round
+
 """
-An abstract type for types that takes in time and returns `(ċ, c̈, α̇)`.
+An abstract type for types that takes in time and returns `(c, ċ, c̈, α, α̇, α̈)`.
 """
 abstract type Kinematics end
 
@@ -19,7 +22,7 @@ abstract type Profile end
 """
     RigidBodyMotion
 
-A type to store the plate's current kinematics
+A type to store the body's current kinematics
 
 # Fields
 
@@ -31,13 +34,13 @@ A type to store the plate's current kinematics
 - `α̈`: current angular acceleration
 - `kin`: a [`Kinematics`](@ref) structure
 
-The first three fields are meant as a cache of the current kinematics
+The first six fields are meant as a cache of the current kinematics
 while the `kin` field can be used to find the plate kinematics at any time.
 """
 mutable struct RigidBodyMotion
-    c::Complex128
-    ċ::Complex128
-    c̈::Complex128
+    c::ComplexF64
+    ċ::ComplexF64
+    c̈::ComplexF64
     α::Float64
     α̇::Float64
     α̈::Float64
@@ -50,8 +53,11 @@ RigidBodyMotion(ċ, α̇) = RigidBodyMotion(0.0im, complex(ċ), 0.0im, 0.0, fl
 RigidBodyMotion(kin::Kinematics) = RigidBodyMotion(kin(0)..., kin)
 (m::RigidBodyMotion)(t) = m.kin(t)
 
-function (m::RigidBodyMotion)(t,xtilde::Vector{Float64})
-  z̃ = Complex128(xtilde[1],xtilde[2])
+
+function (m::RigidBodyMotion)(t,x̃::Tuple{Float64,Float64})
+  # This expects coordinates in body's own coordinate system
+  #
+  z̃ = ComplexF64(x̃[1],x̃[2])
   m.c, m.ċ, m.c̈, m.α, m.α̇, m.α̈ = m.kin(t)
   z = exp(im*m.α)*z̃
   return m.c + z, m.ċ + im*m.α̇*z, m.c̈ + (im*m.α̈-m.α̇^2)*z
@@ -61,11 +67,17 @@ end
 
 function show(io::IO, m::RigidBodyMotion)
     println(io, "Rigid Body Motion:")
-    println(io, "  ċ = $(round(m.ċ, 2))")
-    println(io, "  c̈ = $(round(m.c̈, 2))")
-    println(io, "  α̇ = $(round(m.α̇, 2))")
+    println(io, "  ċ = $(round(m.ċ, digits=2))")
+    println(io, "  c̈ = $(round(m.c̈, digits=2))")
+    println(io, "  α̇ = $(round(m.α̇, digits=2))")
+    println(io, "  α̈ = $(round(m.α̈, digits=2))")
     print(io, "  $(m.kin)")
 end
+
+#=
+Kinematics
+=#
+
 
 struct Constant{C <: Complex, A <: Real} <: Kinematics
     ċ::C
@@ -108,14 +120,14 @@ end
 
 function Pitchup(U₀, a, K, α₀, t₀, Δα, ramp)
     Δt = 0.5Δα/K
-    p = 2K*((ramp >> t₀) - (ramp >> (t₀ + Δt)))
+    p = ConstantProfile(α₀) + 2K*((ramp >> t₀) - (ramp >> (t₀ + Δt)))
     ṗ = d_dt(p)
     p̈ = d_dt(ṗ)
     Pitchup(U₀, a, K, α₀, t₀, Δα, c, ċ, c̈, p, ṗ, p̈)
 end
 
 function (p::Pitchup)(t)
-    α = p.α₀ + p.α(t)
+    α = p.α(t)
     α̇ = p.α̇(t)
     α̈ = p.α̈(t)
 
@@ -127,10 +139,83 @@ function (p::Pitchup)(t)
         c̈ = p.a*exp(im*α)*(α̇^2 - im*α̈)
     end
 
-    #return [Real(ċ),Imag(ċ)], [Real(c̈),Imag(c̈)], α̇
     return c, ċ, c̈, α, α̇, α̈
 end
 
+function show(io::IO, p::Pitchup)
+    print(io, "Pitch-up kinematics with rate K = $(p.K)")
+end
+
+
+"""
+    PitchHeave <: Kinematics
+
+Kinematics describing an oscillatory pitching and heaving (i.e. plunging) motion
+
+# Constructors
+# Fields
+$(FIELDS)
+"""
+struct PitchHeave <: Kinematics
+    "Freestream velocity"
+    U₀::Float64
+
+    "Axis of pitch rotation, relative to the plate centroid"
+    a::Float64
+
+    "Reduced frequency ``K = \\frac{\\Omega c}{2U_0}``"
+    K::Float64
+
+    "Phase lag of pitch to heave (in radians)"
+    ϕ::Float64
+
+    "Mean angle of attack"
+    α₀::Float64
+
+    "Amplitude of pitching"
+    Δα::Float64
+
+    "Amplitude of translational heaving"
+    A::Float64
+
+    Y::Profile
+    Ẏ::Profile
+    Ÿ::Profile
+
+    α::Profile
+    α̇::Profile
+    α̈::Profile
+end
+
+function PitchHeave(U₀, a, K, ϕ, α₀, Δα, A)
+    p = A*Sinusoid(2K)
+    ṗ = d_dt(p)
+    p̈ = d_dt(ṗ)
+    α = ConstantProfile(α₀) + Δα*(Sinusoid(2K) >> (ϕ/(2K)))
+    α̇ = d_dt(α)
+    α̈ = d_dt(α̇)
+    PitchHeave(U₀, a, K, ϕ, α₀, Δα, A, p, ṗ, p̈, α, α̇, α̈)
+end
+
+function (p::PitchHeave)(t)
+    α = p.α(t)
+    α̇ = p.α̇(t)
+    α̈ = p.α̈(t)
+
+    c = p.U₀*t + im*p.Y(t) - p.a*exp(im*α)
+    ċ = p.U₀ + im*p.Ẏ(t) - p.a*im*α̇*exp(im*α)
+    c̈ = im*p.Ÿ(t) + p.a*exp(im*α)*(α̇^2 - im*α̈)
+
+    return c, ċ, c̈, α, α̇, α̈
+end
+
+function show(io::IO, p::PitchHeave)
+    println(io, "Oscillatory pitch-heave kinematics with")
+    println(io, "     Reduced frequency K = $(p.K)")
+    println(io, "     Heaving amplitude A = $(p.A)")
+    println(io, "     Pitching amplitude Δα = $(p.Δα)")
+    println(io, "     Pitch-to-heave lag ϕ = $(p.ϕ)")
+end
 
 struct Oscillation <: Kinematics
     "Angular frequency"
@@ -176,14 +261,81 @@ function (p::Oscillation)(t)
     α̇ = 0.0
     α̈ = 0.0
 
-    c = Complex128(p.cx(t)) + im*Complex128(p.cy(t))
-    ċ = Complex128(p.ċx(t)) + im*Complex128(p.ċy(t))
-    c̈ = Complex128(p.c̈x(t)) + im*Complex128(p.c̈y(t))
+    c = ComplexF64(p.cx(t)) + im*ComplexF64(p.cy(t))
+    ċ = ComplexF64(p.ċx(t)) + im*ComplexF64(p.ċy(t))
+    c̈ = ComplexF64(p.c̈x(t)) + im*ComplexF64(p.c̈y(t))
     return c, ċ, c̈, α, α̇, α̈
 
     #return [p.ċ(t),0.0], [p.c̈(t),0.0], α̇
 end
 
+struct OscilX <: Kinematics
+    "Angular frequency"
+    Ω :: Float64
+
+    "Mean velocity"
+    Umean :: Float64
+
+    "Velocity amplitude"
+    Ux:: Float64
+
+    "Velocity phase"
+    ϕx :: Float64
+
+    cx::Profile
+    ċx::Profile
+    c̈x::Profile
+
+end
+
+function OscilX(Ω,Umean,Ux,ϕx)
+    Δtx = ϕx/Ω
+    px = ConstantProfile(0.0)
+    ṗx = ConstantProfile(Umean) + Ux*(Sinusoid(Ω) << Δtx)
+    p̈x = d_dt(ṗx)
+
+    OscilX(Ω, Umean, Ux, ϕx, px, ṗx, p̈x)
+end
+
+function (p::OscilX)(t)
+    α = 0.0
+    α̇ = 0.0
+    α̈ = 0.0
+
+    c = ComplexF64(p.cx(t))
+    ċ = ComplexF64(p.ċx(t))
+    c̈ = ComplexF64(p.c̈x(t))
+    return c, ċ, c̈, α, α̇, α̈
+
+    #return [p.ċ(t),0.0], [p.c̈(t),0.0], α̇
+end
+
+#=
+Profiles
+=#
+
+
+"""
+    ConstantProfile(c::Number)
+
+Create a profile consisting of a constant `c`.
+
+# Example
+
+```jldoctest
+julia> p = RigidBodyMotions.ConstantProfile(1.0)
+Constant (2.3)
+```
+"""
+struct ConstantProfile <: Profile
+    c::Number
+end
+
+function show(io::IO, p::ConstantProfile)
+    print(io, "Constant ($(p.c))")
+end
+
+(p::ConstantProfile)(t) = p.c
 
 struct DerivativeProfile{P} <: Profile
     p::P
@@ -416,13 +568,13 @@ struct Sinusoid <: Profile
     ω::Float64
 end
 (s::Sinusoid)(t) = sin(s.ω*t)
-show(io::IO, s::Sinusoid) = print(io, "Sinusoid (ω = $(round(s.ω, 2)))")
+show(io::IO, s::Sinusoid) = print(io, "Sinusoid (ω = $(round(s.ω, digits=2)))")
 
 struct EldredgeRamp <: Profile
     aₛ::Float64
 end
 (r::EldredgeRamp)(t) = 0.5(log(2cosh(r.aₛ*t)) + r.aₛ*t)/r.aₛ
-show(io::IO, r::EldredgeRamp) = print(io, "logcosh ramp (aₛ = $(round(r.aₛ, 2)))")
+show(io::IO, r::EldredgeRamp) = print(io, "logcosh ramp (aₛ = $(round(r.aₛ, digits=2)))")
 
 struct ColoniusRamp <: Profile
     n::Int
@@ -441,6 +593,6 @@ function (r::ColoniusRamp)(t)
         f*Δt^(r.n + 2)/(2r.n + 2)
     end
 end
-show(io::IO, r::ColoniusRamp) = print(io, "power series ramp (n = $(round(r.n, 2)))")
+show(io::IO, r::ColoniusRamp) = print(io, "power series ramp (n = $(round(r.n, digits=2)))")
 
 end
