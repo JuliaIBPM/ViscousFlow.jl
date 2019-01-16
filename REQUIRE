@@ -9,3 +9,6 @@ DocStringExtensions
 ForwardDiff
 LinearMaps
 IterativeSolvers
+RecipesBase
+ColorTypes
+PlotUtils
