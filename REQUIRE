@@ -7,3 +7,5 @@ FFTW
 SpecialFunctions
 DocStringExtensions
 ForwardDiff
+LinearMaps
+IterativeSolvers
