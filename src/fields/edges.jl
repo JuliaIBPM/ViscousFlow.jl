@@ -49,7 +49,7 @@ Base.size(A::Edges{C,NX,NY}) where {C,NX,NY} = (length(A.u)+length(A.v),1)
    i > length(A.u) ? A.v[i-length(A.u)] = convert(Float64, v) : A.u[i] = convert(Float64, v)
 
 """
-    shift!(v::Edges{Dual/Primal},q::Edges{Primal/Dual})
+    cellshift!(v::Edges{Dual/Primal},q::Edges{Primal/Dual})
 
 Shift (by linear interpolation) the primal (resp. dual) edge data `q` to the
 edges of the dual (resp. primal) cells, and return the result in `v`.
@@ -63,7 +63,7 @@ julia> q.u[3,2] = 1.0;
 
 julia> v = Edges(Dual,(8,6));
 
-julia> Fields.shift!(v,q)
+julia> Fields.cellshift!(v,q)
 Whirl.Fields.Edges{Whirl.Fields.Dual,8,6} data
 u (in grid orientation):
  0.0  0.0   0.0   0.0  0.0  0.0  0.0
@@ -80,7 +80,7 @@ v (in grid orientation):
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
 ```
 """
-function shift!(dual::Edges{Dual, NX, NY},
+function cellshift!(dual::Edges{Dual, NX, NY},
                 primal::Edges{Primal, NX, NY}) where {NX, NY}
     uₚ = primal.u
     @inbounds for y in 2:NY-1, x in 1:NX-1
@@ -94,11 +94,11 @@ function shift!(dual::Edges{Dual, NX, NY},
     dual
 end
 
-function shift(primal::Edges{Primal, NX, NY}) where {NX, NY}
-    shift!(Edges(Dual, (NX, NY)), primal)
+function cellshift(primal::Edges{Primal, NX, NY}) where {NX, NY}
+    cellshift!(Edges(Dual, (NX, NY)), primal)
 end
 
-function shift!(primal::Edges{Primal, NX, NY},
+function cellshift!(primal::Edges{Primal, NX, NY},
                 dual::Edges{Dual, NX, NY}) where {NX, NY}
     uₚ = dual.u
     @inbounds for y in 1:NY-1, x in 2:NX-1
@@ -112,8 +112,8 @@ function shift!(primal::Edges{Primal, NX, NY},
     primal
 end
 
-function shift(dual::Edges{Dual, NX, NY}) where {NX, NY}
-    shift!(Edges(Primal, (NX, NY)), dual)
+function cellshift(dual::Edges{Dual, NX, NY}) where {NX, NY}
+    cellshift!(Edges(Primal, (NX, NY)), dual)
 end
 
 """

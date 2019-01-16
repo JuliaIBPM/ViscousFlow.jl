@@ -48,7 +48,7 @@ export Primal, Dual, Edges, Nodes,
        laplacian, laplacian!, plan_laplacian, plan_laplacian!,
        plan_intfact,plan_intfact!,Identity,
        product, product!, ∘,
-       shift!,
+       cellshift!,
        coordinates,
        DDF, Regularize, RegularizationMatrix, InterpolationMatrix,
        CircularConvolution
