@@ -6,3 +6,4 @@ Compat
 FFTW
 SpecialFunctions
 DocStringExtensions
+ForwardDiff
