@@ -18,14 +18,14 @@ the grid), but these are not distinguished in these basic definitions and operat
 
 module Fields
 
-import Base: @propagate_inbounds, shift!, show, summary
+import Base: @propagate_inbounds, show, summary
 
 using Compat
 using FFTW
 using SpecialFunctions
 using Compat.LinearAlgebra
 using Compat.SparseArrays
-using Compat: copyto!, reverse
+using Compat: copyto!, reverse, parentindices
 
 @static if VERSION < v"0.7-"
   import Base: A_mul_B!, A_ldiv_B!, scale!
@@ -64,7 +64,7 @@ macro wraparray(wrapper, field)
     quote
         Base.parent(A::$wrapper) = A.$field
         Base.size(A::$wrapper) = size(A.$field)
-        Base.indices(A::$wrapper) = indices(A.$field)
+        Base.parentindices(A::$wrapper) = parentindices(A.$field)
 
         if $N > 1
           function Base.show(io::IO, m::MIME"text/plain", A::$wrapper)
