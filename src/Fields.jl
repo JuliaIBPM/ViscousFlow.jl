@@ -67,7 +67,7 @@ macro wraparray(wrapper, field)
     quote
         Base.parent(A::$wrapper) = A.$field
         Base.size(A::$wrapper) = size(A.$field)
-        Base.parentindices(A::$wrapper) = parentindices(A.$field)
+        parentindices(A::$wrapper) = parentindices(A.$field)
 
         if $N > 1
           function Base.show(io::IO, m::MIME"text/plain", A::$wrapper)
