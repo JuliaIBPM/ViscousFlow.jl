@@ -18,7 +18,7 @@ A preplanned, circular convolution operator on an M × N matrix.
 
 # Example:
 ```jldoctest
-julia> G = repmat(1.0:3,1,4)
+julia> G = repeat(1.0:3,1,4)
 3×4 Array{Float64,2}:
  1.0  1.0  1.0  1.0
  2.0  2.0  2.0  2.0

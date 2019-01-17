@@ -276,9 +276,7 @@ the vertices (which is set to the origin by default). The optional parameter
 # Example
 
 ```jldoctest
-julia> w = naca4(0.0,0.0,0.12);
-
-julia> p = Polygon(w);
+julia> w = Bodies.NACA4(0.0,0.0,0.12);
 ```
 """
 mutable struct NACA4{N} <: Body{N}

@@ -92,8 +92,9 @@ julia> f = VectorData(X);
 julia> fill!(f.u,1.0);
 
 julia> H(q,f)
-Whirl.Fields.Edges{Whirl.Fields.Primal,12,12} data
-u (in grid orientation):
+Edges{Primal,12,12} data
+u (in grid orientation)
+11×12 Array{Float64,2}:
  0.0  0.0  0.0       0.0     0.0      …  0.0       0.0     0.0      0.0  0.0
  0.0  0.0  0.0       0.0     0.0         0.0       0.0     0.0      0.0  0.0
  0.0  0.0  8.33333  33.3333  8.33333     0.0       0.0     0.0      0.0  0.0
@@ -105,7 +106,8 @@ u (in grid orientation):
  0.0  0.0  8.33333  33.3333  8.33333     8.33333  33.3333  8.33333  0.0  0.0
  0.0  0.0  0.0       0.0     0.0         0.0       0.0     0.0      0.0  0.0
  0.0  0.0  0.0       0.0     0.0      …  0.0       0.0     0.0      0.0  0.0
-v (in grid orientation):
+v (in grid orientation)
+12×11 Array{Float64,2}:
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0

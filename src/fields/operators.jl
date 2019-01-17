@@ -23,8 +23,9 @@ julia> v = deepcopy(w);
 julia> w[4,3] = 1.0;
 
 julia> laplacian!(v,w)
-Whirl.Fields.Nodes{Whirl.Fields.Dual,8,6} data
-Printing in grid orientation (lower left is (1,1)):
+Nodes{Dual,8,6} data
+Printing in grid orientation (lower left is (1,1))
+6×8 Array{Float64,2}:
  0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0   1.0  0.0  0.0  0.0  0.0
@@ -81,14 +82,16 @@ julia> q = Edges(Primal,(8,6));
 julia> q.u[2,2] = 1.0;
 
 julia> laplacian(q)
-Whirl.Fields.Edges{Whirl.Fields.Primal,8,6} data
-u (in grid orientation):
+Edges{Primal,8,6} data
+u (in grid orientation)
+5×8 Array{Float64,2}:
  0.0   0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0   0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0   1.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  -4.0  1.0  0.0  0.0  0.0  0.0  0.0
  0.0   0.0  0.0  0.0  0.0  0.0  0.0  0.0
-v (in grid orientation):
+v (in grid orientation)
+6×7 Array{Float64,2}:
  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0
@@ -132,8 +135,9 @@ julia> L = plan_laplacian(5,5;with_inverse=true)
 Discrete Laplacian (and inverse) on a (nx = 5, ny = 5) grid with spacing 1.0
 
 julia> s = L\\w
-Whirl.Fields.Nodes{Whirl.Fields.Dual,5,5} data
-Printing in grid orientation (lower left is (1,1)):
+Nodes{Dual,5,5} data
+Printing in grid orientation (lower left is (1,1))
+5×5 Array{Float64,2}:
  0.16707    0.129276     0.106037     0.129276    0.16707
  0.129276   0.0609665   -0.00734343   0.0609665   0.129276
  0.106037  -0.00734343  -0.257343    -0.00734343  0.106037
@@ -244,8 +248,9 @@ julia> E = plan_intfact(1.0,(6,6))
 Integrating factor with parameter 1.0 on a (nx = 6, ny = 6) grid
 
 julia> E*w
-Whirl.Fields.Nodes{Whirl.Fields.Dual,6,6} data
-Printing in grid orientation (lower left is (1,1)):
+Nodes{Dual,6,6} data
+Printing in grid orientation (lower left is (1,1))
+6×6 Array{Float64,2}:
  0.00268447   0.00869352  0.0200715   0.028765    0.0200715   0.00869352
  0.00619787   0.0200715   0.0463409   0.0664124   0.0463409   0.0200715
  0.00888233   0.028765    0.0664124   0.0951774   0.0664124   0.028765
@@ -345,14 +350,16 @@ julia> w[3,4] = 1.0;
 julia> q = Edges(Primal,w);
 
 julia> curl!(q,w)
-Whirl.Fields.Edges{Whirl.Fields.Primal,8,6} data
-u (in grid orientation):
+Edges{Primal,8,6} data
+u (in grid orientation)
+5×8 Array{Float64,2}:
  0.0  0.0   0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  -1.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0   1.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0   0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0   0.0  0.0  0.0  0.0  0.0  0.0
-v (in grid orientation):
+v (in grid orientation)
+6×7 Array{Float64,2}:
  0.0   0.0  0.0  0.0  0.0  0.0  0.0
  0.0   0.0  0.0  0.0  0.0  0.0  0.0
  0.0  -1.0  1.0  0.0  0.0  0.0  0.0
@@ -390,14 +397,16 @@ julia> w = Nodes(Dual,(8,6));
 julia> w[3,4] = 1.0;
 
 julia> C*w
-Whirl.Fields.Edges{Whirl.Fields.Primal,8,6} data
-u (in grid orientation):
+Edges{Primal,8,6} data
+u (in grid orientation)
+5×8 Array{Float64,2}:
  0.0  0.0   0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  -1.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0   1.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0   0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0   0.0  0.0  0.0  0.0  0.0  0.0
-v (in grid orientation):
+v (in grid orientation)
+6×7 Array{Float64,2}:
  0.0   0.0  0.0  0.0  0.0  0.0  0.0
  0.0   0.0  0.0  0.0  0.0  0.0  0.0
  0.0  -1.0  1.0  0.0  0.0  0.0  0.0
@@ -443,8 +452,9 @@ julia> q.u[3,2] = 1.0;
 julia> w = Nodes(Primal,(8,6));
 
 julia> divergence!(w,q)
-Whirl.Fields.Nodes{Whirl.Fields.Primal,8,6} data
-Printing in grid orientation (lower left is (1,1)):
+Nodes{Primal,8,6} data
+Printing in grid orientation (lower left is (1,1))
+5×7 Array{Float64,2}:
  0.0  0.0   0.0  0.0  0.0  0.0  0.0
  0.0  0.0   0.0  0.0  0.0  0.0  0.0
  0.0  0.0   0.0  0.0  0.0  0.0  0.0
@@ -490,8 +500,9 @@ julia> q = Edges(Primal,(8,6));
 julia> q.u[3,2] = 1.0;
 
 julia> D*q
-Whirl.Fields.Nodes{Whirl.Fields.Primal,8,6} data
-Printing in grid orientation (lower left is (1,1)):
+Nodes{Primal,8,6} data
+Printing in grid orientation (lower left is (1,1))
+5×7 Array{Float64,2}:
  0.0  0.0   0.0  0.0  0.0  0.0  0.0
  0.0  0.0   0.0  0.0  0.0  0.0  0.0
  0.0  0.0   0.0  0.0  0.0  0.0  0.0
@@ -524,14 +535,16 @@ julia> w[3,4] = 1.0;
 julia> q = Edges(Primal,(8,6));
 
 julia> grad!(q,w)
-Whirl.Fields.Edges{Whirl.Fields.Primal,8,6} data
-u (in grid orientation):
+Edges{Primal,8,6} data
+u (in grid orientation)
+5×8 Array{Float64,2}:
  0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
  0.0  0.0  1.0  -1.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
-v (in grid orientation):
+v (in grid orientation)
+6×7 Array{Float64,2}:
  0.0  0.0   0.0  0.0  0.0  0.0  0.0
  0.0  0.0  -1.0  0.0  0.0  0.0  0.0
  0.0  0.0   1.0  0.0  0.0  0.0  0.0
@@ -568,14 +581,16 @@ julia> w[3,4] = 1.0;
 julia> G = Grad();
 
 julia> G*w
-Whirl.Fields.Edges{Whirl.Fields.Primal,8,6} data
-u (in grid orientation):
+Edges{Primal,8,6} data
+u (in grid orientation)
+5×8 Array{Float64,2}:
  0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
  0.0  0.0  1.0  -1.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
-v (in grid orientation):
+v (in grid orientation)
+6×7 Array{Float64,2}:
  0.0  0.0   0.0  0.0  0.0  0.0  0.0
  0.0  0.0  -1.0  0.0  0.0  0.0  0.0
  0.0  0.0   1.0  0.0  0.0  0.0  0.0

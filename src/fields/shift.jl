@@ -14,15 +14,17 @@ julia> w[3,4] = 1.0;
 julia> q = Edges(Dual,w);
 
 julia> cellshift!(q,w)
-Whirl.Fields.Edges{Whirl.Fields.Dual,8,6} data
-u (in grid orientation):
+Edges{Dual,8,6} data
+u (in grid orientation)
+6×7 Array{Float64,2}:
  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.5  0.5  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0
-v (in grid orientation):
+v (in grid orientation)
+5×8 Array{Float64,2}:
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.5  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.5  0.0  0.0  0.0  0.0  0.0
@@ -63,8 +65,9 @@ julia> wx = Nodes(Dual,(8,6)); wy = deepcopy(wx);
 julia> Fields.cellshift!((wx,wy),q);
 
 julia> wx
-Whirl.Fields.Nodes{Whirl.Fields.Dual,8,6} data
-Printing in grid orientation (lower left is (1,1)):
+Nodes{Dual,8,6} data
+Printing in grid orientation (lower left is (1,1))
+6×8 Array{Float64,2}:
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
@@ -73,8 +76,9 @@ Printing in grid orientation (lower left is (1,1)):
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
 
 julia> wy
-Whirl.Fields.Nodes{Whirl.Fields.Dual,8,6} data
-Printing in grid orientation (lower left is (1,1)):
+Nodes{Dual,8,6} data
+Printing in grid orientation (lower left is (1,1))
+6×8 Array{Float64,2}:
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0

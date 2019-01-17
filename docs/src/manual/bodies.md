@@ -3,7 +3,8 @@
 ```@meta
 DocTestSetup = quote
 using Whirl
-srand(1)
+using Random
+Random.seed!(1)
 end
 ```
 

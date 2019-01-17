@@ -64,15 +64,17 @@ julia> q.u[3,2] = 1.0;
 julia> v = Edges(Dual,(8,6));
 
 julia> Fields.cellshift!(v,q)
-Whirl.Fields.Edges{Whirl.Fields.Dual,8,6} data
-u (in grid orientation):
+Edges{Dual,8,6} data
+u (in grid orientation)
+6×7 Array{Float64,2}:
  0.0  0.0   0.0   0.0  0.0  0.0  0.0
  0.0  0.0   0.0   0.0  0.0  0.0  0.0
  0.0  0.0   0.0   0.0  0.0  0.0  0.0
  0.0  0.25  0.25  0.0  0.0  0.0  0.0
  0.0  0.25  0.25  0.0  0.0  0.0  0.0
  0.0  0.0   0.0   0.0  0.0  0.0  0.0
-v (in grid orientation):
+v (in grid orientation)
+5×8 Array{Float64,2}:
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
@@ -134,15 +136,17 @@ julia> q.u[3,2] = 0.3;
 julia> p.u[3,2] = 0.2;
 
 julia> product!(out,p,q)
-Whirl.Fields.Edges{Whirl.Fields.Dual,8,6} data
-u (in grid orientation):
+Edges{Dual,8,6} data
+u (in grid orientation)
+6×7 Array{Float64,2}:
  0.0  0.0  0.0   0.0  0.0  0.0  0.0
  0.0  0.0  0.0   0.0  0.0  0.0  0.0
  0.0  0.0  0.0   0.0  0.0  0.0  0.0
  0.0  0.0  0.0   0.0  0.0  0.0  0.0
  0.0  0.0  0.06  0.0  0.0  0.0  0.0
  0.0  0.0  0.0   0.0  0.0  0.0  0.0
-v (in grid orientation):
+v (in grid orientation)
+5×8 Array{Float64,2}:
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
@@ -183,15 +187,17 @@ julia> q.u[3,2] = 0.3;
 julia> p.u[3,2] = 0.2;
 
 julia> p∘q
-Whirl.Fields.Edges{Whirl.Fields.Dual,8,6} data
-u (in grid orientation):
+Edges{Dual,8,6} data
+u (in grid orientation)
+6×7 Array{Float64,2}:
  0.0  0.0  0.0   0.0  0.0  0.0  0.0
  0.0  0.0  0.0   0.0  0.0  0.0  0.0
  0.0  0.0  0.0   0.0  0.0  0.0  0.0
  0.0  0.0  0.0   0.0  0.0  0.0  0.0
  0.0  0.0  0.06  0.0  0.0  0.0  0.0
  0.0  0.0  0.0   0.0  0.0  0.0  0.0
-v (in grid orientation):
+v (in grid orientation)
+5×8 Array{Float64,2}:
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
