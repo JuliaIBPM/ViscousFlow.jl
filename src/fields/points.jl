@@ -142,8 +142,8 @@ Base.size(A::VectorData) = size(A.u).+size(A.v)
 #end
 
 show(io::IO, pts::ScalarData{N}) where {N} = show(io,pts.data)
-show(io::IO, ::MIME"text/plain", pts::ScalarData{N}) where {N} =
-  show(io,pts.data)
+show(io::IO, m::MIME"text/plain", pts::ScalarData{N}) where {N} =
+  show(io,m,pts.data)
 summary(io::IO, pts::ScalarData{N}) where {N} = print(io,"$N points of scalar-valued data")
 
 
@@ -157,8 +157,8 @@ summary(io::IO, pts::ScalarData{N}) where {N} = print(io,"$N points of scalar-va
 #end
 
 show(io::IO, pts::VectorData{N}) where {N} = show(io,hcat(pts.u,pts.v))
-show(io::IO, ::MIME"text/plain", pts::VectorData{N}) where {N} =
-  show(io,hcat(pts.u,pts.v))
+show(io::IO, m::MIME"text/plain", pts::VectorData{N}) where {N} =
+  show(io,m,hcat(pts.u,pts.v))
 summary(io::IO, pts::VectorData{N}) where {N} = print(io,"$N points of vector-valued data")
 
 
