@@ -1,17 +1,39 @@
 ## Documentation: http://docs.travis-ci.com/user/languages/julia/
-language: julia
-os:
-  - linux
-#  - osx
-julia:
-  - 0.6
-  - 0.7
-  - 1.0
-#  - nightly
-notifications:
-  email: false
-git:
-  depth: 99999999
+jobs:
+  include:
+    - stage: "Testing"
+      language: julia
+      os:
+        - linux
+      #  - osx
+      julia:
+        - 0.6
+        - 0.7
+        - 1.0
+      #  - nightly
+      notifications:
+        email: false
+      git:
+        depth: 99999999
+      after_success:
+        # push coverage results to Coveralls
+        - julia -e 'cd(Pkg.dir("Whirl")); Pkg.add("Coverage"); using Coverage;
+                    Coveralls.submit(Coveralls.process_folder())'
+        # push coverage results to Codecov
+        - julia -e 'cd(Pkg.dir("Whirl")); Pkg.add("Coverage"); using Coverage;
+                    Codecov.submit(Codecov.process_folder())'
+    - stage: "Documentation"
+      language: julia
+      julia: 1.0
+      os: linux
+      script:
+        - julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()));
+                                               Pkg.instantiate()'
+        - julia --project=docs/ -e 'Pkg.add("Conda"); using Conda;
+                                    Conda.add("pyqt"); Pkg.add("PyPlot");
+                                    Pkg.add("PyCall")'
+        - julia --project=docs/ docs/make.jl
+      after_success: skip
 
 ## uncomment the following lines to allow failures on nightly julia
 ## (tests will run but not make your overall status red)
@@ -30,8 +52,3 @@ git:
 ## uncomment the following lines to override the default test script
 #script:
 #  - julia -e 'Pkg.clone(pwd()); Pkg.build("Whirl"); Pkg.test("Whirl"; coverage=true)'
-after_success:
-  # push coverage results to Coveralls
-  - julia -e 'cd(Pkg.dir("Whirl")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
-  # push coverage results to Codecov
-  - julia -e 'cd(Pkg.dir("Whirl")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
