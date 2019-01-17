@@ -4,9 +4,9 @@ os:
   - linux
 #  - osx
 julia:
-  - 0.6
-  - 0.7
-  - 1.0
+  #- 0.6
+  #- 0.7
+  #- 1.0
   #  - nightly
 notifications:
   email: false
@@ -28,9 +28,9 @@ jobs:
       script:
         - julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()));
                                                Pkg.instantiate()'
-        - julia --project=docs/ -e 'using Pkg; Pkg.add("Conda"); using Conda;
-                                    Conda.add("pyqt"); Pkg.add("PyPlot");
-                                    Pkg.add("PyCall")'
+        #- julia --project=docs/ -e 'using Pkg; Pkg.add("Conda"); using Conda;
+        #                            Conda.add("pyqt"); Pkg.add("PyPlot");
+        #                            Pkg.add("PyCall")'
         - julia --project=docs/ docs/make.jl
       after_success: skip
 
