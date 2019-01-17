@@ -114,9 +114,10 @@ step. We place this integrator inside of a loop and store the results. (Since `u
 ```@repl march
 uhist = Float64[]; # for storing the solution
 T = 0:Δt:10;
-for t in T
+t = 0.0;
+for ti in T
   push!(uhist,u[1]) # storage
-  t, u = ifrk(t,u) # advancement by one step by the integrator
+  global t, u = ifrk(t,u) # advancement by one step by the integrator
 end
 ```  
 
@@ -161,18 +162,19 @@ u₀ = Nodes(Dual,(nx,ny)); # field initial condition
 Now set up a ring of points on the circle at center $(1,1)$.
 
 ```@repl march
-n = 128; θ = linspace(0,2π,n+1);
-R = 0.5; xb = 1.0 + R*cos.(θ); yb = 1.0 + R*sin.(θ);
+n = 128; θ = range(0,stop=2π,length=n+1);
+R = 0.5; xb = 1.0 .+ R*cos.(θ); yb = 1.0 .+ R*sin.(θ);
 X = VectorData(xb[1:n],yb[1:n]);
 f = ScalarData(X); # to be used as the Lagrange multiplier
 ```
 
 From this, construct the regularization and interpolation operators in their usual
-symmetric form:
+symmetric form, and then set up a routine that will provide these operators inside the integrator:
 
 ```@repl march
 reg = Regularize(X,Δx;issymmetric=true)
 Hmat, Emat = RegularizationMatrix(reg,f,u₀);
+plan_constraints(u::Nodes{Dual,nx,ny},t::Float64) = Hmat, Emat
 ```
 
 Now set up the right-hand side operators. Both must take the standard form, with
@@ -201,19 +203,19 @@ on data of type `f` and `u`, respectively (which, in this case, are matrices `Hm
 and a tuple of the right-hand side functions.
 
 ```@repl march
-ifherk = IFHERK(u,f,Δt,plan_intfact,(Hmat,Emat),(r₁,r₂),rk=TimeMarching.Euler)
+ifherk = IFHERK(u,f,Δt,plan_intfact,plan_constraints,(r₁,r₂),rk=TimeMarching.Euler)
 ```
 
 Here we've set the method to forward Euler. The resulting integrator accepts
 as arguments the current time `t` and the current state `u`, and returns the
 time, state, and Lagrange multiplier data at the end of the time step.
 
-Now, let's advance the system. We'll time it, too, to see how long it takes to advance 20 steps.
+Now, let's advance the system. We'll also time it.
 
 ```@repl march
 @time for i = 1:20
-  t, u, f = ifherk(t,u)
-end  
+  global t, u, f = ifherk(t,u)
+end
 ```
 
 Now let's plot it

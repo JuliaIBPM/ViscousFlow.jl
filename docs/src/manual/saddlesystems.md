@@ -86,8 +86,8 @@ pyplot()
 ```
 
 ```@repl saddle
-n = 128; θ = linspace(0,2π,n+1);
-xb = 1.0 + 0.5*cos.(θ[1:n]); yb = 1.0 + 0.5*sin.(θ[1:n]);
+n = 128; θ = range(0,stop=2π,length=n+1);
+xb = 1.0 .+ 0.5*cos.(θ[1:n]); yb = 1.0 .+ 0.5*sin.(θ[1:n]);
 X = VectorData(xb,yb);
 f = ScalarData(X);
 ```
@@ -138,7 +138,7 @@ Let's solve the system. We need to supply the right-hand side.
 ```@repl saddle
 w = Nodes(Dual,(nx,ny));
 ψb = ScalarData(X);
-ψb .= -(xb-1);
+ψb .= -(xb.-1);
 ```
 The right-hand side of the Laplace equation is zero. The right-hand side of the
 constraint is the specified streamfunction on the body. Note that we have

@@ -3,7 +3,8 @@
 ```@meta
 DocTestSetup = quote
 using Whirl
-srand(1)
+using Random
+Random.seed!(1)
 end
 ```
 
@@ -231,14 +232,14 @@ of ODEs.
 ## Other field operations
 
 Other field operations shift the data, by local averaging, from one data type to
-another. These operations are all called `shift!`, and they require that the
+another. These operations are all called `cellshift!`, and they require that the
 target data be preallocated. For example, to shift dual node data to the dual edges,
 
 ```@repl create
 w = Nodes(Dual,(5,4));
 w .= reshape(1:20,5,4)
 Ww = Edges(Dual,w);
-shift!(Ww,w)
+cellshift!(Ww,w)
 ```
 Note that the edges in the ghost cells are 0; these edges are not assigned any
 values in the shift operation.
@@ -246,7 +247,7 @@ values in the shift operation.
 We can then shift this to primal edges:
 ```@repl create
 q = Edges(Primal,w);
-shift!(q,Ww)
+cellshift!(q,Ww)
 ```
 
 We can also compute the Hadamard (i.e. element by element) product of any data
@@ -344,9 +345,9 @@ pyplot()
 
 ```@repl regularize
 n = 100;
-θ = linspace(0,2π,n+1);
-x = 0.5 + 0.25*cos.(θ[1:n]);
-y = 0.5 + 0.25*sin.(θ[1:n]);
+θ = range(0,stop=2π,length=n+1);
+x = 0.5 .+ 0.25*cos.(θ[1:n]);
+y = 0.5 .+ 0.25*sin.(θ[1:n]);
 ds = 2π/n*0.25;
 X = VectorData(x,y);
 ```
@@ -444,10 +445,10 @@ savefig("interpf.svg"); nothing # hide
 
 Note that interpolation is *not* the inverse of regularization; we don't recover the original data
 when we regularize and then interpolate. However, there is generally a way to scale the quantities on the immersed points and on the grid so that $H = E^T$. If we want to force these
-operations to be transposes of each other, we can supply the `issymmetric` flag:
+operations to be transposes of each other, we can supply the `issymmetric=true` flag. But here, we will exclude it so that it defaults to the asymmetric form.
 
 ```@repl regularize
-H = Regularize(X,dx,issymmetric=true)
+H = Regularize(X,dx)
 ```
 
 This flag will override any supplied weights.
