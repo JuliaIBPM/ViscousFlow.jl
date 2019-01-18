@@ -21,7 +21,6 @@ end
 
 
 ```@setup create
-using Whirl
 using Plots
 ```
 In `whirl`, field data, such as velocity, vorticity and pressure, are stored on
@@ -338,7 +337,6 @@ with each discrete point. These arguments are used to weight the sum.
  edge field on the grid in which these points are immersed.
 
 ```@setup regularize
-using Whirl
 using Plots
 pyplot()
 ```
