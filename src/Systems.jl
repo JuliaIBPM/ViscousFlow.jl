@@ -4,8 +4,8 @@ using ..Fields
 using ..TimeMarching
 using ..RigidBodyMotions
 using ..Bodies
-#import Whirl: r₁
-#import Whirl: plan_intfact
+#import ViscousFlow: r₁
+#import ViscousFlow: plan_intfact
 
 using Compat
 using Compat.LinearAlgebra

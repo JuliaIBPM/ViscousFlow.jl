@@ -20,7 +20,7 @@ This spacing argument defaults to 1.0.
 
 ```jldoctest
 julia> ddf = DDF(ddftype=Fields.Roma)
-Discrete delta function operator of type Whirl.Fields.Roma, with spacing 1.0
+Discrete delta function operator of type ViscousFlow.Fields.Roma, with spacing 1.0
 
 julia> ddf(1)
 0.16666666666666666
