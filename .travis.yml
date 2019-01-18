@@ -35,6 +35,12 @@ jobs:
         - julia --project=docs/ docs/make.jl
       after_success: skip
 
+branches:
+  only:
+    - gh-pages
+    - master
+
+
 ## uncomment the following lines to allow failures on nightly julia
 ## (tests will run but not make your overall status red)
 #matrix:
