@@ -4,7 +4,7 @@
 DocTestSetup = quote
 using Whirl
 using Random
-Random.seed!(1)
+Random.seed!(1.0)
 end
 ```
 
