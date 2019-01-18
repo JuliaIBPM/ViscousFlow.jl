@@ -31,7 +31,7 @@ julia> Pkg.add("https://github.com/jdeldre/ViscousFlow.jl")
 in the Julia REPL.
 Since this package is still under heavy development, you should run
 ```julia
-julia> Pkg.test("Whirl") # might take some time
+julia> Pkg.test("ViscousFlow") # might take some time
 ```
 to make sure things are working as intended and
 ```julia
