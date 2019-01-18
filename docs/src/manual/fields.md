@@ -2,7 +2,7 @@
 
 ```@meta
 DocTestSetup = quote
-  using Whirl
+  using ViscousFlow
   using Random
   Random.seed!(1)
 end
@@ -21,7 +21,7 @@ end
 
 
 ```@setup create
-using Whirl
+using ViscousFlow
 using Plots
 ```
 In `whirl`, field data, such as velocity, vorticity and pressure, are stored on
@@ -117,7 +117,7 @@ D*(C*w)
 
 ## The Laplacian and its inverse
 
-`Whirl` also makes heavy use of the discrete Laplacian operator, $L$. This mimics the
+`ViscousFlow` also makes heavy use of the discrete Laplacian operator, $L$. This mimics the
 continuous operator, $\nabla^2$, and acts upon data of any type. Let's apply
 this to the original data:
 ```@repl create
@@ -338,7 +338,7 @@ with each discrete point. These arguments are used to weight the sum.
  edge field on the grid in which these points are immersed.
 
 ```@setup regularize
-using Whirl
+using ViscousFlow
 using Plots
 pyplot()
 ```

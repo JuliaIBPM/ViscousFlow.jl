@@ -4,9 +4,9 @@ using Compat
 #using Test
 ##using TestSetExtensions
 
-using Whirl
+using ViscousFlow
 
-#@test isempty(detect_ambiguities(Whirl))
+#@test isempty(detect_ambiguities(ViscousFlow))
 
 include("fields.jl")
 include("points.jl")

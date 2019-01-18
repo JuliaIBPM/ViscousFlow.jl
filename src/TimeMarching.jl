@@ -1,6 +1,6 @@
 module TimeMarching
 
-import Whirl:@get
+import ViscousFlow:@get
 
 using Compat
 using Compat: hasmethod

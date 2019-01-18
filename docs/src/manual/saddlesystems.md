@@ -2,7 +2,7 @@
 
 ```@meta
 DocTestSetup = quote
-using Whirl
+using ViscousFlow
 end
 ```
 
@@ -19,7 +19,7 @@ end
 
 
 ```@setup create
-using Whirl
+using ViscousFlow
 using Plots
 ```
 Saddle systems comprise an important part of solving mechanics problems with
@@ -80,7 +80,7 @@ First, let us set up the body, centered at $(1,1)$ and of radius $1/2$. We will
 also initialize a data structure for the force:
 
 ```@setup saddle
-using Whirl
+using ViscousFlow
 using Plots
 pyplot()
 ```

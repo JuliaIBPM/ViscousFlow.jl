@@ -2,7 +2,7 @@
 
 ```@meta
 DocTestSetup = quote
-using Whirl
+using ViscousFlow
 end
 ```
 
@@ -19,7 +19,7 @@ end
 
 
 ```@setup create
-using Whirl
+using ViscousFlow
 using Plots
 ```
 `whirl` is equipped with a few classes of time marching schemes for advancing time-dependent
@@ -54,7 +54,7 @@ integrating factor for this system is $e^{-\alpha t}$.
 For demonstration, we will set $\alpha = 1$, $\omega = 4$, and $u_0 = 1$.
 
 ```@setup march
-using Whirl
+using ViscousFlow
 using Plots
 pyplot()
 ```
@@ -73,7 +73,7 @@ of the equations. For the integrating factor, we extend the definition of [`plan
 from [Fields](@ref).
 
 ```@repl march
-Whirl.plan_intfact(t::Float64,u::Vector{Float64}) = exp(-α*t);
+ViscousFlow.plan_intfact(t::Float64,u::Vector{Float64}) = exp(-α*t);
 ```
 
 Note that we have defined this extended form of `plan_intfact` to adhere to the standard form,

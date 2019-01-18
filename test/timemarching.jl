@@ -1,5 +1,5 @@
-import Whirl: Fields, TimeMarching
-import Whirl.TimeMarching:RK31
+import ViscousFlow: Fields, TimeMarching
+import ViscousFlow.TimeMarching:RK31
 
 using Compat
 using Compat.LinearAlgebra

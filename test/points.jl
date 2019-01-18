@@ -1,4 +1,4 @@
-import Whirl: Fields
+import ViscousFlow: Fields
 using Compat
 using Compat.LinearAlgebra
 

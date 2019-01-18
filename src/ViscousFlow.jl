@@ -1,8 +1,8 @@
 """
-The `Whirl` module is here
+The `ViscousFlow` module is here
 
 """
-module Whirl
+module ViscousFlow
 
 using Reexport
 

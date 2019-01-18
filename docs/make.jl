@@ -1,7 +1,7 @@
-using Documenter, Whirl
+using Documenter, ViscousFlow
 
 makedocs(
-    sitename = "Whirl.jl",
+    sitename = "ViscousFlow.jl",
     doctest = true,
     clean = true,
     pages = [
@@ -23,7 +23,7 @@ makedocs(
 
 #if "DOCUMENTER_KEY" in keys(ENV)
 deploydocs(
-     repo = "github.com/jdeldre/Whirl.jl.git",
+     repo = "github.com/jdeldre/ViscousFlow.jl.git",
      target = "build",
      deps = nothing,
      make = nothing

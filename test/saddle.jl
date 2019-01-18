@@ -1,4 +1,4 @@
-import Whirl: Fields, SaddlePointSystems
+import ViscousFlow: Fields, SaddlePointSystems
 
 using Compat
 using Compat.LinearAlgebra

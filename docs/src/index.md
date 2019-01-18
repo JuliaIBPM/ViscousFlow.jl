@@ -1,4 +1,4 @@
-# Whirl
+# ViscousFlow
 
 *a framework for simulating viscous incompressible flows*
 
@@ -21,10 +21,12 @@ on the work of Wang and Eldredge (ref).
 
 ## Installation
 
-This package requires Julia `0.6` and above.
+This package works on Julia `0.6`, `0.7` and `1.0`.
 To install, simply run
 ```julia
-julia> Pkg.clone("https://github.com/jdeldre/Whirl.jl.git","Whirl")
+julia> using Pkg
+
+julia> Pkg.add("https://github.com/jdeldre/ViscousFlow.jl")
 ```
 in the Julia REPL.
 Since this package is still under heavy development, you should run

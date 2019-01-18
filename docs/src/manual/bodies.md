@@ -2,14 +2,14 @@
 
 ```@meta
 DocTestSetup = quote
-using Whirl
+using ViscousFlow
 using Random
 Random.seed!(1)
 end
 ```
 
 ```@setup create
-using Whirl
+using ViscousFlow
 using Plots
 ```
 

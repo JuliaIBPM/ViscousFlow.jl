@@ -1,4 +1,4 @@
-import Whirl: Fields
+import ViscousFlow: Fields
 using FFTW
 
 struct Not{T}

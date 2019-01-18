@@ -1,4 +1,4 @@
-import Whirl: Systems
+import ViscousFlow: Systems
 
 using Compat
 using Compat.LinearAlgebra
