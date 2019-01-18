@@ -23,7 +23,7 @@ jobs:
   include:
     - stage: "Documentation"
       language: julia
-      julia: 1.0
+      julia: 0.7
       os: linux
       script:
         - julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()));
