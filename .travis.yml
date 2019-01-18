@@ -29,7 +29,7 @@ jobs:
         - julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()));
                                                Pkg.instantiate()'
         - julia --project=docs/ -e 'ENV["PYTHON"]=""; using Pkg; Pkg.add("Conda");
-                                    using Conda;
+                                    using Conda; Conda.add("matplotlib");
                                     Conda.add("pyqt"); Pkg.add("PyPlot");
                                     Pkg.add("PyCall"); Pkg.build("PyCall")'
         - julia --project=docs/ docs/make.jl
