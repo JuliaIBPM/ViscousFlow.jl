@@ -21,15 +21,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Installation",
     "category": "section",
-    "text": "This package works on Julia 0.6, 0.7 and 1.0. To install, simply runjulia> using Pkg\n\njulia> Pkg.add(\"https://github.com/jdeldre/ViscousFlow.jl\")in the Julia REPL. Since this package is still under heavy development, you should runjulia> Pkg.test(\"ViscousFlow\") # might take some timeto make sure things are working as intended andjulia> Pkg.update()to get the most recent version of the library and its dependencies.The plots in this documentation are generated using Plots.jl. You might want to install that too to follow the examples."
-},
-
-{
-    "location": "#Basic-Usage-1",
-    "page": "Home",
-    "title": "Basic Usage",
-    "category": "section",
-    "text": "Do something here."
+    "text": "This package works on Julia 0.6, 0.7 and 1.0. To install in julia 0.6, typejulia> Pkg.clone(\"https://github.com/jdeldre/ViscousFlow.jl\",\"ViscousFlow\")in the Julia REPL.In julia 0.7 or 1.0, enter the package manager by typing ] and then type, e.g.,(v1.0) pkg> add https://github.com/jdeldre/ViscousFlow.jlThen, in any version, typeusing ViscousFlowThe plots in this documentation are generated using Plots.jl. You might want to install that too to follow the examples."
 },
 
 {
