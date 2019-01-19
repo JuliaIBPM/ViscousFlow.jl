@@ -22,26 +22,22 @@ on the work of Wang and Eldredge (ref).
 ## Installation
 
 This package works on Julia `0.6`, `0.7` and `1.0`.
-To install, simply run
+To install in julia `0.6`, type
 ```julia
-julia> using Pkg
-
-julia> Pkg.add("https://github.com/jdeldre/ViscousFlow.jl")
+julia> Pkg.clone("https://github.com/jdeldre/ViscousFlow.jl","ViscousFlow")
 ```
 in the Julia REPL.
-Since this package is still under heavy development, you should run
+
+In julia `0.7` or `1.0`, enter the package manager by typing `]` and then type,
+e.g.,
 ```julia
-julia> Pkg.test("ViscousFlow") # might take some time
+(v1.0) pkg> add https://github.com/jdeldre/ViscousFlow.jl
 ```
-to make sure things are working as intended and
+
+Then, in any version, type
 ```julia
-julia> Pkg.update()
+using ViscousFlow
 ```
-to get the most recent version of the library and its dependencies.
 
 The plots in this documentation are generated using [Plots.jl](http://docs.juliaplots.org/latest/).
 You might want to install that too to follow the examples.
-
-## Basic Usage
-
-Do something here.
