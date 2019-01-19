@@ -40,7 +40,7 @@ We are primarily interested in cases when the operator $A$ is symmetric and posi
 which is fairly typical. It is also fairly common for $B_1 = B_2$, so that the
 whole system is symmetric.
 
-`whirl` allows us to solve such systems for $u$ and $f$ in a fairly easy way.
+`ViscousFlow` allows us to solve such systems for $u$ and $f$ in a fairly easy way.
 We need only to provide rules for how to evaluate the actions of the various
 operators in the system. Let us use an example to show how this can be done.
 

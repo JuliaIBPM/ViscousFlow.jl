@@ -22,18 +22,18 @@ end
 using ViscousFlow
 using Plots
 ```
-`whirl` is equipped with a few classes of time marching schemes for advancing time-dependent
+`ViscousFlow` is equipped with a few classes of time marching schemes for advancing time-dependent
 equations.
 
 ## Integrating factor systems
 
-Integrating factor systems that we encounter in `whirl` are of the form
+Integrating factor systems that we encounter in `ViscousFlow` are of the form
 
 $$\ddt u = A u + r_1(u,t), \quad u(0) = u_0$$
 
 The operator $A$ may be a matrix or a scalar, but is generally independent of time. (The
   method of integrating factors can deal with time-dependent $A$, but we don't encounter
-  such systems in the `whirl` context so we won't discuss them.) For this purpose, we use the `IFRK` class of solver, which stands for Integrating Factor Runge-Kutta. This method solves
+  such systems in the `ViscousFlow` context so we won't discuss them.) For this purpose, we use the `IFRK` class of solver, which stands for Integrating Factor Runge-Kutta. This method solves
   the part associated with $A$ exactly, via the integrating factor, and advances a modified
   equation by Runge-Kutta method to account for the remaining part $f$.
 
@@ -79,7 +79,7 @@ ViscousFlow.plan_intfact(t::Float64,u::Vector{Float64}) = exp(-α*t);
 Note that we have defined this extended form of `plan_intfact` to adhere to the standard form,
 accepting arguments for time `t` and the state vector `u`, even though the state vector isn't strictly needed here. The state 'vector' in this problem is actually only a scalar, of course. But
 the time marching method does not accept scalar-type states currently, so we will
-make `u` a 1-element vector to use the `whirl` tools.
+make `u` a 1-element vector to use the `ViscousFlow` tools.
 
 Now let us define the right-hand side function. This function should also adhere to the standard
 form, which requires the state vector `u` and the time `t` as arguments.
@@ -136,7 +136,7 @@ As we can see, the results are nearly indistinguishable.
 
 ## Constrained integrating factor systems
 
-Constrained integrating factor systems that we encounter in `whirl` are of the form
+Constrained integrating factor systems that we encounter in `ViscousFlow` are of the form
 
 $$\ddt u = A u - B_1^T f + r_1(u,t), \quad B_2 u = r_2(u,t), \quad u(0) = u_0$$
 

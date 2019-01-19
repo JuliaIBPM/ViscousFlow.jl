@@ -24,7 +24,7 @@ end
 using ViscousFlow
 using Plots
 ```
-In `whirl`, field data, such as velocity, vorticity and pressure, are stored on
+In `ViscousFlow`, field data, such as velocity, vorticity and pressure, are stored on
 a staggered uniform grid. Such a grid is divided into *cells*, with *edges* (which,
 on a two-dimensional grid, are the same as *faces*) and *nodes* (cell centers).
 Nodes hold scalar-valued data. Edges, on the other hand, hold the components of
@@ -42,7 +42,7 @@ associated with where the data are held on the grid:
 - dual edges,
 - primal nodes, and
 - primal edges.
-In `whirl`, these are each distinct data types. Furthermore, the relationships between these types are
+In `ViscousFlow`, these are each distinct data types. Furthermore, the relationships between these types are
 defined by an underlying grid shared by all. By convention, this grid is defined by
 the number of dual cells `NX` and `NY` in each direction; we will often refer to it
 as the *dual grid*. For example, `Nodes{Dual,NX,NY}` is the type for dual node data
@@ -131,12 +131,12 @@ L = plan_laplacian(size(w))
 L*w
 ```
 
-An important part of `whirl` is the *inverse* of this operator. That is, we need
+An important part of `ViscousFlow` is the *inverse* of this operator. That is, we need
 the ability to solve the discrete Poisson system
 
 $$Ls = w$$
 
-for $s$, for given data $w$. We achieve this in `whirl` with the *lattice Green's
+for $s$, for given data $w$. We achieve this in `ViscousFlow` with the *lattice Green's
 function*. To outfit the operator with its inverse, we simply set the optional
 flag:
 ```@repl create
@@ -271,7 +271,7 @@ the indices $i$ and $j$ of any grid point as
 $$x(i) = (i - \Delta i - i_0)\Delta x, \quad y(j) = (j - \Delta j - j_0)\Delta x$$
 
 The scaling between these spaces is controlled by $\Delta x$, which represents the
-uniform size of each grid cell; note that grid cells are presumed to be square in `whirl`.
+uniform size of each grid cell; note that grid cells are presumed to be square in `ViscousFlow`.
 The indices $I_0 = (i_0,j_0)$ represent the location of the origin *in the index space for primal nodes*.
 Why primal nodes? Since the underlying grid is composed of dual cells, then primal nodes
 sit at the corners of the domain, so it is the most convenient for anchoring the grid to a specific
@@ -298,7 +298,7 @@ point is *immersed* in the grid. The process of transferring from the point to t
  grid is called *regularization*, since we
 are effectively smearing this data over some extended neighborhood; the
 opposite operation, transferring grid field data to an arbitrary point, is
- *interpolation*. In `whirl`, both operations are carried out with the *discrete
+ *interpolation*. In `ViscousFlow`, both operations are carried out with the *discrete
  delta function* (DDF), which is a discrete analog of the Dirac delta function. The
  DDF generally has compact support, so that
  it only interacts with a small number of grid points in the vicinity of a
@@ -428,7 +428,7 @@ savefig("regw.svg"); nothing # hide
 ![](regw.svg)
 
 For a given regularization operator, $H$, there is a companion interpolation operator,
-$E$. In `whirl`, this interpolation is also carried out
+$E$. In `ViscousFlow`, this interpolation is also carried out
 with the same constructed operator, but with the arguments reversed: the grid field
 data are the source and the immersed points are the target. Note that interpolation
 is always a volumetric operation, so the weights assigned during the construction
