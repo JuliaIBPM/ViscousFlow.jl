@@ -77,6 +77,8 @@ using Compat.LinearAlgebra
 
     @test Systems.origin(sys) == (51,51)
 
+    wf = Systems.PointForce((1.5,0.0),10.0,1.5,1.0,sys)
+    @test maximum(wf(1.5))==2.5
 
 
   end
