@@ -35,7 +35,7 @@ The operator $A$ may be a matrix or a scalar, but is generally independent of ti
   method of integrating factors can deal with time-dependent $A$, but we don't encounter
   such systems in the `ViscousFlow` context so we won't discuss them.) For this purpose, we use the `IFRK` class of solver, which stands for Integrating Factor Runge-Kutta. This method solves
   the part associated with $A$ exactly, via the integrating factor, and advances a modified
-  equation by Runge-Kutta method to account for the remaining part $f$.
+  equation by Runge-Kutta method to account for the remaining part $r_1$.
 
   We discussed the construction
   of the integrating factor in the context of fields in [Fields](@ref). But first, let's

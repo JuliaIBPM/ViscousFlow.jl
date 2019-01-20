@@ -264,7 +264,8 @@ function plan_intfact end
 """
     plan_intfact!(a::Real,dims::Tuple,[fftw_flags=FFTW.ESTIMATE])
 
-Same as [`plan_intfact`](@ref), but operates in-place on data.
+Same as [`plan_intfact`](@ref), but the resulting operator performs an in-place
+operation on data.
 """
 function plan_intfact! end
 

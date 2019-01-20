@@ -1,3 +1,5 @@
+import Base: size
+
 mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
     # Physical Parameters
     "Reynolds number"
@@ -8,6 +10,8 @@ mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
     # Discretization
     "Grid spacing"
     Δx::Float64
+    "Indices of the primal node corresponding to the physical origin"
+    I0::Tuple{Int,Int}
     "Time step (used to determine integrating factor diffusion rate)"
     Δt::Float64
     "Runge-Kutta method"
@@ -40,12 +44,25 @@ mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
 
 end
 
-function NavierStokes(dims::Tuple{Int, Int}, Re, Δx, Δt;
+function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Real}, Δt;
                        U∞ = (0.0, 0.0), X̃ = VectorData{0}(),
                        isstore = false,
                        isstatic = true,
                        rk::TimeMarching.RKParams=TimeMarching.RK31)
-    NX, NY = dims
+    #NX, NY = dims
+
+    #= set grid spacing and the grid position of the origin
+    In case the physical limits are not consistent with an integer number of dual cells, based on
+    the given Δx, we adjust them outward a bit in all directions. We also seek to place the
+    origin on the corner of a cell.
+    =#
+    Lx = xlimits[2]-xlimits[1]
+    Ly = ylimits[2]-ylimits[1]
+    NxL, NxR = floor(Int,xlimits[1]/Δx), ceil(Int,xlimits[2]/Δx)
+    NyL, NyR = floor(Int,ylimits[1]/Δx), ceil(Int,ylimits[2]/Δx)
+    NX = NxR-NxL+2 # total number of cells include ghost cells
+    NY = NyR-NyL+2
+    I0 = (1-NxL,1-NyL)
 
     α = Δt/(Re*Δx^2)
 
@@ -53,13 +70,13 @@ function NavierStokes(dims::Tuple{Int, Int}, Re, Δx, Δt;
 
     Vb = VectorData(X̃)
     Fq = Edges{Primal,NX,NY}()
-    Ww   = Edges{Dual, NX, NY}()
-    Qq  = Edges{Dual, NX, NY}()
+    Ww = Edges{Dual, NX, NY}()
+    Qq = Edges{Dual, NX, NY}()
     N = length(X̃)÷2
 
     if length(N) > 0 && isstore && isstatic
       # in this case, X̃ is assumed to be in inertial coordinates
-      regop = Regularize(X̃,Δx;issymmetric=true)
+      regop = Regularize(X̃,Δx;I0=I0,issymmetric=true)
       Hmat, Emat = RegularizationMatrix(regop,VectorData{N}(),Edges{Primal,NX,NY}())
     else
       #Hmat = Nullable{RegularizationMatrix}()
@@ -71,12 +88,38 @@ function NavierStokes(dims::Tuple{Int, Int}, Re, Δx, Δt;
 
     # should be able to set up time marching operator here...
 
-    NavierStokes{NX, NY, N, isstatic}(Re, U∞, Δx, Δt, rk, L, X̃, Hmat, Emat, Vb, Fq, Ww, Qq, isstore)
+    NavierStokes{NX, NY, N, isstatic}(Re, U∞, Δx, I0, Δt, rk, L, X̃, Hmat, Emat, Vb, Fq, Ww, Qq, isstore)
 end
 
 function Base.show(io::IO, sys::NavierStokes{NX,NY,N,isstatic}) where {NX,NY,N,isstatic}
     print(io, "Navier-Stokes system on a grid of size $NX x $NY")
 end
+
+# some convenience functions
+"""
+    size(sys::NavierStokes,d::Int) -> Int
+
+Return the number of indices of the grid used by `sys` along dimension `d`.
+"""
+size(sys::NavierStokes{NX,NY},d::Int) where {NX,NY} = d == 1 ? NX : NY
+
+"""
+    size(sys::NavierStokes) -> Tuple{Int,Int}
+
+Return a tuple of the number of indices of the grid used by `sys`
+"""
+size(sys::NavierStokes{NX,NY}) where {NX,NY} = (size(sys,1),size(sys,2))
+
+"""
+    origin(sys::NavierStokes) -> Tuple{Int,Int}
+
+Return a tuple of the indices of the primal node that corresponds to the
+physical origin of the coordinate system used by `sys`. Note that these
+indices need not lie inside the range of indices occupied by the grid.
+For example, if the range of physical coordinates occupied by the grid
+is (1.0,3.0) x (2.0,4.0), then the origin is not inside the grid.
+"""
+origin(sys::Systems.NavierStokes) = sys.I0
 
 # Basic operators for any Navier-Stokes system
 
@@ -155,5 +198,7 @@ function TimeMarching.plan_constraints(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{
 
   return f -> TimeMarching.B₁ᵀ(f,regop,sys),w -> TimeMarching.B₂(w,regop,sys)
 end
+
+#include("navierstokes/systemutils.jl")
 
 include("navierstokes/movingbody.jl")

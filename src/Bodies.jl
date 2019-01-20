@@ -131,7 +131,7 @@ function normal(body::Body{N}) where {N}
 end
 
 """
-    Ellipse(a,b,n)
+    Ellipse(a,b,n) <: Body
 
 Construct an elliptical body with semi-major axis `a` and semi-minor axis `b`,
 with `n` points distributed on the body perimeter.
@@ -173,7 +173,7 @@ function Base.show(io::IO, body::Ellipse{N}) where {N}
 end
 
 """
-    Plate(length,thick,n,[λ=1.0])
+    Plate(length,thick,n,[λ=1.0]) <: Body
 
 Construct a flat plate with length `length` and thickness `thick`,
 with `n` points distributed on the body perimeter.
@@ -261,9 +261,9 @@ function Base.show(io::IO, body::Plate{N}) where {N}
 end
 
 """
-    NACA4(cam,pos,thick[;np=20][,Zc=0.0+0.0im][,len=1.0]) -> Vector{ComplexF64}
+    NACA4(cam,pos,thick[;np=20][,Xc=(0.0,0.0)][,len=1.0]) <: Body{N}
 
-Generates the vertices of a NACA 4-digit airfoil of chord length 1. The
+Generates points in the shape of a NACA 4-digit airfoil of chord length 1. The
 relative camber is specified by `cam`, the position of
 maximum camber (as fraction of chord) by `pos`, and the relative thickness
 by `thick`.
@@ -297,7 +297,7 @@ mutable struct NACA4{N} <: Body{N}
 end
 
 
-function NACA4(cam::Number,pos::Number,t::Number;np=20,Zc=0.0+0.0im,len=1.0)
+function NACA4(cam::Number,pos::Number,t::Number;np=20,Xc=(0.0,0.0),len=1.0)
 
 # Here, cam is the fractional camber, pos is the fractional chordwise position
 # of max camber, and t is the fractional thickness.
@@ -385,7 +385,7 @@ x̃ = real.(w)
 ỹ = imag.(w)
 
 
-NACA4{length(x̃)}(len,cam,pos,t,(0.0,0.0),0.0,x̃,ỹ,x̃,ỹ)
+NACA4{length(x̃)}(len,cam,pos,t,Xc,0.0,x̃,ỹ,x̃,ỹ)
 
 end
 

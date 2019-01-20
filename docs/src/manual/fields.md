@@ -218,9 +218,7 @@ savefig("Ew1.svg"); nothing # hide
 
 Note that $E(0) = I$, where $I$ is the identity. Also, the integrating factor has the useful property that $E(t+\tau) = E(t)E(\tau)$. From these properties, it
 follows that $E^{-1}(t) = E(-t)$. Let's suppose we wish to advance $u$ from time
-$t = \tau-h$ to time $t = \tau$. Then we can define an auxiliary quantity,
-$v(t;\tau) = E(\tau-t)u(t)$, and this new quantity satisfies the modified set
-of ODEs
+$t = \tau-h$ to time $t = \tau$. For any $t$ in this interval, we can define an auxiliary quantity, $v(t;\tau) = E(\tau-t)u(t)$, which represents the instantaneous value of $u$, but diffused to the end of the time interval. This new quantity satisfies the modified set of ODEs
 
 $$\ddt v = E(\tau-t) f\left[ E(t-\tau) v(t;\tau),t\right],\quad v(\tau-h;\tau) = E(h)u(\tau-h)$$    
 
@@ -445,13 +443,12 @@ savefig("interpf.svg"); nothing # hide
 
 Note that interpolation is *not* the inverse of regularization; we don't recover the original data
 when we regularize and then interpolate. However, there is generally a way to scale the quantities on the immersed points and on the grid so that $H = E^T$. If we want to force these
-operations to be transposes of each other, we can supply the `issymmetric=true` flag. But here, we will exclude it so that it defaults to the asymmetric form.
+operations to be transposes of each other, we can supply the `issymmetric=true` flag. This flag will override any supplied weights. But here, we will exclude it so that it defaults to the asymmetric form.
 
 ```@repl regularize
 H = Regularize(X,dx)
 ```
 
-This flag will override any supplied weights.
 
 If we expect to carry out the regularization and interpolation a lot, then it
 is often sensible to construct matrix versions of these operators. This
@@ -478,7 +475,7 @@ Alternatively, if the regularization and interpolation are symmetric, then we
 can get them both when we call for the regularization matrix:
 ```@repl regularize
 H = Regularize(X,dx,issymmetric=true)
-Hmat, Emat = RegularizationMatrix(H,g,w)
+Hmat, Emat = RegularizationMatrix(H,g,w);
 ```
 It might seem a bit funny to store them separately if they are just transposes
 of each other, but it is essential for the method dispatch that they are
