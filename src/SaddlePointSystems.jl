@@ -4,7 +4,7 @@ using Compat
 using Compat.LinearAlgebra
 using LinearMaps
 using IterativeSolvers
-using ..Fields
+#using ..Fields
 
 import Base: *, \
 @static if VERSION < v"0.7-"
