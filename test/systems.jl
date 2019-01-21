@@ -77,8 +77,13 @@ using Compat.LinearAlgebra
 
     @test Systems.origin(sys) == (51,51)
 
-    wf = Systems.PointForce((1.5,0.0),10.0,1.5,1.0,sys)
+    wf = Systems.PointForce(Nodes(Dual,size(sys)),(1.5,0.0),10.0,1.5,1.0,sys)
     @test maximum(wf(1.5))==2.5
+
+    qf = Systems.PointForce(Edges(Primal,size(sys)),(1.5,0.0),(10.0,-10.0),1.5,1.0,sys)
+    @test maximum(qf(1.5).u)==3.333333333333333
+    @test minimum(qf(1.5).v)==-3.333333333333333
+
 
 
   end
