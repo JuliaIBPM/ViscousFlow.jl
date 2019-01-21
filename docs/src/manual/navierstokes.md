@@ -120,12 +120,12 @@ using LinearAlgebra
 gaussian(x,x0,σ) = exp(-LinearAlgebra.norm(x.-x0)^2/σ^2)/(π*σ^2)
 ```
 
-Now the initial conditions. We will put one vortex at $(-0.5,0)$ and the other at $(0.5,0)$. They will each have a strength of $1$ and a radius of $0.2$:
+Now the initial conditions. We will put one vortex at $(-0.5,0)$ and the other at $(0.5,0)$. They will each have a strength of $1$ and a radius of $0.2$. (Reynolds number is implicitly defined in this problem as $\Gamma/\nu$, where $\nu$ is the kinematic viscosity. So there is no point in changing the strength; only the Reynolds number need be varied to explore different mixes of convective and diffusive transport.)
 
 ```@repl corotate
 t = 0.0
 x01 = (-0.5,0); x02 = (0.5,0); σ = 0.2; Γ = 1
-w₀ .= [Γ*gaussian((x,y),x01,σ) + Γ*gaussian((x,y),x02,σ) for x in xg, y in yg]*Δx;
+w₀ .= Δx*[Γ*gaussian((x,y),x01,σ) + Γ*gaussian((x,y),x02,σ) for x in xg, y in yg];
 w = deepcopy(w₀);
 ```
 
@@ -164,7 +164,7 @@ savefig("w1corotate.svg"); nothing # hide
 Let's go further!
 
 ```@repl corotate
-tf = 5
+tf = 6
 T = 0:Δt:tf
 @time for ti in T
     global t, w = ifrk(t,w)
@@ -176,6 +176,185 @@ plot(xg,yg,w)
 savefig("w2corotate.svg"); nothing # hide
 ```
 ![](w2corotate.svg)
+
+## Navier-Stokes with a body
+
+Now let's solve for flow past a body. We will solve for the flow past a circular cylinder, a canonical problem in fluid dynamics.
+
+```@setup cylflow
+using ViscousFlow
+using Plots
+pyplot()
+```
+
+We will start by constructing the body points,
+
+```@setup cylflow
+n = 100;
+body = Bodies.Ellipse(0.5,n)
+```
+
+We will leave it at the origin. However, to show how we can place it in different orientations, we will construct a rigid-body transformation for demonstration:
+
+```@setup cylflow
+cent = (0.0,0.0)
+α = 0.0
+T! = RigidTransform(cent,α)
+T!(body)
+```
+
+Now we construct the grid. This time, we will make the grid longer, so that it can resolve part of the wake. (The cylinder will be placed at)
+
+```@repl cylflow
+xlim = (-1,3); ylim = (-1,1);
+Δx = 0.02;
+```
+
+Let's plot this to see its placement in the domain
+
+```@repl cylflow
+plot(body,xlim=xlim,ylim=ylim)
+savefig("cyl0.svg"); nothing # hide
+```
+![](cyl0.svg)
+
+Now we will set the Reynolds number and free stream velocity. Since the problem is scaled by the free stream velocity, we need only set the speed to $1$.
+
+```@repl cylflow
+Re = 200
+U = 1.0;
+U∞ = (U,0.0)
+```
+
+Set the time step size with the usual CFL condition:
+
+```@repl cylflow
+Δt = min(0.5*Δx,0.5*Δx^2*Re)
+```
+
+Now set up the body point coordinates in a vector data structure. If we had more than one body, we would assemble all of the bodies' points into this same vector.
+
+```@repl cylflow
+X = VectorData(body.x,body.y);
+```
+
+Create the Navier-Stokes system:
+
+```@repl cylflow
+sys = Systems.NavierStokes(Re,Δx,xlim,ylim,Δt,U∞ = U∞, X̃ = X, isstore = true)
+```
+
+Now set up the basic data structures for use in the problem.
+
+```@repl cylflow
+w₀ = Nodes(Dual,size(sys));
+f = VectorData(X);
+```
+
+The cylinder flow remains symmetric unless it is explicitly perturbed. We will do this by applying a point perturbation directly in the vorticity,
+over a short interval centered at $t = 4$.
+
+```@repl cylflow
+xf = (1.5,0.0);
+Ff = 10.0;
+t0 = 4.0; σ = 1.0;
+wforce = PointForce(w₀,xf,Ff,t0,σ,sys)
+```
+
+Now we can set up the integrator. For this, we use `IFHERK`, since we need both the integrating factor and the constraint applications. We use ready-made functions for each of these. For the right-hand side of the Navier-Stokes equations `r₁`, we add the point force at time `t`.
+
+```@repl cylflow
+plan_intfact(t,u) = Systems.plan_intfact(t,u,sys)
+plan_constraints(u,t) = TimeMarching.plan_constraints(u,t,sys)
+r₁(u,t) = TimeMarching.r₁(u,t,sys) + wforce(t)
+r₂(u,t) = TimeMarching.r₂(u,t,sys)
+@time ifherk = IFHERK(w₀,f,sys.Δt,plan_intfact,plan_constraints,(r₁,r₂),
+        rk=TimeMarching.RK31,isstored=true)
+```
+
+Now set the initial conditions, and initialize some vectors for storing results
+
+```@repl cylflow
+t = 0.0
+u = deepcopy(w₀);
+fx = Float64[];
+fy = Float64[];
+thist = Float64[];
+```
+
+Let's first integrate just one time unit forward to see the results. We will collect the force data into the `fx` and `fy` arrays.
+
+```@repl cylflow
+tf = 1.0;
+T = Δt:Δt:tf;
+@time for ti in T
+    global t, u, f = ifherk(t,u)
+
+    push!(thist,t)
+    push!(fx,sum(f.u)*Δx^2)
+    push!(fy,sum(f.v)*Δx^2)
+end
+```
+
+Plot the solution:
+
+```@repl cylflow
+xg, yg = coordinates(w₀,dx=Δx,I0=Systems.origin(sys))
+plot(xg,yg,u,levels=range(-0.25,stop=0.25,length=30), color = :RdBu,width=1,
+        xlim=(-1+Δx,3-Δx),ylim=(-1+Δx,1-Δx))
+plot!(body)
+savefig("cyl1.svg"); nothing # hide
+```
+![](cyl1.svg)
+
+The solution is still symmetric because we have not yet applied the perturbation. Advance 4 more units:
+
+```@repl cylflow
+tf = 4.0;
+T = Δt:Δt:tf;
+@time for ti in T
+    global t, u, f = ifherk(t,u)
+
+    push!(thist,t)
+    push!(fx,sum(f.u)*Δx^2)
+    push!(fy,sum(f.v)*Δx^2)
+end
+plot(xg,yg,u,levels=range(-0.25,stop=0.25,length=30), color = :RdBu, width=1,
+        xlim=(-1+Δx,3-Δx),ylim=(-1+Δx,1-Δx))
+plot!(body)
+savefig("cyl5.svg"); nothing # hide
+```
+![](cyl5.svg)
+
+Now it is losing symmetry after the perturbation has triggered this behavior. Run it several more time units:
+
+```@repl cylflow
+tf = 25.0;
+T = Δt:Δt:tf;
+@time for ti in T
+    global t, u, f = ifherk(t,u)
+
+    push!(thist,t)
+    push!(fx,sum(f.u)*Δx^2)
+    push!(fy,sum(f.v)*Δx^2)
+end
+plot(xg,yg,u,levels=range(-0.25,stop=0.25,length=30), color = :RdBu,width=1,
+        xlim=(-1+Δx,3-Δx),ylim=(-1+Δx,1-Δx))
+plot!(body)
+savefig("cyl30.svg"); nothing # hide
+```
+![](cyl30.svg)
+
+A full wake now after 30 time units! Plot the force, too:
+
+```@repl cylflow
+plt = plot(layout = (2,1), size = (600, 400))
+plot!(plt[1],thist,2*fy,xlim=(0,30),ylim=(-2,2),xlabel="Convective time",ylabel="\$C_L\$",legend=false)
+plot!(plt[2],thist,2*fx,xlim=(0,30),ylim=(0,4),xlabel="Convective time",ylabel="\$C_D\$",legend=false)
+plt
+savefig("cylforce.svg"); nothing # hide
+```
+![](cylforce.svg)
 
 ## Methods
 
