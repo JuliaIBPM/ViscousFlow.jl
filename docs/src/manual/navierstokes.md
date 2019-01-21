@@ -1,7 +1,7 @@
 # Navier-Stokes systems
 
 ```@meta
-CurrentModule = Systems
+CurrentModule = ViscousFlow.Systems
 DocTestSetup = quote
 using ViscousFlow
 end
@@ -53,9 +53,6 @@ The right-hand side contains the viscous term, proportional to $1/Re$, where $Re
 Modules = [Systems]
 ```
 
-```@docs
-NavierStokes{NX,NY,N,isstatic}
-```
 
 ## Index
 

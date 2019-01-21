@@ -1,5 +1,9 @@
 module Systems
 
+using DocStringExtensions
+
+export NavierStokes, PointForce
+
 using ..Fields
 using ..TimeMarching
 using ..RigidBodyMotions
@@ -9,8 +13,6 @@ using ..Bodies
 
 using Compat
 using Compat.LinearAlgebra
-
-export NavierStokes, PointForce
 
 include("systems/navier_stokes.jl")
 

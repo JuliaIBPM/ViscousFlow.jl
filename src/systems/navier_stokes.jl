@@ -1,7 +1,8 @@
 import Base: size
 
+
 """
-    NavierStokes{NX,NY,N,isstatic}
+$(TYPEDEF)
 
 A system type that utilizes a grid of `NX` x `NY` dual cells and `N` Lagrange forcing
 points to solve the discrete Navier-Stokes equations in vorticity form. The
@@ -28,10 +29,15 @@ grid.
 
 # Constructors:
 
-- `NavierStokes(Re,Δx,xlimits,ylimits,Δt
+`NavierStokes(Re,Δx,xlimits,ylimits,Δt
               [,U∞ = (0.0, 0.0)][,X̃ = VectorData{0}()]
               [,isstore=false][,isstatic=true]
-              [,rk=TimeMarching.RK31])`
+              [,rk=TimeMarching.RK31])` specifies the Reynolds number `Re`, the grid
+              spacing `Δx`, the dimensions of the domain in the tuples `xlimits`
+              and `ylimits` (excluding the ghost cells), and the time step size `Δt`.
+              The other arguments are optional. Note that `isstore` set to `true`
+              would store matrix versions of the operators. This makes the method
+              faster, at the cost of storage.
 
 """
 mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
