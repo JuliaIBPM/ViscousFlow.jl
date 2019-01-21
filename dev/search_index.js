@@ -449,10 +449,10 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "manual/saddlesystems/#Core.Type-Union{Tuple{FP}, Tuple{FB2}, Tuple{FB1}, Tuple{FA}, Tuple{TF}, Tuple{TU}, Tuple{Tuple{TU,TF},Tuple{FA,FB1,FB2}}} where FP where FB2 where FB1 where FA where TF where TU",
+    "location": "manual/saddlesystems/#ViscousFlow.SaddlePointSystems.SaddleSystem",
     "page": "Saddle point systems",
-    "title": "Core.Type",
-    "category": "method",
+    "title": "ViscousFlow.SaddlePointSystems.SaddleSystem",
+    "category": "type",
     "text": "SaddleSystem((u,f),(A⁻¹,B₁ᵀ,B₂);[tol=1e-3],[issymmetric=false],[isposdef=false],[conditioner=Identity],[store=false])\n\nConstruct the computational operators for a saddle-point system of the form A B₁ᵀ B₂ 0uf. Note that the constituent operators are passed in as a tuple in the order seen here. Each of these operators could act on its corresponding data type in a function-like way, e.g. A⁻¹(u), or in a matrix-like way, e.g., A⁻¹*u.\n\nThe optional argument tol sets the tolerance for iterative solution (if   applicable). Its default is 1e-3.\n\nThe optional argument conditioner can be used to supply a function that acts upon the result f to \'condition\' it (e.g. filter it). It is, by default, set to the identity.\n\nThe optional Boolean argument store will compute and store the Schur complement matrix\'s factorization. This makes the inversion faster, though it comes at the expense of memory and overhead time for pre-computing it. The resulting solution is somewhat noiser, too.\n\nArguments\n\nu : example of state vector data.\nf : example of constraint force vector data. This data must be of       AbstractVector supertype.\nA⁻¹ : operator evaluating the inverse of A on data of type u, return type u\nB₁ᵀ : operator evaluating the influence of constraint force,           acting on f and returning type u\nB₂ : operator evaluating the influence of state vector on constraints,           acting on u and returning type f\n\n\n\n\n\n"
 },
 
@@ -566,6 +566,86 @@ var documenterSearchIndex = {"docs": [
     "title": "Index",
     "category": "section",
     "text": "Pages = [\"timemarching.md\"]"
+},
+
+{
+    "location": "manual/navierstokes/#",
+    "page": "Navier-Stokes systems",
+    "title": "Navier-Stokes systems",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "manual/navierstokes/#Navier-Stokes-systems-1",
+    "page": "Navier-Stokes systems",
+    "title": "Navier-Stokes systems",
+    "category": "section",
+    "text": "CurrentModule = ViscousFlow.Systems\nDocTestSetup = quote\nusing ViscousFlow\nenddefddt1fracmathrmd1mathrmdt\n\nrenewcommandvecboldsymbol\nnewcommanduvec1vechat1\nnewcommandutangentuvectau\nnewcommandunormaluvecn\n\nrenewcommanddmathrmdusing ViscousFlow\nusing PlotsHere, we will focus on putting tools together from the previous sections in order to set up and solve the Navier-Stokes system of equations. First, we will solve them in a completely unbounded domain (i.e., no bodies), and then we will solve them in the vicinity of a body."
+},
+
+{
+    "location": "manual/navierstokes/#Navier-Stokes-without-a-body-1",
+    "page": "Navier-Stokes systems",
+    "title": "Navier-Stokes without a body",
+    "category": "section",
+    "text": "Here, we seek the solve the two-dimensional incompressible Navier-Stokes equations in their discrete vorticity form, in an unbounded domain:ddt w + N(vw) = frac1Re L walong with the initial conditionw(0) = w_0The field w represents the discrete vorticity, which sits at the nodes of the dual cells. The velocity, v, lies on the edges of the primal cells. They are related to each other by v = Cs, where s = -L^-1 w is the discrete streamfunction.The second term on the left-hand side is the convective term, which we have simply written as N(vw). There are several ways to write this term; here, we will write it by using the discrete divergence,N(vw) = D(vw)The Systems module has a function that is set up to compute this term; we will discuss it below. The right-hand side contains the viscous term, proportional to 1Re, where Re is the Reynolds number. For this, we will use the integrating factor, described in The integrating factor. For purposes of calculation, it is better to express the problem asddt w - frac1Re L w = r_1(w)where r_1(w) = -D(vw).For demonstration, we will solve a problem consisting initially of two identical circular patches of vorticity.using ViscousFlow\nusing Plots\npyplot()The first thing we must do is set up a grid. We will make it square, with spacing equal to 0.02 in each cell.xlim = (-2,2); ylim = (-2,2);\nΔx = 0.02;Now we will set the Reynolds number, and set the time step size so that it follows the so-called CFL condition (with CFL number set to 0.5). To be careful, we also make sure the time step size does not exceed a threshold in the grid Fourier number (also set to 0.5):Re = 200\nΔt = min(0.5*Δx,0.5*Δx^2*Re)Now we set up the Navier-Stokes system. This sets the rest of the grid parameters, (number of cells, etc), and creates some some buffer space on the grid.sys = NavierStokes(Re,Δx,xlim,ylim,Δt)For example, to check how many dual grid cells we have, we can use the size function, which has been extended to such systems:size(sys)Let\'s set up a set of dual nodes on this grid:w₀ = Nodes(Dual,size(sys));The physical grid coordinates of these dual nodes can be generated with the coordinates function:xg, yg = coordinates(w₀,dx=sys.Δx,I0=Systems.origin(sys))Now we are ready to set up the integrator for this problem. To account for the viscous diffusion, we need the integrating factor. There are no body constraints to enforce, so we will use the integrating factor Runge-Kutta method (IFRK). For this, we need to set up plans for the integrating factor and for the right-hand side (r_1). The Systems module has functions that do both for us, using the system data in sys. We just need to change their argument list so that they fit the template for the IFRK scheme:plan_intfact(t,w) = Systems.plan_intfact(t,w,sys)\nr₁(w,t) = Systems.r₁(w,t,sys)Now we can construct the integrator. We will use 3rd-order Runge-Kutta:ifrk = IFRK(w₀,sys.Δt,plan_intfact,r₁,rk=TimeMarching.RK31)Note that we have only passed in w₀ to this scheme to provide the form of data to be used for the state vector in the integrator. It does not matter that the data are still zeros.Finally we are ready to solve the problem. We set up the initial condition. It is helpful to define a function first that specifies the vorticity distribution in each vortex patch. We will use a Gaussian:using LinearAlgebra\ngaussian(x,x0,σ) = exp(-LinearAlgebra.norm(x.-x0)^2/σ^2)/(π*σ^2)Now the initial conditions. We will put one vortex at (-050) and the other at (050). They will each have a strength of 1 and a radius of 02:t = 0.0\nx01 = (-0.5,0); x02 = (0.5,0); σ = 0.2; Γ = 1\nw₀ .= [Γ*gaussian((x,y),x01,σ) + Γ*gaussian((x,y),x02,σ) for x in xg, y in yg]*Δx;\nw = deepcopy(w₀);Note that we have multiplied the vorticity vector by the grid spacing. This is because the vector w is not actually the vorticity, but rather, a grid vorticity related to velocity through differencing. Let\'s plot it to see what we are starting with:plot(xg,yg,w)\nsavefig(\"w0corotate.svg\"); nothing # hide(Image: )We will integrate the problem for 1 time unit:tf = 1\nT = 0:Δt:tfNow, do it. We will time it to see how long it takes:@time for ti in T\n    global t, w = ifrk(t,w)\nendand plot it again:plot(xg,yg,w)\nsavefig(\"w1corotate.svg\"); nothing # hide(Image: )Let\'s go further!tf = 5\nT = 0:Δt:tf\n@time for ti in T\n    global t, w = ifrk(t,w)\nendplot(xg,yg,w)\nsavefig(\"w2corotate.svg\"); nothing # hide(Image: )"
+},
+
+{
+    "location": "manual/navierstokes/#ViscousFlow.Systems.NavierStokes",
+    "page": "Navier-Stokes systems",
+    "title": "ViscousFlow.Systems.NavierStokes",
+    "category": "type",
+    "text": "mutable struct NavierStokes{NX, NY, N, isstatic}\n\nA system type that utilizes a grid of NX x NY dual cells and N Lagrange forcing points to solve the discrete Navier-Stokes equations in vorticity form. The parameter isstatic specifies whether the forcing points remain static in the grid.\n\nFields\n\nRe: Reynolds number\nU∞: Tuple of components of free-stream velocity\nΔx: Size of each side of a grid cell\nI0: Tuple of indices of the primal node corresponding to physical origin\nΔt: Time step\nrk: Runge-Kutta coefficients\nL: Pre-planned discrete Laplacian operator and inverse\nX̃: Lagrange point coordinate data (if present), expressed in inertial coordinates       (if static) or in body-fixed coordinates (if moving)\nHmat: Pre-computed regularization matrix (if present)\nEmat: Pre-computed interpolation matrix (if present)\nVb: Buffer space for vector data on Lagrange points\nFq: Buffer space for primal cell edge data\nWw: Buffer space for dual cell edge data\nQq: More buffer space for dual cell edge data\n_isstore: flag to specify whether to store regularization/interpolation matrices\n\nConstructors:\n\nNavierStokes(Re,Δx,xlimits,ylimits,Δt               [,U∞ = (0.0, 0.0)][,X̃ = VectorData{0}()]               [,isstore=false][,isstatic=true]               [,rk=TimeMarching.RK31]) specifies the Reynolds number Re, the grid               spacing Δx, the dimensions of the domain in the tuples xlimits               and ylimits (excluding the ghost cells), and the time step size Δt.               The other arguments are optional. Note that isstore set to true               would store matrix versions of the operators. This makes the method               faster, at the cost of storage.\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/navierstokes/#ViscousFlow.Systems.PointForce-Tuple{Tuple{Float64,Float64},Float64,Float64,Float64,NavierStokes}",
+    "page": "Navier-Stokes systems",
+    "title": "ViscousFlow.Systems.PointForce",
+    "category": "method",
+    "text": "PointForce(x0::Tuple{Float64,Float64},f0,t0,σ,sys::NavierStokes)\n\nConstructor function that immerses a point force in the dual nodes of system sys, of strength f0 to be applied at physical position x0, modulated by a Gaussian centered at time t0 with standard deviation σ.\n\nThe resulting function is a function of time and generates a field on dual nodes.\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/navierstokes/#ViscousFlow.Systems.origin-Tuple{NavierStokes}",
+    "page": "Navier-Stokes systems",
+    "title": "ViscousFlow.Systems.origin",
+    "category": "method",
+    "text": "origin(sys::NavierStokes) -> Tuple{Int,Int}\n\nReturn a tuple of the indices of the primal node that corresponds to the physical origin of the coordinate system used by sys. Note that these indices need not lie inside the range of indices occupied by the grid. For example, if the range of physical coordinates occupied by the grid is (1.0,3.0) x (2.0,4.0), then the origin is not inside the grid.\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/navierstokes/#Base.size-Union{Tuple{NY}, Tuple{NX}, Tuple{NavierStokes{NX,NY,N,isstatic} where isstatic where N,Int64}} where NY where NX",
+    "page": "Navier-Stokes systems",
+    "title": "Base.size",
+    "category": "method",
+    "text": "size(sys::NavierStokes,d::Int) -> Int\n\nReturn the number of indices of the grid used by sys along dimension d.\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/navierstokes/#Base.size-Union{Tuple{NavierStokes{NX,NY,N,isstatic} where isstatic where N}, Tuple{NY}, Tuple{NX}} where NY where NX",
+    "page": "Navier-Stokes systems",
+    "title": "Base.size",
+    "category": "method",
+    "text": "size(sys::NavierStokes) -> Tuple{Int,Int}\n\nReturn a tuple of the number of indices of the grid used by sys\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/navierstokes/#Methods-1",
+    "page": "Navier-Stokes systems",
+    "title": "Methods",
+    "category": "section",
+    "text": "Modules = [Systems]"
+},
+
+{
+    "location": "manual/navierstokes/#Index-1",
+    "page": "Navier-Stokes systems",
+    "title": "Index",
+    "category": "section",
+    "text": "Pages = [\"navierstokes.md\"]"
 },
 
 ]}
