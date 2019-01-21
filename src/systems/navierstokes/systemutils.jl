@@ -33,3 +33,11 @@ function PointForce(w₀::T,x0::Tuple{Float64,Float64},
 end
 
 (f::PointForce)(t) = f.regop(f.ubuffer,rmul!(deepcopy(f.fbuffer),exp(-(t-f.t0)^2/f.σ^2)))
+
+function Base.show(io::IO,f::PointForce{T}) where {T}
+    println(io,"Transient point force applied on the $(T) field.")
+    println(io,"   strength = $(f.f0)")
+    println(io,"   location = $(f.x)")
+    println(io,"   central time = $(f.t0)")
+    println(io,"   half-interval = $(f.σ)")
+end
