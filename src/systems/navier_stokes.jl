@@ -1,5 +1,39 @@
 import Base: size
 
+"""
+    NavierStokes{NX,NY,N,isstatic}
+
+A system type that utilizes a grid of `NX` x `NY` dual cells and `N` Lagrange forcing
+points to solve the discrete Navier-Stokes equations in vorticity form. The
+parameter `isstatic` specifies whether the forcing points remain static in the
+grid.
+
+# Fields
+- `Re`: Reynolds number
+- `U∞`: Tuple of components of free-stream velocity
+- `Δx`: Size of each side of a grid cell
+- `I0`: Tuple of indices of the primal node corresponding to physical origin
+- `Δt`: Time step
+- `rk`: Runge-Kutta coefficients
+- `L`: Pre-planned discrete Laplacian operator and inverse
+- `X̃`: Lagrange point coordinate data (if present), expressed in inertial coordinates
+        (if static) or in body-fixed coordinates (if moving)
+- `Hmat`: Pre-computed regularization matrix (if present)
+- `Emat`: Pre-computed interpolation matrix (if present)
+- `Vb`: Buffer space for vector data on Lagrange points
+- `Fq`: Buffer space for primal cell edge data
+- `Ww`: Buffer space for dual cell edge data
+- `Qq`: More buffer space for dual cell edge data
+- `_isstore`: flag to specify whether to store regularization/interpolation matrices
+
+# Constructors:
+
+- `NavierStokes(Re,Δx,xlimits,ylimits,Δt
+              [,U∞ = (0.0, 0.0)][,X̃ = VectorData{0}()]
+              [,isstore=false][,isstatic=true]
+              [,rk=TimeMarching.RK31])`
+
+"""
 mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
     # Physical Parameters
     "Reynolds number"
@@ -12,7 +46,7 @@ mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
     Δx::Float64
     "Indices of the primal node corresponding to the physical origin"
     I0::Tuple{Int,Int}
-    "Time step (used to determine integrating factor diffusion rate)"
+    "Time step"
     Δt::Float64
     "Runge-Kutta method"
     rk::TimeMarching.RKParams

@@ -10,6 +10,7 @@ using ..Bodies
 using Compat
 using Compat.LinearAlgebra
 
+export NavierStokes, PointForce
 
 include("systems/navier_stokes.jl")
 

@@ -15,22 +15,6 @@ end
 
 export SaddleSystem
 
-struct SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,Storage}
-    A⁻¹B₁ᵀf :: TU
-    B₂A⁻¹r₁ :: TF
-    tmpvec :: Vector{Float64}
-    tmpvecout :: Vector{Float64}
-    A⁻¹ :: FA
-    A⁻¹B₁ᵀ :: FAB
-    B₂A⁻¹ :: FBA
-    P :: FP
-    S  :: LinearMap
-    S⁻¹ :: Union{Factorization{Float64},Nothing}
-    tol :: Float64
-    _issymmetric :: Bool
-    _isposdef :: Bool
-end
-
 """
     SaddleSystem((u,f),(A⁻¹,B₁ᵀ,B₂);[tol=1e-3],[issymmetric=false],[isposdef=false],[conditioner=Identity],[store=false])
 
@@ -63,6 +47,22 @@ resulting solution is somewhat noiser, too.
 - `B₂` : operator evaluating the influence of state vector on constraints,
             acting on `u` and returning type `f`
 """
+struct SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,Storage}
+    A⁻¹B₁ᵀf :: TU
+    B₂A⁻¹r₁ :: TF
+    tmpvec :: Vector{Float64}
+    tmpvecout :: Vector{Float64}
+    A⁻¹ :: FA
+    A⁻¹B₁ᵀ :: FAB
+    B₂A⁻¹ :: FBA
+    P :: FP
+    S  :: LinearMap
+    S⁻¹ :: Union{Factorization{Float64},Nothing}
+    tol :: Float64
+    _issymmetric :: Bool
+    _isposdef :: Bool
+end
+
 function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
                                 tol::Float64=1e-3,
                                 conditioner::FP=x->x,

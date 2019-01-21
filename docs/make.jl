@@ -9,7 +9,8 @@ makedocs(
         "Manual" => ["manual/fields.md",
                      "manual/bodies.md",
                      "manual/saddlesystems.md",
-                     "manual/timemarching.md"
+                     "manual/timemarching.md",
+                     "manual/navierstokes.md"
                      ]
         #"Internals" => [ "internals/properties.md"]
     ],
