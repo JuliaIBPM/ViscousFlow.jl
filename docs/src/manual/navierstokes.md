@@ -189,14 +189,14 @@ pyplot()
 
 We will start by constructing the body points,
 
-```@setup cylflow
+```@repl cylflow
 n = 100;
 body = Bodies.Ellipse(0.5,n)
 ```
 
 We will leave it at the origin. However, to show how we can place it in different orientations, we will construct a rigid-body transformation for demonstration:
 
-```@setup cylflow
+```@repl cylflow
 cent = (0.0,0.0)
 α = 0.0
 T! = RigidTransform(cent,α)
