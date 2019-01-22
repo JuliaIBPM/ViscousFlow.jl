@@ -1,4 +1,4 @@
-# ViscousFlow
+# ViscousFlow.jl
 
 *a framework for simulating viscous incompressible flows*
 
@@ -13,11 +13,12 @@ tools for
 
 The underlying grids are uniform and Cartesian, allowing the use of the lattice
 Green's function (LGF) for inverting the Poisson equation; the diffusion operators are
-solved with the integrating factor (Liska and Colonius ref). Many of the core aspects
+solved with the integrating factor (Liska and Colonius [^1]). Many of the core aspects
 of the fluid-body interaction are based on the immersed boundary projection method,
-developed by Taira and Colonius (ref). The coupled fluid-body interactions are based
-on the work of Wang and Eldredge (ref).
+developed by Taira and Colonius [^2]. The coupled fluid-body interactions are based
+on the work of Wang and Eldredge [^3].
 
+![](https://github.com/jdeldre/ViscousFlow.jl/raw/master/cylinderRe400.gif)
 
 ## Installation
 
@@ -40,4 +41,12 @@ using ViscousFlow
 ```
 
 The plots in this documentation are generated using [Plots.jl](http://docs.juliaplots.org/latest/).
-You might want to install that too to follow the examples.
+You might want to install that, too, to follow the examples.
+
+## References
+
+[^1]: Liska, S. and Colonius, T. (2017) "A fast immersed boundary method for external incompressible viscous flows using lattice Green's functions," *J. Comput. Phys.*, 331, 257--279.
+
+[^2]: Taira, K. and Colonius, T. (2007) "The immersed boundary method: a projection approach," *J. Comput. Phys.*, 225, 2118--2137.
+
+[^3]: Wang, C. and Eldredge, J. D. (2015) "Strongly coupled dynamics of fluids and rigid-body systems with the immersed boundary projection method," *J. Comput. Phys.*, 295, 87--113. [(DOI)](https://doi.org/10.1016/j.jcp.2015.04.005).
