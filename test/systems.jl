@@ -43,7 +43,7 @@ using Compat.LinearAlgebra
     for ti in T
       t, w = ifrk(t,w)
     end
-
+  
     @test norm(w-wexact(t),Inf) < 1e-1
     @test sum(w) ≈ sum(wexact(t))
 
@@ -58,13 +58,10 @@ using Compat.LinearAlgebra
     n = 100
     body = Bodies.Ellipse(0.5,n)
 
-    motion = RigidBodyMotion(0.0,0.0)
-
     xlim = (-1.0,3.0)
     ylim = (-1.0,1.0)
 
     X = VectorData(body.x,body.y)
-    X̃ = VectorData(body.x̃,body.ỹ)
 
     Δx = 0.02
     Δt = min(0.5*Δx,0.5*Δx^2*Re)
