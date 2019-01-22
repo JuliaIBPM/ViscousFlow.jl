@@ -45,7 +45,7 @@ using Compat.LinearAlgebra
     end
 
     @test norm(w-wexact(t),Inf) < 1e-1
-    @test sum(w) ≈ sum(wexact(t))
+    @test abs(sum(w)-sum(wexact(t))) < 1e-3
 
   end
 
