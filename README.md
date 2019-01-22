@@ -26,5 +26,6 @@ Then, in any version, type
 ```julia
 using ViscousFlow
 ```
+For examples, consult the documentation or see the example Jupyter notebooks in the Examples folder.
 
 ![](https://github.com/jdeldre/ViscousFlow.jl/raw/master/cylinderRe400.gif)
