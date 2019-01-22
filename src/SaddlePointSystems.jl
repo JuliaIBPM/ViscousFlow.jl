@@ -9,6 +9,7 @@ using IterativeSolvers
 import Base: *, \
 @static if VERSION < v"0.7-"
   ldiv!(x,B,y) = A_ldiv_B!(x,B,y)
+  export ldiv!
 else
   import LinearAlgebra: ldiv!
 end
