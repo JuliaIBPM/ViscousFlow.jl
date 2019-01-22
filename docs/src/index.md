@@ -22,17 +22,16 @@ on the work of Wang and Eldredge [^3].
 
 ## Installation
 
-This package works on Julia `0.6`, `0.7` and `1.0`.
-To install in julia `0.6`, type
+This package works on Julia `0.6`, `0.7` and `1.0` and is registered in the general Julia registry. To install in julia `0.6`, type
 ```julia
-julia> Pkg.clone("https://github.com/jdeldre/ViscousFlow.jl","ViscousFlow")
+julia> Pkg.add("ViscousFlow")
 ```
 in the Julia REPL.
 
 In julia `0.7` or `1.0`, enter the package manager by typing `]` and then type,
 e.g.,
 ```julia
-(v1.0) pkg> add https://github.com/jdeldre/ViscousFlow.jl
+(v1.0) pkg> add ViscousFlow
 ```
 
 Then, in any version, type
