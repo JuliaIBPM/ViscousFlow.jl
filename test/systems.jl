@@ -27,7 +27,7 @@ using Compat.LinearAlgebra
     xg,yg = coordinates(w₀,dx=Δx)
     x0 = (1,1)
     t0 = 1
-    wexact(t) = [woseen((x,y),t;Re=Re,x0=x0.+U∞.*t,t0=t0) for x in xg, y in yg]
+    wexact(t) = [Δx*woseen((x,y),t;Re=Re,x0=x0.+U∞.*t,t0=t0) for x in xg, y in yg]
 
     ifrk = IFRK(w₀,sys.Δt,
                 (t,w) -> plan_intfact(t,w,sys),
@@ -43,7 +43,7 @@ using Compat.LinearAlgebra
     for ti in T
       t, w = ifrk(t,w)
     end
-  
+
     @test norm(w-wexact(t),Inf) < 1e-1
     @test sum(w) ≈ sum(wexact(t))
 
