@@ -39,11 +39,6 @@ include("Systems.jl")
 
 include("plot_recipes.jl")
 
-function Base.show(io::IO, s::SolnType)
-    println(io, "Solution: t = $(s.t)")
-end
-
-
 
 
 end
