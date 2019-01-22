@@ -26,3 +26,5 @@ Then, in any version, type
 ```julia
 using ViscousFlow
 ```
+
+![](https://github.com/jdeldre/ViscousFlow.jl/raw/master/cylinderRe400.gif)
