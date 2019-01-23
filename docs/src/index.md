@@ -36,7 +36,7 @@ e.g.,
 
 Then, in any version, type
 ```julia
-using ViscousFlow
+julia> using ViscousFlow
 ```
 
 The plots in this documentation are generated using [Plots.jl](http://docs.juliaplots.org/latest/).

@@ -10,7 +10,7 @@ _A framework for simulating viscous incompressible flows_
 
 The purpose of this package is to enable easy setup and solution of viscous incompressible flows. Documentation can be found at https://jdeldre.github.io/ViscousFlow.jl/latest.
 
-**ViscousFlow** is registered in the general Julia registry. To install in julia `0.6`, type
+**ViscousFlow.jl** is registered in the general Julia registry. To install in julia `0.6`, type
 ```julia
 julia> Pkg.add("ViscousFlow")
 ```
@@ -24,7 +24,7 @@ e.g.,
 
 Then, in any version, type
 ```julia
-using ViscousFlow
+julia> using ViscousFlow
 ```
 For examples, consult the documentation or see the example Jupyter notebooks in the Examples folder.
 
