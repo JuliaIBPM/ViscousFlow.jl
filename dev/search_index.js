@@ -21,7 +21,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Installation",
     "category": "section",
-    "text": "This package works on Julia 0.6, 0.7 and 1.0 and is registered in the general Julia registry. To install in julia 0.6, typejulia> Pkg.add(\"ViscousFlow\")in the Julia REPL.In julia 0.7 or 1.0, enter the package manager by typing ] and then type, e.g.,(v1.0) pkg> add ViscousFlowThen, in any version, typeusing ViscousFlowThe plots in this documentation are generated using Plots.jl. You might want to install that, too, to follow the examples."
+    "text": "This package works on Julia 0.6, 0.7 and 1.0 and is registered in the general Julia registry. To install in julia 0.6, typejulia> Pkg.add(\"ViscousFlow\")in the Julia REPL.In julia 0.7 or 1.0, enter the package manager by typing ] and then type, e.g.,(v1.0) pkg> add ViscousFlowThen, in any version, typejulia> using ViscousFlowThe plots in this documentation are generated using Plots.jl. You might want to install that, too, to follow the examples."
 },
 
 {
