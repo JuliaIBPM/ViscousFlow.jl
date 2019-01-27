@@ -15,7 +15,7 @@ and horizontal faces of the corresponding cell.
 - `Edges(C,w)` performs the same construction, but uses existing field data `w`
   of `Nodes` type to determine the size of the grid.
 """
-struct Edges{C <: CellType, NX, NY}
+struct Edges{C <: CellType, NX, NY} <: AbstractMatrix{Float64}
     u::Matrix{Float64}
     v::Matrix{Float64}
 end
@@ -47,6 +47,7 @@ Base.size(A::Edges{C,NX,NY}) where {C,NX,NY} = (length(A.u)+length(A.v),1)
    i > length(A.u) ? A.v[i-length(A.u)] : A.u[i]
 @propagate_inbounds Base.setindex!(A::Edges{C,NX,NY}, v, i::Int) where {C,NX,NY} =
    i > length(A.u) ? A.v[i-length(A.u)] = convert(Float64, v) : A.u[i] = convert(Float64, v)
+Base.IndexStyle(::Type{<:Edges}) = IndexLinear()
 
 """
     cellshift!(v::Edges{Dual/Primal},q::Edges{Primal/Dual})

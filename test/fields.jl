@@ -39,6 +39,16 @@ import Base: to_indices, uncolon, tail, _maybetail
   dualfaceyunit = deepcopy(dualfacezero)
   dualfaceyunit.v[i,j] = 1.0
 
+  @testset "Basic array operations" begin
+    w = zero(cellunit)
+    w .= cellunit
+    @test w[i,j] == 1.0
+    q = similar(facexunit)
+    q .= facexunit
+    @test q.u[i,j] == 1.0
+    @test iszero(q.v)
+  end
+
   @testset "Dual cell center data Laplacian" begin
     lapcell = laplacian(cellunit)
     @test lapcell[i,j] == -4.0
