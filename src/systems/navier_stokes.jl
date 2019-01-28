@@ -48,10 +48,12 @@ mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
     U∞::Tuple{Float64, Float64}
 
     # Discretization
-    "Grid spacing"
-    Δx::Float64
-    "Indices of the primal node corresponding to the physical origin"
-    I0::Tuple{Int,Int}
+    "Grid metadata"
+    grid::Fields.PhysicalGrid{2}
+    #"Grid spacing"
+    #Δx::Float64
+    #"Indices of the primal node corresponding to the physical origin"
+    #I0::Tuple{Int,Int}
     "Time step"
     Δt::Float64
     "Runge-Kutta method"
@@ -89,20 +91,9 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
                        isstore = false,
                        isstatic = true,
                        rk::TimeMarching.RKParams=TimeMarching.RK31)
-    #NX, NY = dims
 
-    #= set grid spacing and the grid position of the origin
-    In case the physical limits are not consistent with an integer number of dual cells, based on
-    the given Δx, we adjust them outward a bit in all directions. We also seek to place the
-    origin on the corner of a cell.
-    =#
-    Lx = xlimits[2]-xlimits[1]
-    Ly = ylimits[2]-ylimits[1]
-    NxL, NxR = floor(Int,xlimits[1]/Δx), ceil(Int,xlimits[2]/Δx)
-    NyL, NyR = floor(Int,ylimits[1]/Δx), ceil(Int,ylimits[2]/Δx)
-    NX = NxR-NxL+2 # total number of cells include ghost cells
-    NY = NyR-NyL+2
-    I0 = (1-NxL,1-NyL)
+    g = PhysicalGrid(xlimits,ylimits,Δx)
+    NX, NY = size(g)
 
     α = Δt/(Re*Δx^2)
 
@@ -116,7 +107,7 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
 
     if length(N) > 0 && isstore && isstatic
       # in this case, X̃ is assumed to be in inertial coordinates
-      regop = Regularize(X̃,Δx;I0=I0,issymmetric=true)
+      regop = Regularize(X̃,Δx;I0=Fields.origin(g),issymmetric=true)
       Hmat, Emat = RegularizationMatrix(regop,VectorData{N}(),Edges{Primal,NX,NY}())
     else
       #Hmat = Nullable{RegularizationMatrix}()
@@ -128,7 +119,8 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
 
     # should be able to set up time marching operator here...
 
-    NavierStokes{NX, NY, N, isstatic}(Re, U∞, Δx, I0, Δt, rk, L, X̃, Hmat, Emat, Vb, Fq, Ww, Qq, isstore)
+    #NavierStokes{NX, NY, N, isstatic}(Re, U∞, Δx, I0, Δt, rk, L, X̃, Hmat, Emat, Vb, Fq, Ww, Qq, isstore)
+    NavierStokes{NX, NY, N, isstatic}(Re, U∞, g, Δt, rk, L, X̃, Hmat, Emat, Vb, Fq, Ww, Qq, isstore)
 end
 
 function Base.show(io::IO, sys::NavierStokes{NX,NY,N,isstatic}) where {NX,NY,N,isstatic}
@@ -151,6 +143,13 @@ Return a tuple of the number of indices of the grid used by `sys`
 size(sys::NavierStokes{NX,NY}) where {NX,NY} = (size(sys,1),size(sys,2))
 
 """
+    cellsize(sys::NavierStokes) -> Float64
+
+Return the grid cell size of system `sys`
+"""
+Fields.cellsize(sys::NavierStokes) = cellsize(sys.grid)
+
+"""
     origin(sys::NavierStokes) -> Tuple{Int,Int}
 
 Return a tuple of the indices of the primal node that corresponds to the
@@ -159,13 +158,13 @@ indices need not lie inside the range of indices occupied by the grid.
 For example, if the range of physical coordinates occupied by the grid
 is (1.0,3.0) x (2.0,4.0), then the origin is not inside the grid.
 """
-origin(sys::Systems.NavierStokes) = sys.I0
+Fields.origin(sys::Systems.NavierStokes) = origin(sys.grid)
 
 # Basic operators for any Navier-Stokes system
 
 # Integrating factor -- rescale the time-step size
 Fields.plan_intfact(Δt,w,sys::NavierStokes{NX,NY}) where {NX,NY} =
-        Fields.plan_intfact(Δt/(sys.Re*sys.Δx^2),w)
+        Fields.plan_intfact(Δt/(sys.Re*cellsize(sys)^2),w)
 
 # RHS of Navier-Stokes (non-linear convective term)
 function TimeMarching.r₁(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY}) where {NX,NY}
@@ -173,7 +172,7 @@ function TimeMarching.r₁(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY}) wher
   Ww = sys.Ww
   Qq = sys.Qq
   L = sys.L
-  Δx⁻¹ = 1/sys.Δx
+  Δx⁻¹ = 1/cellsize(sys)
 
   cellshift!(Qq,curl(L\w)) # -velocity, on dual edges
   Qq.u .-= sys.U∞[1]
@@ -189,7 +188,7 @@ function TimeMarching.r₁(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY},U∞:
   Ww = sys.Ww
   Qq = sys.Qq
   L = sys.L
-  Δx⁻¹ = 1/sys.Δx
+  Δx⁻¹ = 1/cellsize(sys)
 
   cellshift!(Qq,curl(L\w)) # -velocity, on dual edges
   _,ċ,_,_,_,_ = U∞(t)
@@ -234,7 +233,7 @@ TimeMarching.plan_constraints(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY,N,t
 
 # Constructor using non-stored operators
 function TimeMarching.plan_constraints(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,N}
-  regop = Regularize(sys.X̃,sys.Δx;issymmetric=true)
+  regop = Regularize(sys.X̃,Fields.cellsize(sys);I0=Fields.origin(sys),issymmetric=true)
 
   return f -> TimeMarching.B₁ᵀ(f,regop,sys),w -> TimeMarching.B₂(w,regop,sys)
 end

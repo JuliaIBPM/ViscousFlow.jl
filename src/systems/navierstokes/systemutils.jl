@@ -28,7 +28,7 @@ function PointForce(w₀::T,x0::Tuple{Float64,Float64},
     Ff = (T <: Nodes) ? ScalarData(Xf) : VectorData(Xf)
     Ff .= f0
 
-    regop = Regularize(Xf,sys.Δx;I0=origin(sys),issymmetric=true)
+    regop = Regularize(Xf,Fields.cellsize(sys);I0=Fields.origin(sys),issymmetric=true)
     PointForce{T}(x0,f0,t0,σ,Ff,T(),regop)
 end
 

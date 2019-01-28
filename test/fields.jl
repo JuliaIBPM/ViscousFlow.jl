@@ -341,4 +341,18 @@ end
                         6.5  11.5  16.5
                         0.0   0.0   0.0 ]
     end
+
+    @testset "Physical grid" begin
+
+        g = PhysicalGrid((-1.0,3.0),(-2.0,3.0),0.02)
+        @test size(g) == (202,252)
+        @test size(g,1) == 202
+        @test size(g,2) == 252
+        @test length(g) == 202*252
+        @test origin(g) == (51,101)
+        @test cellsize(g) == 0.02
+        @test limits(g,1) == (-1.0,3.0)
+        @test limits(g,2) == (-2.0,3.0)
+
+    end
 end

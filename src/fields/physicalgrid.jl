@@ -1,5 +1,5 @@
 
-export PhysicalGrid, limits, origin
+export PhysicalGrid, limits, origin, cellsize
 
 struct PhysicalGrid{ND}
   N :: NTuple{ND,Int}
@@ -48,35 +48,35 @@ function set_1d_grid(xmin::Float64,xmax::Float64,Δx::Float64)
 end
 
 """
-    size(g::PhysicalGrid,d::Int)
+    size(g::PhysicalGrid,d::Int) -> Int
 
 Return the number of cells in direction `d` in grid `g`.
 """
 Base.size(g::PhysicalGrid,d::Int) = g.N[d]
 
 """
-    size(g::PhysicalGrid)
+    size(g::PhysicalGrid) -> Tuple
 
 Return a tuple of the number of cells in all directions in grid `g`.
 """
 Base.size(g::PhysicalGrid) = g.N
 
 """
-    length(g::PhysicalGrid,d::Int)
+    length(g::PhysicalGrid,d::Int) -> Int
 
 Return the total number of cells in grid `g`.
 """
 Base.length(g::PhysicalGrid) = prod(size(g))
 
 """
-    limits(g::PhysicalGrid,d::Int)
+    limits(g::PhysicalGrid,d::Int) -> Tuple
 
 Return the minimum and maximum physical dimensions in direction `d` for grid `g`.
 """
 limits(g::PhysicalGrid,d::Int) = g.xlim[d]
 
 """
-    coordinates(w::Nodes/Edges,g::PhysicalGrid)
+    coordinates(w::Nodes/Edges,g::PhysicalGrid) -> Range
 
 Return coordinate data range for type of `w`.
 """
@@ -92,3 +92,10 @@ For example, if the range of physical coordinates occupied by the grid
 is (1.0,3.0) x (2.0,4.0), then the origin is not inside the grid.
 """
 origin(g::PhysicalGrid) = g.I0
+
+"""
+    cellsize(g::PhysicalGrid) -> Float64
+
+Return the grid cell size of system `sys`
+"""
+cellsize(g::PhysicalGrid) = g.Δx
