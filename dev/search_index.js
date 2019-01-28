@@ -145,6 +145,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "manual/fields/#ViscousFlow.Fields.PhysicalGrid-Tuple{Tuple{Float64,Float64},Tuple{Float64,Float64},Float64}",
+    "page": "Fields",
+    "title": "ViscousFlow.Fields.PhysicalGrid",
+    "category": "method",
+    "text": "PhysicalGrid(xlim::Tuple{Float64,Float64},ylim::Tuple{Float64,Float64},Δx::Float64)\n\nConstructor to set up a grid connected to physical space. The region to be discretized by the grid is defined by the limits xlim and ylim, and the cell spacing (uniform and indentical in each direction) is specified by Δx. The constructor uses this information to determine the number of cells in each direction, expanding the given range if necessary to accommodate an integer number. It also pads each side with a ghost cell. It also determines the indices corresponding to the corner of the cell to which the physical origin corresponds. Note that the corner corresponding to the lowest limit in each direction has indices (1,1).\n\n\n\n\n\n"
+},
+
+{
     "location": "manual/fields/#ViscousFlow.Fields.RegularizationMatrix",
     "page": "Fields",
     "title": "ViscousFlow.Fields.RegularizationMatrix",
@@ -201,11 +209,27 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "manual/fields/#ViscousFlow.Fields.cellsize-Tuple{PhysicalGrid}",
+    "page": "Fields",
+    "title": "ViscousFlow.Fields.cellsize",
+    "category": "method",
+    "text": "cellsize(g::PhysicalGrid) -> Float64\n\nReturn the grid cell size of system sys\n\n\n\n\n\n"
+},
+
+{
     "location": "manual/fields/#ViscousFlow.Fields.coordinates",
     "page": "Fields",
     "title": "ViscousFlow.Fields.coordinates",
     "category": "function",
     "text": "cooordinates(w::Nodes/Edges;[dx=1.0],[I0=(1,1)])\n\nReturn a tuple of the ranges of the physical coordinates in each direction for grid data w. If w is of Nodes type, then it returns a tuple of the form xg,yg. If w is of Edges or NodePair type, then it returns a tuple of the form xgu,ygu,xgv,ygv.\n\nThe optional keyword argument dx sets the grid spacing; its default is 1.0. The optional keyword I0 accepts a tuple of integers to set the index pair of the primal nodes that coincide with the origin. The default is (1,1).\n\nExample\n\njulia> w = Nodes(Dual,(12,22));\n\njulia> xg, yg = coordinates(w,dx=0.1)\n(-0.05:0.1:1.05, -0.05:0.1:2.0500000000000003)\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/fields/#ViscousFlow.Fields.coordinates-Tuple{Any,PhysicalGrid}",
+    "page": "Fields",
+    "title": "ViscousFlow.Fields.coordinates",
+    "category": "method",
+    "text": "coordinates(w::Nodes/Edges,g::PhysicalGrid) -> Range\n\nReturn coordinate data range for type of w.\n\n\n\n\n\n"
 },
 
 {
@@ -273,6 +297,22 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "manual/fields/#ViscousFlow.Fields.limits-Tuple{PhysicalGrid,Int64}",
+    "page": "Fields",
+    "title": "ViscousFlow.Fields.limits",
+    "category": "method",
+    "text": "limits(g::PhysicalGrid,d::Int) -> Tuple\n\nReturn the minimum and maximum physical dimensions in direction d for grid g.\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/fields/#ViscousFlow.Fields.origin-Tuple{PhysicalGrid}",
+    "page": "Fields",
+    "title": "ViscousFlow.Fields.origin",
+    "category": "method",
+    "text": "origin(g::PhysicalGrid) -> Tuple{Int,Int}\n\nReturn a tuple of the indices of the primal node that corresponds to the physical origin of the coordinate system used by g. Note that these indices need not lie inside the range of indices occupied by the grid. For example, if the range of physical coordinates occupied by the grid is (1.0,3.0) x (2.0,4.0), then the origin is not inside the grid.\n\n\n\n\n\n"
+},
+
+{
     "location": "manual/fields/#ViscousFlow.Fields.plan_intfact",
     "page": "Fields",
     "title": "ViscousFlow.Fields.plan_intfact",
@@ -318,6 +358,30 @@ var documenterSearchIndex = {"docs": [
     "title": "ViscousFlow.Fields.product",
     "category": "method",
     "text": "product(p::Edges/Nodes,q::Edges/Nodes) --> Edges/Nodes\n\nCompute the Hadamard product of edge or nodal (primal or dual) data p and q and return the result. This operation can also be carried out with the ∘ operator:\n\nExample\n\njulia> q = Edges(Dual,(8,6));\n\njulia> p = deepcopy(q);\n\njulia> q.u[3,2] = 0.3;\n\njulia> p.u[3,2] = 0.2;\n\njulia> p∘q\nEdges{Dual,8,6} data\nu (in grid orientation)\n6×7 Array{Float64,2}:\n 0.0  0.0  0.0   0.0  0.0  0.0  0.0\n 0.0  0.0  0.0   0.0  0.0  0.0  0.0\n 0.0  0.0  0.0   0.0  0.0  0.0  0.0\n 0.0  0.0  0.0   0.0  0.0  0.0  0.0\n 0.0  0.0  0.06  0.0  0.0  0.0  0.0\n 0.0  0.0  0.0   0.0  0.0  0.0  0.0\nv (in grid orientation)\n5×8 Array{Float64,2}:\n 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0\n 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0\n 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0\n 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0\n 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/fields/#Base.length-Tuple{PhysicalGrid}",
+    "page": "Fields",
+    "title": "Base.length",
+    "category": "method",
+    "text": "length(g::PhysicalGrid,d::Int) -> Int\n\nReturn the total number of cells in grid g.\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/fields/#Base.size-Tuple{PhysicalGrid,Int64}",
+    "page": "Fields",
+    "title": "Base.size",
+    "category": "method",
+    "text": "size(g::PhysicalGrid,d::Int) -> Int\n\nReturn the number of cells in direction d in grid g.\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/fields/#Base.size-Tuple{PhysicalGrid}",
+    "page": "Fields",
+    "title": "Base.size",
+    "category": "method",
+    "text": "size(g::PhysicalGrid) -> Tuple\n\nReturn a tuple of the number of cells in all directions in grid g.\n\n\n\n\n\n"
 },
 
 {
@@ -625,14 +689,6 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "manual/navierstokes/#ViscousFlow.Systems.origin-Tuple{NavierStokes}",
-    "page": "Navier-Stokes systems",
-    "title": "ViscousFlow.Systems.origin",
-    "category": "method",
-    "text": "origin(sys::NavierStokes) -> Tuple{Int,Int}\n\nReturn a tuple of the indices of the primal node that corresponds to the physical origin of the coordinate system used by sys. Note that these indices need not lie inside the range of indices occupied by the grid. For example, if the range of physical coordinates occupied by the grid is (1.0,3.0) x (2.0,4.0), then the origin is not inside the grid.\n\n\n\n\n\n"
-},
-
-{
     "location": "manual/navierstokes/#Base.size-Union{Tuple{NY}, Tuple{NX}, Tuple{NavierStokes{NX,NY,N,isstatic} where isstatic where N,Int64}} where NY where NX",
     "page": "Navier-Stokes systems",
     "title": "Base.size",
@@ -646,6 +702,22 @@ var documenterSearchIndex = {"docs": [
     "title": "Base.size",
     "category": "method",
     "text": "size(sys::NavierStokes) -> Tuple{Int,Int}\n\nReturn a tuple of the number of indices of the grid used by sys\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/navierstokes/#ViscousFlow.Fields.cellsize-Tuple{NavierStokes}",
+    "page": "Navier-Stokes systems",
+    "title": "ViscousFlow.Fields.cellsize",
+    "category": "method",
+    "text": "cellsize(sys::NavierStokes) -> Float64\n\nReturn the grid cell size of system sys\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/navierstokes/#ViscousFlow.Fields.origin-Tuple{NavierStokes}",
+    "page": "Navier-Stokes systems",
+    "title": "ViscousFlow.Fields.origin",
+    "category": "method",
+    "text": "origin(sys::NavierStokes) -> Tuple{Int,Int}\n\nReturn a tuple of the indices of the primal node that corresponds to the physical origin of the coordinate system used by sys. Note that these indices need not lie inside the range of indices occupied by the grid. For example, if the range of physical coordinates occupied by the grid is (1.0,3.0) x (2.0,4.0), then the origin is not inside the grid.\n\n\n\n\n\n"
 },
 
 {
