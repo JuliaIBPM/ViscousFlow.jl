@@ -163,9 +163,10 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
 
 end
 
-
+include("fields/physicalgrid.jl")
 include("fields/operators.jl")
 include("fields/shift.jl")
+
 
 
 end
