@@ -164,7 +164,7 @@ function Base.show(io::IO, H::Regularize{N,F}) where {N,F}
 end
 
 """
-    RegularizationMatrix(H::Regularize,f::ScalarData/VectorData,u::Nodes/Edges) -> Hmat
+    RegularizationMatrix(H::Regularize,f::Points,u::CellData) -> Hmat
 
 Construct and store a matrix representation of regularization associated with `H`
 for data of type `f` to data of type `u`. The resulting matrix `Hmat` can then be
@@ -180,7 +180,7 @@ end
 
 
 """
-    InterpolationMatrix(H::Regularize,u::Nodes/Edges,f::ScalarData/VectorData) -> Emat
+    InterpolationMatrix(H::Regularize,u::CellData,f::Points) -> Emat
 
 Construct and store a matrix representation of interpolation associated with `H`
 for data of type `u` to data of type `f`. The resulting matrix `Emat` can then be

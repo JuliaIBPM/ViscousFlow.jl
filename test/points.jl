@@ -83,6 +83,35 @@ using Compat.LinearAlgebra
 
   end
 
+  @testset "Regularize tensor to edge gradient" begin
+
+  f = TensorData(X)
+  f.dudx .= rand(n)
+  f.dudy .= rand(n)
+  f.dvdx .= rand(n)
+  f.dvdy .= rand(n)
+
+  gradq = EdgeGradient(Dual,(nx,ny))
+
+  H(gradq,f)
+
+  @test sum(f.dudx) ≈ sum(gradq.dudx)*dx*dx
+  @test sum(f.dudy) ≈ sum(gradq.dudy)*dx*dx
+  @test sum(f.dvdx) ≈ sum(gradq.dvdx)*dx*dx
+  @test sum(f.dvdy) ≈ sum(gradq.dvdy)*dx*dx
+
+  gradq = EdgeGradient(Primal,(nx,ny))
+
+  H(gradq,f)
+
+  @test sum(f.dudx) ≈ sum(gradq.dudx)*dx*dx
+  @test sum(f.dudy) ≈ sum(gradq.dudy)*dx*dx
+  @test sum(f.dvdx) ≈ sum(gradq.dvdx)*dx*dx
+  @test sum(f.dvdy) ≈ sum(gradq.dvdy)*dx*dx
+
+
+  end
+
   @testset "Regularize scalar to primal nodes" begin
 
   f = ScalarData(X)
@@ -221,6 +250,57 @@ using Compat.LinearAlgebra
   mul!(f,Ẽmat,p)
   H̃(f2,p)
   @test f.u ≈ f2.u && f.v ≈ f2.v
+
+  f = TensorData(X)
+  f.dudx .= rand(n)
+  f.dudy .= rand(n)
+  f.dvdx .= rand(n)
+  f.dvdy .= rand(n)
+  f2 = TensorData(f)
+
+  p = EdgeGradient(Dual,(nx,ny))
+  p2 = deepcopy(p)
+  Hmat = RegularizationMatrix(H,f,p)
+  Emat = InterpolationMatrix(H,p,f)
+  Ẽmat = InterpolationMatrix(H̃,p,f)
+
+  mul!(p,Hmat,f)
+  H(p2,f)
+  @test p.dudx ≈ p2.dudx && p.dudy ≈ p2.dudy && p.dvdx ≈ p2.dvdx && p.dvdy ≈ p2.dvdy
+
+  p.dudx .= rand(Float64,size(p.dudx))
+  p.dudy .= rand(Float64,size(p.dudy))
+  p.dvdx .= rand(Float64,size(p.dvdx))
+  p.dvdy .= rand(Float64,size(p.dvdy))
+  mul!(f,Emat,p)
+  H(f2,p)
+  @test f.dudx ≈ f2.dudx && f.dudy ≈ f2.dudy && f.dvdx ≈ f2.dvdx && f.dvdy ≈ f2.dvdy
+
+  mul!(f,Ẽmat,p)
+  H̃(f2,p)
+  @test f.dudx ≈ f2.dudx && f.dudy ≈ f2.dudy && f.dvdx ≈ f2.dvdx && f.dvdy ≈ f2.dvdy
+
+  p = EdgeGradient(Primal,(nx,ny))
+  p2 = deepcopy(p)
+  Hmat = RegularizationMatrix(H,f,p)
+  Emat = InterpolationMatrix(H,p,f)
+  Ẽmat = InterpolationMatrix(H̃,p,f)
+
+  mul!(p,Hmat,f)
+  H(p2,f)
+  @test p.dudx ≈ p2.dudx && p.dudy ≈ p2.dudy && p.dvdx ≈ p2.dvdx && p.dvdy ≈ p2.dvdy
+
+  p.dudx .= rand(Float64,size(p.dudx))
+  p.dudy .= rand(Float64,size(p.dudy))
+  p.dvdx .= rand(Float64,size(p.dvdx))
+  p.dvdy .= rand(Float64,size(p.dvdy))
+  mul!(f,Emat,p)
+  H(f2,p)
+  @test f.dudx ≈ f2.dudx && f.dudy ≈ f2.dudy && f.dvdx ≈ f2.dvdx && f.dvdy ≈ f2.dvdy
+
+  mul!(f,Ẽmat,p)
+  H̃(f2,p)
+  @test f.dudx ≈ f2.dudx && f.dudy ≈ f2.dudy && f.dvdx ≈ f2.dvdx && f.dvdy ≈ f2.dvdy
 
   end
 
