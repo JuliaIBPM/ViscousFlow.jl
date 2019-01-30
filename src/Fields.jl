@@ -29,6 +29,7 @@ using Compat: copyto!, reverse
 
 @static if VERSION < v"0.7-"
   import Base: A_mul_B!, A_ldiv_B!, scale!, parentindexes
+  import Base.LinAlg: cross, ×
   mul!(x,B,y) = A_mul_B!(x,B,y)
   rmul!(B,x) = scale!(B,x)
   ldiv!(x,B,y) = A_ldiv_B!(x,B,y)
@@ -37,14 +38,14 @@ using Compat: copyto!, reverse
   const GAMMA = γ
   export mul!, ldiv!, rmul!, parentindices
 else
-  import LinearAlgebra: mul!, ldiv!
+  import LinearAlgebra: mul!, ldiv!, cross, ×
   import Base: parentindices
   const GAMMA = MathConstants.γ
 end
 
 export Primal, Dual, Edges, Nodes,
        EdgeGradient, NodePair,
-       Points, ScalarData, VectorData,
+       Points, ScalarData, VectorData, TensorData,
        curl, curl!, Curl, divergence, divergence!, Divergence,
        grad, grad!, Grad,
        laplacian, laplacian!, plan_laplacian, plan_laplacian!,
