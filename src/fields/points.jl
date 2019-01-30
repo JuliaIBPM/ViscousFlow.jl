@@ -250,7 +250,7 @@ function (-)(A::VectorData,a::Tuple{T,T}) where {T <: Number}
 end
 
 a::(Tuple{T,T} where {T}) + A::VectorData = A + a
-a::(Tuple{T,T} where {T}) - A::VectorData = (B .= A - a; B.u .= -B.u; B.v .= -B.v; return B)
+a::(Tuple{T,T} where {T}) - A::VectorData = (B = A - a; B.u .= -B.u; B.v .= -B.v; return B)
 
 """
     cross(a::Number,A::VectorData) -> VectorData

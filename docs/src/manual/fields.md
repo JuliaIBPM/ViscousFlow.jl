@@ -481,6 +481,27 @@ It might seem a bit funny to store them separately if they are just transposes
 of each other, but it is essential for the method dispatch that they are
 given separate types.
 
+## Other operations with point-type data
+
+We have seen point-type data structures, `ScalarData` and `VectorData`; there is also a tensor type of data, `TensorData`, which holds the four components of a 2x2 tensor. One can regularize and interpolate with this tensor data, as well; its companion grid data structure is the `EdgeGradient` type, which is a wrapper for four `Nodes` structures: two `Dual`, and two `Primal`, where the four tensor components are naturally held on the grid.
+
+There are also some extensions of standard operations to the `VectorData` type. For example, we can add a tuple of two numbers to vector data, and these numbers get added to each entry in the set of points, component-wise. For example,
+```@repl vector
+Y = VectorData(4)
+Y + (1,2)
+```
+
+Subtraction also works, and the operations are commutable.
+
+Another useful operation is a cross product, which can be carried out between a single scalar (treated as though it was the component of an out-of-plane vector) and `VectorData`:
+
+```@repl vector
+using LinearAlgebra
+X = VectorData(4)
+fill!(X.u,1)
+2.0×X
+```
+
 ## Methods
 
 ```@autodocs

@@ -23,6 +23,23 @@ using Compat.LinearAlgebra
 
   end
 
+  @testset "Point operations" begin
+
+    Y = VectorData(4)
+    X = Y + (1,2)
+    @test X.v[4] == 2.0
+
+    X2 = (1,2) + Y
+    @test X2 == X
+
+    X = Y - (1,2)
+    @test X.u[4] == -1.0
+
+    X = (1,2) - Y
+    @test X.u[4] == 1.0
+
+  end
+
   n = 10
   x = 0.5 .+ 0.2*rand(n)
   y = 0.5 .+ 0.2*rand(n)
