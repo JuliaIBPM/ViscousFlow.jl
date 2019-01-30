@@ -38,6 +38,16 @@ using Compat.LinearAlgebra
     X = (1,2) - Y
     @test X.u[4] == 1.0
 
+    Z = 2.0 × X
+    @test typeof(Z) <: VectorData
+    @test Z.u[1] == -4.0
+
+    X = TensorData(Y)
+    fill!(X,1)
+    Z = (1,2) ⋅ X
+    @test typeof(Z) <: VectorData
+    @test Z.u[3] == 3.0
+
   end
 
   n = 10

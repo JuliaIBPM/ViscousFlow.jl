@@ -50,7 +50,7 @@ export Primal, Dual, Edges, Nodes,
        grad, grad!, Grad,
        laplacian, laplacian!, plan_laplacian, plan_laplacian!,
        plan_intfact,plan_intfact!,Identity,
-       product, product!, ∘,
+       product, product!, ∘, ⋅,
        cellshift!,
        coordinates,
        DDF, Regularize, RegularizationMatrix, InterpolationMatrix,
@@ -119,7 +119,7 @@ vectorlist = ((:(Edges{Primal,NX,NY}),          0,1,1,0,0.5,0.0,0.0,0.5),
               (:(NodePair{Primal,Primal,NX,NY}),1,1,1,1,0.0,0.0,0.0,0.0))
 
 tensorlist = ((:(EdgeGradient{Dual,Primal,NX,NY}), 0,0,1,1,0.5,0.5,0.0,0.0),
-              (:(EdgeGradient{Primal,Dual,NX,NY}), 1,1,0,0,0.0,0.0,0.5,0.5))              
+              (:(EdgeGradient{Primal,Dual,NX,NY}), 1,1,0,0,0.0,0.0,0.5,0.5))
 
 include("fields/points.jl")
 
