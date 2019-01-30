@@ -1,6 +1,6 @@
 # Collections of data
 
-struct EdgeGradient{C <: CellType,D <: CellType, NX,NY}
+struct EdgeGradient{C <: CellType,D <: CellType, NX,NY} <: AbstractMatrix{Float64}
   dudx :: Nodes{C,NX,NY}
   dvdy :: Nodes{C,NX,NY}
   dudy :: Nodes{D,NX,NY}
@@ -17,6 +17,23 @@ function EdgeGradient(T::Type{C}, dualnodedims::Tuple{Int, Int}) where {C <: Cel
             )
 end
 
+(::Type{EdgeGradient{T,S,NX,NY}})() where {T<:CellType,S<:CellType,NX,NY} = EdgeGradient(T, (NX, NY))
+
+function Base.fill!(g::EdgeGradient, s::Number)
+    fill!(g.dudx, s)
+    fill!(g.dudy, s)
+    fill!(g.dvdx, s)
+    fill!(g.dvdy, s)
+    g
+end
+
+Base.size(A::EdgeGradient{C,D,NX,NY}) where {C,D,NX,NY} = (2length(A.dudx)+2length(A.dudy),1)
+@propagate_inbounds Base.getindex(A::EdgeGradient{C,D,NX,NY},i::Int) where {C,D,NX,NY} =
+   i > length(A.dudx) ? (i > length(A.dudx)+length(A.dudy) ? (i > length(A.dudx)+2length(A.dudy) ? A.dvdy[i-length(A.dudx)-2length(A.dudy)] : A.dvdx[i-length(A.dudx)-length(A.dudy)]) : A.dudy[i-length(A.dudx)]) : A.dudx[i]
+@propagate_inbounds Base.setindex!(A::EdgeGradient{C,D,NX,NY}, v, i::Int) where {C,D,NX,NY} =
+   i > length(A.dudx) ? (i > length(A.dudx)+length(A.dudy) ? (i > length(A.dudx)+2length(A.dudy) ? A.dvdy[i-length(A.dudx)-2length(A.dudy)] = convert(Float64, v) : A.dvdx[i-length(A.dudx)-length(A.dudy)] = convert(Float64, v)) : A.dudy[i-length(A.dudx)]= convert(Float64, v)) : A.dudx[i] = convert(Float64, v)
+Base.IndexStyle(::Type{<:EdgeGradient}) = IndexLinear()
+
 function Base.show(io::IO, nodes::EdgeGradient{T, S, NX, NY}) where {T, S, NX, NY}
     nodedims = "(nx = $NX, ny = $NY)"
     udims = "(nx = $(size(nodes.dudx,1)), ny = $(size(nodes.dudx,2)))"
@@ -26,7 +43,7 @@ function Base.show(io::IO, nodes::EdgeGradient{T, S, NX, NY}) where {T, S, NX, N
     println(io, "  du/dy and dv/dx as $S nodes : $vdims")
 end
 
-struct NodePair{C <: CellType,D <: CellType, NX,NY}
+struct NodePair{C <: CellType,D <: CellType, NX,NY} <: AbstractMatrix{Float64}
   u :: Nodes{C,NX,NY}
   v :: Nodes{D,NX,NY}
 end
@@ -72,3 +89,4 @@ Base.size(A::NodePair{C,D,NX,NY}) where {C,D,NX,NY} = (length(A.u)+length(A.v),1
    i > length(A.u) ? A.v[i-length(A.u)] : A.u[i]
 @propagate_inbounds Base.setindex!(A::NodePair{C,D,NX,NY}, v, i::Int) where {C,D,NX,NY} =
    i > length(A.u) ? A.v[i-length(A.u)] = convert(Float64, v) : A.u[i] = convert(Float64, v)
+Base.IndexStyle(::Type{<:NodePair}) = IndexLinear()

@@ -118,6 +118,9 @@ vectorlist = ((:(Edges{Primal,NX,NY}),          0,1,1,0,0.5,0.0,0.0,0.5),
               (:(NodePair{Dual,Primal,NX,NY}),  0,0,1,1,0.5,0.5,0.0,0.0),
               (:(NodePair{Primal,Primal,NX,NY}),1,1,1,1,0.0,0.0,0.0,0.0))
 
+tensorlist = ((:(EdgeGradient{Dual,Primal,NX,NY}), 0,0,1,1,0.5,0.5,0.0,0.0),
+              (:(EdgeGradient{Primal,Dual,NX,NY}), 1,1,0,0,0.0,0.0,0.5,0.5))              
+
 include("fields/points.jl")
 
 GridData = Union{Nodes{T,NX,NY},Edges{T,NX,NY}} where {T,NX,NY}

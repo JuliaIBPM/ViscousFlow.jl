@@ -17,6 +17,7 @@ struct Regularize{N,F}
   "buffer space"
   buffer :: Vector{Float64}
   buffer2 :: Vector{Float64}
+  buffer3 :: Vector{Float64}
 
   "Discrete Delta function"
   ddf :: DDF
@@ -147,7 +148,8 @@ function Regularize(x::Vector{T},y::Vector{T},dx::T;
   end
 
   Regularize{length(x),filter}(x/dx.+I0[1],y/dx.+I0[2],1.0/(dx*dx),
-                      wtvec,zeros(T,n),zeros(T,n),DDF(ddftype=ddftype,dx=1.0),issymmetric)
+                      wtvec,zeros(T,n),zeros(T,n),zeros(T,n),
+                      DDF(ddftype=ddftype,dx=1.0),issymmetric)
 end
 
 Regularize(x::T,y::T,a...;b...) where {T<:Real} = Regularize([x],[y],a...;b...)
@@ -505,10 +507,205 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
 
 end
 
-(*)(Hmat::RegularizationMatrix{TU,TF},src::TF) where {TU,TF<:Union{ScalarData,VectorData}} =
+# Regularization and interpolation operators of tensor data to edge gradients
+# Here, u describes both diagonal components and v the off diagonal
+ftype = :(TensorData{N})
+for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tensorlist
+
+# Regularization
+  @eval function (H::Regularize{N,F})(target::$ctype,source::$ftype) where {N,F,NX,NY}
+        fill!(target.dudx,0.0)
+        fill!(target.dvdy,0.0)
+        H.buffer2 .= source.dudx.*H.wgt
+        H.buffer3 .= source.dvdy.*H.wgt
+        @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
+          H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
+          target.dudx[x,y] = transpose(H.buffer)*H.buffer2
+          target.dvdy[x,y] = transpose(H.buffer)*H.buffer3
+        end
+        fill!(target.dudy,0.0)
+        fill!(target.dvdx,0.0)
+        H.buffer2 .= source.dudy.*H.wgt
+        H.buffer3 .= source.dvdx.*H.wgt
+        @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
+          H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
+          target.dudy[x,y] = transpose(H.buffer)*H.buffer2
+          target.dvdx[x,y] = transpose(H.buffer)*H.buffer3
+        end
+        target
+  end
+
+# Interpolation
+  @eval function (H::Regularize{N,false})(target::$ftype,
+                                       source::$ctype) where {N,NX,NY}
+    target.dudx .= target.dudy .= target.dvdx .= target.dvdy .= zeros(Float64,N)
+    @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
+      H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
+      target.dudx .+= H.buffer*source.dudx[x,y]
+      target.dvdy .+= H.buffer*source.dvdy[x,y]
+    end
+    @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
+      H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
+      target.dudy .+= H.buffer*source.dudy[x,y]
+      target.dvdx .+= H.buffer*source.dvdx[x,y]
+    end
+    target
+  end
+
+# Interpolation with filtering
+  @eval function (H::Regularize{N,true})(target::$ftype,
+                                      source::$ctype) where {N,NX,NY}
+    target.dudx .= target.dudy .= target.dvdx .= target.dvdy .= zeros(Float64,N)
+    @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
+      H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
+      w = transpose(H.buffer)*H.wgt
+      w1 = w ≢ 0.0 ? source.dudx[x,y]/w : 0.0
+      w2 = w ≢ 0.0 ? source.dvdy[x,y]/w : 0.0
+      target.dudx .+= H.buffer*w1
+      target.dvdy .+= H.buffer*w2
+    end
+    @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
+      H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
+      w = transpose(H.buffer)*H.wgt
+      w1 = w ≢ 0.0 ? source.dudy[x,y]/w : 0.0
+      w2 = w ≢ 0.0 ? source.dvdx[x,y]/w : 0.0
+      target.dudy .+= H.buffer*w1
+      target.dvdx .+= H.buffer*w2
+    end
+    target
+  end
+
+  # Construct regularization matrix
+  @eval function RegularizationMatrix(H::Regularize{N,F},src::$ftype,target::$ctype) where {N,F,NX,NY}
+
+    # note that we only need to compute two distinct matrices, since there are
+    # only two types of cell data in this tensor
+
+    #Hmat = (spzeros(length(target.u),length(src.u)),spzeros(length(target.v),length(src.v)))
+    lenu = length(target.dudx)
+    lenv = length(target.dudy)
+    Hmat = spzeros(2lenu+2lenv,4N)
+    g = deepcopy(src)
+    v = deepcopy(target)
+    g.dudx .= g.dudy .= g.dvdx .= g.dvdy .= zeros(Float64,N)
+    for i = 1:N
+      g.dudx[i] = 1.0  # these two are sufficient
+      g.dudy[i] = 1.0
+      H(v,g)
+      Hmat[1:lenu,i]           = sparsevec(v.dudx)
+      Hmat[lenu+1:lenu+lenv,i+N] = sparsevec(v.dudy)
+      Hmat[lenu+lenv+1:lenu+2lenv,i+2N] = sparsevec(v.dudy)
+      Hmat[lenu+2lenv+1:2lenu+2lenv,i+3N] = sparsevec(v.dudx)
+      g.dudx[i] = 0.0
+      g.dudy[i] = 0.0
+    end
+    if H._issymmetric
+      # In symmetric case, these matrices are identical. (Interpolation is stored
+      # as its transpose.)
+      return RegularizationMatrix{$ctype,$ftype}(Hmat),InterpolationMatrix{$ctype,$ftype}(Hmat)
+    else
+      return RegularizationMatrix{$ctype,$ftype}(Hmat)
+    end
+  end
+
+  # Construct interpolation matrix
+  @eval function InterpolationMatrix(H::Regularize{N,false},src::$ctype,target::$ftype) where {N,NX,NY}
+
+    # note that we store interpolation matrices in the same shape as regularization matrices
+    #Emat = (spzeros(length(src.u),length(target.u)),spzeros(length(src.v),length(target.v)))
+    lenu = length(src.dudx)
+    lenv = length(src.dudy)
+    Emat = spzeros(2lenu+2lenv,4N)
+    g = deepcopy(target)
+    v = deepcopy(src)
+    g.dudx .= g.dudy .= g.dvdx .= g.dvdy .= zeros(Float64,N)
+    for i = 1:N
+      g.dudx[i] = 1.0/H.wgt[i]  # unscale for interpolation
+      g.dudy[i] = 1.0/H.wgt[i]  # unscale for interpolation
+      H(v,g)
+      Emat[1:lenu,i]           = sparsevec(v.dudx)
+      Emat[lenu+1:lenu+lenv,i+N] = sparsevec(v.dudy)
+      Emat[lenu+lenv+1:lenu+2lenv,i+2N] = sparsevec(v.dudy)
+      Emat[lenu+2lenv+1:2lenu+2lenv,i+3N] = sparsevec(v.dudx)
+      g.dudx[i] = 0.0
+      g.dudy[i] = 0.0
+    end
+    InterpolationMatrix{$ctype,$ftype}(Emat)
+  end
+
+  # Construct interpolation matrix with filtering
+  @eval function InterpolationMatrix(H::Regularize{N,true},src::$ctype,target::$ftype) where {N,NX,NY}
+
+    # note that we store interpolation matrices in the same shape as regularization matrices
+    #Emat = (spzeros(length(src.u),length(target.u)),spzeros(length(src.v),length(target.v)))
+    lenu = length(src.dudx)
+    lenv = length(src.dudy)
+    Emat = spzeros(2lenu+2lenv,4N)
+    g = deepcopy(target)
+    v = deepcopy(src)
+    fill!(g,1.0)
+    H(v,g)
+    wtu = sparsevec(v.dudx)
+    wtu.nzval .= 1 ./ wtu.nzval
+    wtv = sparsevec(v.dudy)
+    wtv.nzval .= 1 ./ wtv.nzval
+    fill!(g,0.0)
+    for i = 1:N
+      g.dudx[i] = 1.0/H.wgt[i]  # unscale for interpolation
+      g.dudy[i] = 1.0/H.wgt[i]  # unscale for interpolation
+      H(v,g)
+      Emat[1:lenu,i]             = wtu.*sparsevec(v.dudx)
+      Emat[lenu+1:lenu+lenv,i+N] = wtv.*sparsevec(v.dudy)
+      Emat[lenu+lenv+1:lenu+2lenv,i+2N] = wtv.*sparsevec(v.dudy)
+      Emat[lenu+2lenv+1:2lenu+2lenv,i+3N] = wtu.*sparsevec(v.dudx)
+      g.dudx[i] = 0.0
+      g.dudy[i] = 0.0
+    end
+    InterpolationMatrix{$ctype,$ftype}(Emat)
+  end
+
+  @eval function mul!(u::$ctype,Hmat::RegularizationMatrix{$ctype,$ftype},f::$ftype) where {NX,NY,N}
+    fill!(u,0.0)
+    nzv = Hmat.M.nzval
+    rv = Hmat.M.rowval
+    @inbounds for col = 1:Hmat.M.n
+      fj = f[col]
+      for j = Hmat.M.colptr[col]:(Hmat.M.colptr[col + 1] - 1)
+          u[rv[j]] += nzv[j]*fj
+      end
+    end
+    #I,J,V = findnz(Hmat.M)
+    #for (cnt,v) in enumerate(V)
+    #  u[I[cnt]] += v*f[J[cnt]]
+    #end
+    u
+  end
+
+  @eval function mul!(f::$ftype,Emat::InterpolationMatrix{$ctype,$ftype},u::$ctype) where {NX,NY,N}
+    fill!(f,0.0)
+    nzv = Emat.M.nzval
+    rv = Emat.M.rowval
+    @inbounds for col = 1:Emat.M.n
+        tmp = zero(eltype(f))
+        for j = Emat.M.colptr[col]:(Emat.M.colptr[col + 1] - 1)
+            tmp += transpose(nzv[j])*u[rv[j]]
+        end
+        f[col] += tmp
+    end
+    #I,J,V = findnz(Emat.M)
+    #for (cnt,v) in enumerate(V)
+    #  f[J[cnt]] .+= v*u[I[cnt]]
+    #end
+    f
+  end
+
+end
+
+
+(*)(Hmat::RegularizationMatrix{TU,TF},src::TF) where {TU,TF<:Points} =
         mul!(TU(),Hmat,src)
 
-(*)(Emat::InterpolationMatrix{TU,TF},src::TU) where {TU<:Union{Nodes,Edges},TF<:Union{ScalarData,VectorData}} =
+(*)(Emat::InterpolationMatrix{TU,TF},src::TU) where {TU<:Union{Nodes,Edges,EdgeGradient,NodePair},TF<:Points} =
                 mul!(TF(),Emat,src)
 
 
