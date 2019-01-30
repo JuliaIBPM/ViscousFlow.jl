@@ -133,7 +133,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Fields",
     "title": "ViscousFlow.Fields.InterpolationMatrix",
     "category": "type",
-    "text": "InterpolationMatrix(H::Regularize,u::Nodes/Edges,f::ScalarData/VectorData) -> Emat\n\nConstruct and store a matrix representation of interpolation associated with H for data of type u to data of type f. The resulting matrix Emat can then be used to apply on grid data of type u to interpolate it to point data of type f, using mul!(f,Emat,u). It can also be used as just Emat*u.\n\n\n\n\n\n"
+    "text": "InterpolationMatrix(H::Regularize,u::CellData,f::Points) -> Emat\n\nConstruct and store a matrix representation of interpolation associated with H for data of type u to data of type f. The resulting matrix Emat can then be used to apply on grid data of type u to interpolate it to point data of type f, using mul!(f,Emat,u). It can also be used as just Emat*u.\n\n\n\n\n\n"
 },
 
 {
@@ -157,7 +157,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Fields",
     "title": "ViscousFlow.Fields.RegularizationMatrix",
     "category": "type",
-    "text": "RegularizationMatrix(H::Regularize,f::ScalarData/VectorData,u::Nodes/Edges) -> Hmat\n\nConstruct and store a matrix representation of regularization associated with H for data of type f to data of type u. The resulting matrix Hmat can then be used to apply on point data of type f to regularize it to grid data of type u, using mul!(u,Hmat,f). It can also be used as just Hmat*f.\n\nIf H is a symmetric regularization and interpolation operator, then this actually returns a tuple Hmat, Emat, where Emat is the interpolation matrix.\n\n\n\n\n\n"
+    "text": "RegularizationMatrix(H::Regularize,f::Points,u::CellData) -> Hmat\n\nConstruct and store a matrix representation of regularization associated with H for data of type f to data of type u. The resulting matrix Hmat can then be used to apply on point data of type f to regularize it to grid data of type u, using mul!(u,Hmat,f). It can also be used as just Hmat*f.\n\nIf H is a symmetric regularization and interpolation operator, then this actually returns a tuple Hmat, Emat, where Emat is the interpolation matrix.\n\n\n\n\n\n"
 },
 
 {
@@ -174,6 +174,14 @@ var documenterSearchIndex = {"docs": [
     "title": "ViscousFlow.Fields.ScalarData",
     "category": "type",
     "text": "ScalarData\n\nA wrapper for a one-dimensional array of scalar-valued data. The resulting wrapper can be indexed in the same way as the array itself.\n\nConstructors\n\nScalarData(d) constructs a wrapper for the one-dimensional array of data d\nScalarData(n::Int) constructs a wrapper for an array of zeros of length n.\nScalarData(x::ScalarData) constructs a wrapper for an array of zeros of the  same length as that wrapped by x.\nScalarData(x::VectorData) constructs a wrapper for an array of zeros of the   same length as that wrapped by x.\n\nExample\n\njulia> f = ScalarData(10);\n\njulia> f[5] = 1.0;\n\njulia> f\n10 points of scalar-valued data\n10-element Array{Float64,1}:\n 0.0\n 0.0\n 0.0\n 0.0\n 1.0\n 0.0\n 0.0\n 0.0\n 0.0\n 0.0\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/fields/#ViscousFlow.Fields.TensorData",
+    "page": "Fields",
+    "title": "ViscousFlow.Fields.TensorData",
+    "category": "type",
+    "text": "TensorData\n\nA wrapper for a one-dimensional array of 2x2 tensor-valued data, with fields dudx, dudy, dvdx, dvdy. The resulting wrapper can be indexed as though these four components are stacked on top of each other.\n\nConstructors\n\nTensorData(dudx,dudy,dvdx,dvdy) constructs a wrapper for the tensor components data.\nTensorData(n::Int) constructs a wrapper with zeros of length n for all components.\nTensorData(x::ScalarData/VectorData/TensorData) constructs a wrapper for zero components of the  same length as that wrapped by x.\n\nExample\n\n\n\n\n\n"
 },
 
 {
@@ -361,6 +369,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "manual/fields/#Base.:+-Union{Tuple{T}, Tuple{VectorData,Tuple{T,T}}} where T<:Number",
+    "page": "Fields",
+    "title": "Base.:+",
+    "category": "method",
+    "text": "(+)(X::VectorData,a::Tuple{T,T}) where {T<:Number} -> VectorData\n(-)(X::VectorData,a::Tuple{T,T}) where {T<:Number} -> VectorData\n\nAdds or subtracts the tuple a component by component to each element of X. All data in a are converted to Float64. Can also switch the arguments.\n\nExample\n\njulia> f = VectorData(5);\n\njulia> f + (2,3)\n5 points of vector-valued data\n5×2 Array{Float64,2}:\n 2.0  3.0\n 2.0  3.0\n 2.0  3.0\n 2.0  3.0\n 2.0  3.0\n\n\n\n\n\n"
+},
+
+{
     "location": "manual/fields/#Base.length-Tuple{PhysicalGrid}",
     "page": "Fields",
     "title": "Base.length",
@@ -382,6 +398,46 @@ var documenterSearchIndex = {"docs": [
     "title": "Base.size",
     "category": "method",
     "text": "size(g::PhysicalGrid) -> Tuple\n\nReturn a tuple of the number of cells in all directions in grid g.\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/fields/#Base.size-Tuple{TensorData}",
+    "page": "Fields",
+    "title": "Base.size",
+    "category": "method",
+    "text": "size(A::TensorData) -> Tuple\n\nReturn a tuple of the number of tensor data points by the number of dimensions.\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/fields/#Base.size-Tuple{VectorData}",
+    "page": "Fields",
+    "title": "Base.size",
+    "category": "method",
+    "text": "size(A::VectorData) -> Tuple\n\nReturn a tuple of the number of vector data points by the number of dimensions.\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/fields/#Base.size-Union{Tuple{N}, Tuple{TensorData{N},Int64}} where N",
+    "page": "Fields",
+    "title": "Base.size",
+    "category": "method",
+    "text": "size(A::TensorData,d::Int) -> Int\n\nReturn four times the number of tensor data points if d is 1 (the sum of the length of the four components) and 1 if d is 2. This is consistent with the interpretation of TensorData as a stacked set of columns.\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/fields/#Base.size-Union{Tuple{N}, Tuple{VectorData{N},Int64}} where N",
+    "page": "Fields",
+    "title": "Base.size",
+    "category": "method",
+    "text": "size(A::VectorData,d::Int) -> Int\n\nReturn twice the number of vector data points if d is 1 (the sum of the length of the u and v vectors) and 1 if d is 2. This is consistent with the interpretation of VectorData as a stacked pair of columns, corresponding to the u and v components, respectively.\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/fields/#LinearAlgebra.cross-Tuple{Number,VectorData}",
+    "page": "Fields",
+    "title": "LinearAlgebra.cross",
+    "category": "method",
+    "text": "cross(a::Number,A::VectorData) -> VectorData\n×(a::Number,A::VectorData) -> VectorData\n\nCompute the cross product between the scalar a (treated as an out-of-plane component of a vector) and the planar vector data A.\n\n\n\n\n\n"
 },
 
 {
