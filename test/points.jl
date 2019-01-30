@@ -12,8 +12,14 @@ using Compat.LinearAlgebra
   @testset "Point creation" begin
     @test_throws AssertionError VectorData([1,2,3],[1,2])
 
+    @test_throws AssertionError TensorData([1,2,3],[1,2],[2,3],[4,5])
+
     f = ScalarData(10)
     f .= rand(10)
+
+    ft = TensorData(f)
+    ft[25] = 4
+    @test ft.dvdx[5] == 4
 
   end
 
