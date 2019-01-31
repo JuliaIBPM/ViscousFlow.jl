@@ -105,6 +105,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "manual/fields/#Other-operations-with-point-type-data-1",
+    "page": "Fields",
+    "title": "Other operations with point-type data",
+    "category": "section",
+    "text": "We have seen point-type data structures, ScalarData and VectorData; there is also a tensor type of data, TensorData, which holds the four components of a 2x2 tensor. One can regularize and interpolate with this tensor data, as well; its companion grid data structure is the EdgeGradient type, which is a wrapper for four Nodes structures: two Dual, and two Primal, where the four tensor components are naturally held on the grid.There are also some extensions of standard operations to the VectorData type. For example, we can add a tuple of two numbers to vector data, and these numbers get added to each entry in the set of points, component-wise. For example,Y = VectorData(4)\nY + (1,2)Subtraction also works, and the operations are commutable.Another useful operation is a cross product, which can be carried out between a single scalar (treated as though it was the component of an out-of-plane vector) and VectorData:using LinearAlgebra\nX = VectorData(4)\nfill!(X.u,1)\n2.0×X"
+},
+
+{
     "location": "manual/fields/#ViscousFlow.Fields.CircularConvolution",
     "page": "Fields",
     "title": "ViscousFlow.Fields.CircularConvolution",
@@ -438,6 +446,14 @@ var documenterSearchIndex = {"docs": [
     "title": "LinearAlgebra.cross",
     "category": "method",
     "text": "cross(a::Number,A::VectorData) -> VectorData\n×(a::Number,A::VectorData) -> VectorData\n\nCompute the cross product between the scalar a (treated as an out-of-plane component of a vector) and the planar vector data A.\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/fields/#LinearAlgebra.dot-Union{Tuple{T}, Tuple{Tuple{T,T},TensorData}} where T<:Number",
+    "page": "Fields",
+    "title": "LinearAlgebra.dot",
+    "category": "method",
+    "text": "dot(v::Tuple{T,T},B::TensorData) where {T<:Number} -> VectorData\n⋅(v::Tuple{T,T},B::TensorData) where {T<:Number} -> VectorData\n\nComputes the dot product between the tuple v and the elements of a tensor B on a set of points and returns vector data on the same set of points.\n\n\n\n\n\n"
 },
 
 {
