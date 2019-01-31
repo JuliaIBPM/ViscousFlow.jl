@@ -71,6 +71,8 @@ mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
     # Pre-stored regularization and interpolation matrices (if present)
     Hmat::Union{RegularizationMatrix,Nothing}
     Emat::Union{InterpolationMatrix,Nothing}
+    Hmat_grad::Union{RegularizationMatrix,Nothing}
+    Emat_grad::Union{InterpolationMatrix,Nothing}
 
 
     # Scratch space
@@ -90,6 +92,7 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
                        U∞ = (0.0, 0.0), X̃ = VectorData{0}(),
                        isstore = false,
                        isstatic = true,
+                       isasymptotic = false,
                        rk::TimeMarching.RKParams=TimeMarching.RK31)
 
     g = PhysicalGrid(xlimits,ylimits,Δx)
@@ -108,7 +111,13 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
     if length(N) > 0 && isstore && isstatic
       # in this case, X̃ is assumed to be in inertial coordinates
       regop = Regularize(X̃,Δx;I0=Fields.origin(g),issymmetric=true)
-      Hmat, Emat = RegularizationMatrix(regop,VectorData{N}(),Edges{Primal,NX,NY}())
+      Hmat, Emat = RegularizationMatrix(regop,Vb,Fq)
+      if isasymptotic
+        Hmat_grad, Emat_grad = RegularizationMatrix(regop,TensorData{N}(),grad(Fq))
+      else
+        Hmat_grad = nothing
+        Emat_grad = nothing
+      end
     else
       #Hmat = Nullable{RegularizationMatrix}()
       #Emat = Nullable{InterpolationMatrix}()
@@ -120,7 +129,8 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
     # should be able to set up time marching operator here...
 
     #NavierStokes{NX, NY, N, isstatic}(Re, U∞, Δx, I0, Δt, rk, L, X̃, Hmat, Emat, Vb, Fq, Ww, Qq, isstore)
-    NavierStokes{NX, NY, N, isstatic}(Re, U∞, g, Δt, rk, L, X̃, Hmat, Emat, Vb, Fq, Ww, Qq, isstore)
+    NavierStokes{NX, NY, N, isstatic}(Re, U∞, g, Δt, rk, L, X̃, Hmat, Emat, Hmat_grad, Emat_grad,
+                                        Vb, Fq, Ww, Qq, isstore)
 end
 
 function Base.show(io::IO, sys::NavierStokes{NX,NY,N,isstatic}) where {NX,NY,N,isstatic}

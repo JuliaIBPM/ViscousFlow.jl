@@ -184,7 +184,7 @@ Base.size(::VectorData{N},d::Int) where {N} = d == 1 ? 2*N : 1
 
 Return a tuple of the number of vector data points by the number of dimensions.
 """
-Base.size(A::VectorData) = size(A,1),
+Base.size(A::VectorData) = (size(A,1),)
 @propagate_inbounds Base.getindex(A::VectorData{N},i::Int) where {N} =
    i > N ? A.v[i-N] : A.u[i]
 @propagate_inbounds Base.setindex!(A::VectorData{N}, v, i::Int) where {N} =
@@ -204,7 +204,7 @@ Base.size(::TensorData{N},d::Int) where {N} = d == 1 ? 4*N : 1
 
 Return a tuple of the number of tensor data points by the number of dimensions.
 """
-Base.size(A::TensorData) = size(A,1),
+Base.size(A::TensorData) = (size(A,1),)
 
 @propagate_inbounds Base.getindex(A::TensorData{N},i::Int) where {N} =
    i > N ? (i > 2*N ? (i > 3*N ? A.dvdy[i-3*N] : A.dvdx[i-2*N]) : A.dudy[i-N] ) : A.dudx[i]
@@ -267,12 +267,13 @@ function cross(a::Number,A::VectorData)
 end
 
 """
+    dot(v::Tuple{T,T},B::TensorData) where {T<:Number} -> VectorData
     ⋅(v::Tuple{T,T},B::TensorData) where {T<:Number} -> VectorData
 
 Computes the dot product between the tuple `v` and the elements of a tensor `B` on
 a set of points and returns vector data on the same set of points.
 """
-function (⋅)(A::Tuple{T,T},B::TensorData) where {T<:Number}
+function dot(A::Tuple{T,T},B::TensorData) where {T<:Number}
     C = VectorData(B)
     x, y = A
     C.u .= x*B.dudx + y*B.dudy
