@@ -108,22 +108,18 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
     Qq = Edges{Dual, NX, NY}()
     N = length(X̃)÷2
 
+    Hmat = nothing
+    Emat = nothing
+    Hmat_grad = nothing
+    Emat_grad = nothing
+
     if length(N) > 0 && isstore && isstatic
       # in this case, X̃ is assumed to be in inertial coordinates
       regop = Regularize(X̃,Δx;I0=Fields.origin(g),issymmetric=true)
       Hmat, Emat = RegularizationMatrix(regop,Vb,Fq)
       if isasymptotic
         Hmat_grad, Emat_grad = RegularizationMatrix(regop,TensorData{N}(),grad(Fq))
-      else
-        Hmat_grad = nothing
-        Emat_grad = nothing
       end
-    else
-      #Hmat = Nullable{RegularizationMatrix}()
-      #Emat = Nullable{InterpolationMatrix}()
-      Hmat = nothing
-      Emat = nothing
-
     end
 
     # should be able to set up time marching operator here...
