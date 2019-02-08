@@ -153,11 +153,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "manual/fields/#ViscousFlow.Fields.PhysicalGrid-Tuple{Tuple{Float64,Float64},Tuple{Float64,Float64},Float64}",
+    "location": "manual/fields/#ViscousFlow.Fields.PhysicalGrid-Tuple{Tuple{Real,Real},Tuple{Real,Real},Float64}",
     "page": "Fields",
     "title": "ViscousFlow.Fields.PhysicalGrid",
     "category": "method",
-    "text": "PhysicalGrid(xlim::Tuple{Float64,Float64},ylim::Tuple{Float64,Float64},Δx::Float64)\n\nConstructor to set up a grid connected to physical space. The region to be discretized by the grid is defined by the limits xlim and ylim, and the cell spacing (uniform and indentical in each direction) is specified by Δx. The constructor uses this information to determine the number of cells in each direction, expanding the given range if necessary to accommodate an integer number. It also pads each side with a ghost cell. It also determines the indices corresponding to the corner of the cell to which the physical origin corresponds. Note that the corner corresponding to the lowest limit in each direction has indices (1,1).\n\n\n\n\n\n"
+    "text": "PhysicalGrid(xlim::Tuple{Real,Real},ylim::Tuple{Real,Real},Δx::Float64)\n\nConstructor to set up a grid connected to physical space. The region to be discretized by the grid is defined by the limits xlim and ylim, and the cell spacing (uniform and indentical in each direction) is specified by Δx. The constructor uses this information to determine the number of cells in each direction, expanding the given range if necessary to accommodate an integer number. It also pads each side with a ghost cell. It also determines the indices corresponding to the corner of the cell to which the physical origin corresponds. Note that the corner corresponding to the lowest limit in each direction has indices (1,1).\n\n\n\n\n\n"
 },
 
 {
