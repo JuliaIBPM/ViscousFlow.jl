@@ -217,6 +217,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "manual/fields/#ViscousFlow.Fields.cellshift!-Union{Tuple{NY}, Tuple{NX}, Tuple{Edges{Primal,NX,NY},Nodes{Primal,NX,NY}}} where NY where NX",
+    "page": "Fields",
+    "title": "ViscousFlow.Fields.cellshift!",
+    "category": "method",
+    "text": "cellshift!(q::Edges{Primal},w::Nodes{Primal})\n\nShift (by linear interpolation) the primal nodal data w to the edges of the primal cells, and return the result in q.\n\n\n\n\n\n"
+},
+
+{
     "location": "manual/fields/#ViscousFlow.Fields.cellshift!-Union{Tuple{NY}, Tuple{NX}, Tuple{Tuple{Nodes{Dual,NX,NY},Nodes{Dual,NX,NY}},Edges{Primal,NX,NY}}} where NY where NX",
     "page": "Fields",
     "title": "ViscousFlow.Fields.cellshift!",
