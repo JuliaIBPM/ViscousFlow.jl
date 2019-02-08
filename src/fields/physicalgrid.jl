@@ -5,11 +5,11 @@ struct PhysicalGrid{ND}
   N :: NTuple{ND,Int}
   I0 :: NTuple{ND,Int}
   Δx :: Float64
-  xlim :: NTuple{ND,Tuple{Float64,Float64}}
+  xlim :: NTuple{ND,Tuple{Real,Real}}
 end
 
 """
-    PhysicalGrid(xlim::Tuple{Float64,Float64},ylim::Tuple{Float64,Float64},Δx::Float64)
+    PhysicalGrid(xlim::Tuple{Real,Real},ylim::Tuple{Real,Real},Δx::Float64)
 
 Constructor to set up a grid connected to physical space. The region to be
 discretized by the grid is defined by the limits `xlim` and `ylim`, and the
@@ -21,8 +21,8 @@ It also determines the indices corresponding to the corner
 of the cell to which the physical origin corresponds. Note that the corner
 corresponding to the lowest limit in each direction has indices (1,1).
 """
-function PhysicalGrid(xlim::Tuple{Float64,Float64},
-                      ylim::Tuple{Float64,Float64},Δx::Float64)
+function PhysicalGrid(xlim::Tuple{Real,Real},
+                      ylim::Tuple{Real,Real},Δx::Float64)
 
 
   #= set grid spacing and the grid position of the origin
@@ -42,7 +42,7 @@ function PhysicalGrid(xlim::Tuple{Float64,Float64},
   PhysicalGrid((NX,NY),(i0,j0),Δx,(xlimnew,ylimnew))
 end
 
-function set_1d_grid(xmin::Float64,xmax::Float64,Δx::Float64)
+function set_1d_grid(xmin::Real,xmax::Real,Δx::Float64)
   NL, NR = floor(Int,xmin/Δx), ceil(Int,xmax/Δx)
   return NR-NL+2, 1-NL, (Δx*NL, Δx*NR)
 end
