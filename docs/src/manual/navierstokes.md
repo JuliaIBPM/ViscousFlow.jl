@@ -95,7 +95,7 @@ w₀ = Nodes(Dual,size(sys));
 The physical grid coordinates of these dual nodes can be generated with the `coordinates` function:
 
 ```@repl corotate
-xg, yg = coordinates(w₀,dx=sys.Δx,I0=Systems.origin(sys))
+xg, yg = coordinates(w₀,dx=Systems.cellsize(sys),I0=Systems.origin(sys))
 ```
 
 Now we are ready to set up the integrator for this problem. To account for the viscous diffusion, we need the integrating factor. There are no body constraints to enforce, so we will use the integrating factor Runge-Kutta method (`IFRK`). For this, we need to set up plans for the integrating factor and for the right-hand side ($r_1$). The `Systems` module has functions that do both for us, using the system data in `sys`. We just need to change their argument list so that they fit the template for the `IFRK` scheme:
