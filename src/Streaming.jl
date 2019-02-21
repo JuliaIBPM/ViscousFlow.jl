@@ -229,7 +229,21 @@ end
 @create_dual(H21,2,p.λ,1,hankelh1)
 @create_dual(H22,2,p.λ,1,hankelh2)
 
+abstract type Order end
+abstract type First <: Order end
+abstract type Second <: Order end
 
+struct ComplexAmplitude{FT,K}
+    f :: FT
+end
+
+ComplexAmplitude(f,K) = ComplexAmplitude{typeof(f),K == 1 ? First : Second}(f)
+
+function (A::ComplexAmplitude{FT,Second})(x,y) where {FT}
+    r2 = x^2+y^2
+    r = sqrt(r2)
+    return 2*real(A.f(r))*x*y/r2
+end
 
 #include("Utils.jl")
 #using .Utils
