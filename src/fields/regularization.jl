@@ -129,9 +129,12 @@ function Regularize(x::Vector{T},y::Vector{T},dx::T;
                     weights::Union{T,Vector{T}}=1.0,
                     filter::Bool = false,
                     issymmetric::Bool = false) where {T<:Real}
+
+  _issymmetric = (filter ? false : issymmetric)
+
   n = length(x)
   @assert length(y)==n
-  if !issymmetric
+  if !_issymmetric
     if typeof(weights) == T
       wtvec = similar(x)
       fill!(wtvec,weights/(dx*dx))
@@ -149,7 +152,7 @@ function Regularize(x::Vector{T},y::Vector{T},dx::T;
 
   Regularize{length(x),filter}(x/dx.+I0[1],y/dx.+I0[2],1.0/(dx*dx),
                       wtvec,zeros(T,n),zeros(T,n),zeros(T,n),
-                      DDF(ddftype=ddftype,dx=1.0),issymmetric)
+                      DDF(ddftype=ddftype,dx=1.0),_issymmetric)
 end
 
 Regularize(x::T,y::T,a...;b...) where {T<:Real} = Regularize([x],[y],a...;b...)
@@ -195,7 +198,7 @@ end
 @wraparray InterpolationMatrix M
 
 
-# Regularization and interpolation operators of vector data to edges
+# ===== Regularization and interpolation operators of vector data to edges ===== #
 ftype = :(VectorData{N})
 for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
 
@@ -365,10 +368,26 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
     f
   end
 
+  @eval function mul!(C::Array{Float64},Emat::InterpolationMatrix{$ctype,$ftype},
+                                Hmat::RegularizationMatrix{$ctype,$ftype}) where {NX,NY,N}
+    fill!(C,0.0)
+    Enzv = Emat.M.nzval
+    Erv = Emat.M.rowval
+    @inbounds for row = 1:Emat.M.n, col = 1:Hmat.M.n
+        tmp = zero(eltype(C))
+        for j = Emat.M.colptr[row]:(Emat.M.colptr[row + 1] - 1)
+            tmp += transpose(Enzv[j])*Hmat[Erv[j],col]
+        end
+        C[row,col] += tmp
+    end
+    return C
+  end
+
 end
 
 
-# Nodal type
+# ======  Nodal type ======== #
+
 ftype = :(ScalarData{N})
 for (ctype,dnx,dny,shiftx,shifty) in scalarlist
 
@@ -504,10 +523,25 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
 
   end
 
+  @eval function mul!(C::Array{Float64},Emat::InterpolationMatrix{$ctype,$ftype},
+                                Hmat::RegularizationMatrix{$ctype,$ftype}) where {NX,NY,N}
+    fill!(C,0.0)
+    Enzv = Emat.M.nzval
+    Erv = Emat.M.rowval
+    @inbounds for row = 1:Emat.M.n, col = 1:Hmat.M.n
+        tmp = zero(eltype(C))
+        for j = Emat.M.colptr[row]:(Emat.M.colptr[row + 1] - 1)
+            tmp += transpose(Enzv[j])*Hmat[Erv[j],col]
+        end
+        C[row,col] += tmp
+    end
+    return C
+  end
+
 
 end
 
-# Regularization and interpolation operators of tensor data to edge gradients
+# ======  Regularization and interpolation operators of tensor data to edge gradients ==== #
 # Here, u describes both diagonal components and v the off diagonal
 ftype = :(TensorData{N})
 for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tensorlist
@@ -699,6 +733,21 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tensorlist
     f
   end
 
+  @eval function mul!(C::Array{Float64},Emat::InterpolationMatrix{$ctype,$ftype},
+                                Hmat::RegularizationMatrix{$ctype,$ftype}) where {NX,NY,N}
+    fill!(C,0.0)
+    Enzv = Emat.M.nzval
+    Erv = Emat.M.rowval
+    @inbounds for row = 1:Emat.M.n, col = 1:Hmat.M.n
+        tmp = zero(eltype(C))
+        for j = Emat.M.colptr[row]:(Emat.M.colptr[row + 1] - 1)
+            tmp += transpose(Enzv[j])*Hmat[Erv[j],col]
+        end
+        C[row,col] += tmp
+    end
+    return C
+  end
+
 end
 
 
@@ -708,6 +757,8 @@ end
 (*)(Emat::InterpolationMatrix{TU,TF},src::TU) where {TU<:Union{Nodes,Edges,EdgeGradient,NodePair},TF<:Points} =
                 mul!(TF(),Emat,src)
 
+(*)(Emat::InterpolationMatrix,Hmat::RegularizationMatrix) =
+        mul!(Array{eltype(Emat),2}(undef,Emat.M.n,Hmat.M.n),Emat,Hmat)
 
 function Base.summary(io::IO, H::RegularizationMatrix{TU,TF}) where {TU,TF}
     print(io, "Regularization matrix acting on type $TF and returning type $TU")

@@ -31,13 +31,14 @@ grid.
 
 `NavierStokes(Re,Δx,xlimits,ylimits,Δt
               [,U∞ = (0.0, 0.0)][,X̃ = VectorData{0}()]
-              [,isstore=false][,isstatic=true]
+              [,isstore=false][,isstatic=true][,isfilter=false]
               [,rk=TimeMarching.RK31])` specifies the Reynolds number `Re`, the grid
               spacing `Δx`, the dimensions of the domain in the tuples `xlimits`
               and `ylimits` (excluding the ghost cells), and the time step size `Δt`.
               The other arguments are optional. Note that `isstore` set to `true`
               would store matrix versions of the operators. This makes the method
-              faster, at the cost of storage.
+              faster, at the cost of storage. If `isfilter` is set to true, then
+              the regularization relies on a filtered version.
 
 """
 mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
@@ -74,6 +75,9 @@ mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
     Hmat_grad::Union{RegularizationMatrix,Nothing}
     Emat_grad::Union{InterpolationMatrix,Nothing}
 
+    # Conditioner matrices
+    Cmat::Union{AbstractMatrix,Nothing}
+    Cmat_grad::Union{AbstractMatrix,Nothing}
 
     # Scratch space
 
@@ -93,6 +97,7 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
                        isstore = false,
                        isstatic = true,
                        isasymptotic = false,
+                       isfilter = false,
                        rk::TimeMarching.RKParams=TimeMarching.RK31)
 
     g = PhysicalGrid(xlimits,ylimits,Δx)
@@ -110,22 +115,37 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
 
     Hmat = nothing
     Emat = nothing
+    Cmat = nothing
+
     Hmat_grad = nothing
     Emat_grad = nothing
+    Cmat_grad = nothing
 
     if length(N) > 0 && isstore && isstatic
       # in this case, X̃ is assumed to be in inertial coordinates
+
       regop = Regularize(X̃,Δx;I0=Fields.origin(g),issymmetric=true)
       Hmat, Emat = RegularizationMatrix(regop,Vb,Fq)
+      if isfilter
+        regopfilt = Regularize(X̃,Δx;I0=Fields.origin(g),filter=true,weights=Δx^2)
+        Ẽmat = InterpolationMatrix(regopfilt,Fq,Vb)
+        Cmat = sparse(Ẽmat*Hmat)
+      end
       if isasymptotic
         Hmat_grad, Emat_grad = RegularizationMatrix(regop,TensorData{N}(),grad(Fq))
+        if isfilter
+          Ẽmat_grad = InterpolationMatrix(regopfilt,grad(Fq),TensorData{N}())
+          Cmat_grad = sparse(Ẽmat_grad*Hmat_grad)
+        end
       end
     end
 
     # should be able to set up time marching operator here...
 
     #NavierStokes{NX, NY, N, isstatic}(Re, U∞, Δx, I0, Δt, rk, L, X̃, Hmat, Emat, Vb, Fq, Ww, Qq, isstore)
-    NavierStokes{NX, NY, N, isstatic}(Re, U∞, g, Δt, rk, L, X̃, Hmat, Emat, Hmat_grad, Emat_grad,
+    NavierStokes{NX, NY, N, isstatic}(Re, U∞, g, Δt, rk, L, X̃, Hmat, Emat,
+                                        Hmat_grad, Emat_grad,
+                                        Cmat,Cmat_grad,
                                         Vb, Fq, Ww, Qq, isstore)
 end
 

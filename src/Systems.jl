@@ -1,6 +1,7 @@
 module Systems
 
 using DocStringExtensions
+using SparseArrays
 
 export NavierStokes, PointForce
 
