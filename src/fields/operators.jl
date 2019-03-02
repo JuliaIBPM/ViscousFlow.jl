@@ -555,7 +555,7 @@ v (in grid orientation)
 ```
 """
 function grad!(edges::Edges{Primal, NX, NY},
-                     p::Nodes{Primal, NX, NY}) where {NX, NY}
+                   p::Nodes{Primal, NX, NY}) where {NX, NY}
 
     @inbounds for y in 1:NY-1, x in 2:NX-1
         edges.u[x,y] = - p[x-1,y] + p[x,y]
@@ -604,7 +604,41 @@ function grad(p::Nodes{Primal, NX, NY}) where {NX, NY}
   grad!(Edges(Primal,(NX,NY)),p)
 end
 
+"""
+    grad!(q::Edges{Dual},w::Nodes{Dual})
 
+Evaluate the discrete gradient of dual nodal data `w` and return it as dual
+edge data `q`.
+"""
+function grad!(edges::Edges{Dual, NX, NY},
+                   p::Nodes{Dual, NX, NY}) where {NX, NY}
+
+    @inbounds for y in 1:NY, x in 1:NX-1
+        edges.u[x,y] = - p[x,y] + p[x+1,y]
+    end
+    @inbounds for y in 1:NY-1, x in 1:NX
+        edges.v[x,y] = - p[x,y] + p[x,y+1]
+    end
+    edges
+end
+
+"""
+    grad(w::Nodes{Dual}) --> Edges{Dual}
+
+Evaluate the discrete gradient of dual nodal data `w`. Can also perform this
+operation by creating an object of Grad type and applying it with `*`.
+"""
+function grad(p::Nodes{Dual, NX, NY}) where {NX, NY}
+  grad!(Edges(Dual,(NX,NY)),p)
+end
+
+"""
+    grad!(d::EdgeGradient{Primal,Dual},q::Edges{Primal})
+
+Evaluate the discrete gradient of primal edge data `q` and return it as edge
+gradient data `d`, where the diagonal entries of the gradient lie on primal
+nodes and the off-diagonal entries lie at dual nodes.
+"""
 function grad!(d::EdgeGradient{Primal, Dual, NX, NY},
                      edges::Edges{Primal, NX, NY}) where {NX, NY}
 
@@ -619,6 +653,13 @@ function grad!(d::EdgeGradient{Primal, Dual, NX, NY},
     d
 end
 
+"""
+    grad!(d::EdgeGradient{Dual,Primal},q::Edges{Dual})
+
+Evaluate the discrete gradient of dual edge data `q` and return it as edge
+gradient data `d`, where the diagonal entries of the gradient lie on dual
+nodes and the off-diagonal entries lie at primal nodes.
+"""
 function grad!(d::EdgeGradient{Dual, Primal, NX, NY},
                      edges::Edges{Dual, NX, NY}) where {NX, NY}
 
@@ -633,13 +674,19 @@ function grad!(d::EdgeGradient{Dual, Primal, NX, NY},
     d
 end
 
+"""
+    grad(q::Edges{Primal/Dual}) --> EdgeGradient{Dual/Primal,Primal/Dual}
+
+Evaluate the discrete gradient of primal or dual edge data `q`. Can also perform this
+operation by creating an object of Grad type and applying it with `*`.
+"""
 function grad(edges::Edges{C, NX, NY}) where {C<:CellType,NX,NY}
   grad!(EdgeGradient(C,(NX,NY)),edges)
 end
 
 struct Grad end
 
-(*)(::Grad,w::Union{Nodes{Primal, NX, NY},Edges{Dual,NX,NY},Edges{Primal,NX,NY}}) where {NX,NY} = grad(w)
+(*)(::Grad,w::Union{Nodes{Primal, NX, NY},Nodes{Dual, NX, NY},Edges{Dual,NX,NY},Edges{Primal,NX,NY}}) where {NX,NY} = grad(w)
 
 
 

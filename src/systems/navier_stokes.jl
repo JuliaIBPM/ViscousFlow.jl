@@ -32,7 +32,8 @@ grid.
 `NavierStokes(Re,Δx,xlimits,ylimits,Δt
               [,U∞ = (0.0, 0.0)][,X̃ = VectorData{0}()]
               [,isstore=false][,isstatic=true][,isfilter=false]
-              [,rk=TimeMarching.RK31])` specifies the Reynolds number `Re`, the grid
+              [,rk=TimeMarching.RK31]
+              [,ddftype=Fields.Roma])` specifies the Reynolds number `Re`, the grid
               spacing `Δx`, the dimensions of the domain in the tuples `xlimits`
               and `ylimits` (excluding the ghost cells), and the time step size `Δt`.
               The other arguments are optional. Note that `isstore` set to `true`
@@ -98,7 +99,8 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
                        isstatic = true,
                        isasymptotic = false,
                        isfilter = false,
-                       rk::TimeMarching.RKParams=TimeMarching.RK31)
+                       rk::TimeMarching.RKParams=TimeMarching.RK31,
+                       ddftype=Fields.Roma)
 
     g = PhysicalGrid(xlimits,ylimits,Δx)
     NX, NY = size(g)
@@ -124,10 +126,10 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
     if length(N) > 0 && isstore && isstatic
       # in this case, X̃ is assumed to be in inertial coordinates
 
-      regop = Regularize(X̃,Δx;I0=Fields.origin(g),issymmetric=true)
+      regop = Regularize(X̃,Δx;I0=Fields.origin(g),issymmetric=true,ddftype=ddftype)
       Hmat, Emat = RegularizationMatrix(regop,Vb,Fq)
       if isfilter
-        regopfilt = Regularize(X̃,Δx;I0=Fields.origin(g),filter=true,weights=Δx^2)
+        regopfilt = Regularize(X̃,Δx;I0=Fields.origin(g),filter=true,weights=Δx^2,ddftype=ddftype)
         Ẽmat = InterpolationMatrix(regopfilt,Fq,Vb)
         Cmat = sparse(Ẽmat*Hmat)
       end

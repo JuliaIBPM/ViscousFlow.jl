@@ -128,7 +128,7 @@ GridData = Union{Nodes{T,NX,NY},Edges{T,NX,NY}} where {T,NX,NY}
 CollectedData = Union{EdgeGradient{T,S,NX,NY},NodePair{T,S,NX,NY}} where {T,S,NX,NY}
 
 """
-    cooordinates(w::Nodes/Edges;[dx=1.0],[I0=(1,1)])
+    coordinates(w::Nodes/Edges;[dx=1.0],[I0=(1,1)])
 
 Return a tuple of the ranges of the physical coordinates in each direction for grid
 data `w`. If `w` is of `Nodes` type, then it returns a tuple of the form

@@ -1,7 +1,6 @@
 module Systems
 
 using DocStringExtensions
-using SparseArrays
 
 export NavierStokes, PointForce
 
@@ -14,6 +13,8 @@ using ..Bodies
 
 using Compat
 using Compat.LinearAlgebra
+using Compat.SparseArrays
+
 
 include("systems/navier_stokes.jl")
 
