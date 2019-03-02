@@ -245,7 +245,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Fields",
     "title": "ViscousFlow.Fields.coordinates",
     "category": "function",
-    "text": "cooordinates(w::Nodes/Edges;[dx=1.0],[I0=(1,1)])\n\nReturn a tuple of the ranges of the physical coordinates in each direction for grid data w. If w is of Nodes type, then it returns a tuple of the form xg,yg. If w is of Edges or NodePair type, then it returns a tuple of the form xgu,ygu,xgv,ygv.\n\nThe optional keyword argument dx sets the grid spacing; its default is 1.0. The optional keyword I0 accepts a tuple of integers to set the index pair of the primal nodes that coincide with the origin. The default is (1,1).\n\nExample\n\njulia> w = Nodes(Dual,(12,22));\n\njulia> xg, yg = coordinates(w,dx=0.1)\n(-0.05:0.1:1.05, -0.05:0.1:2.0500000000000003)\n\n\n\n\n\n"
+    "text": "coordinates(w::Nodes/Edges;[dx=1.0],[I0=(1,1)])\n\nReturn a tuple of the ranges of the physical coordinates in each direction for grid data w. If w is of Nodes type, then it returns a tuple of the form xg,yg. If w is of Edges or NodePair type, then it returns a tuple of the form xgu,ygu,xgv,ygv.\n\nThe optional keyword argument dx sets the grid spacing; its default is 1.0. The optional keyword I0 accepts a tuple of integers to set the index pair of the primal nodes that coincide with the origin. The default is (1,1).\n\nExample\n\njulia> w = Nodes(Dual,(12,22));\n\njulia> xg, yg = coordinates(w,dx=0.1)\n(-0.05:0.1:1.05, -0.05:0.1:2.0500000000000003)\n\n\n\n\n\n"
 },
 
 {
@@ -289,11 +289,51 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "manual/fields/#ViscousFlow.Fields.grad!-Union{Tuple{NY}, Tuple{NX}, Tuple{EdgeGradient{Dual,Primal,NX,NY},Edges{Dual,NX,NY}}} where NY where NX",
+    "page": "Fields",
+    "title": "ViscousFlow.Fields.grad!",
+    "category": "method",
+    "text": "grad!(d::EdgeGradient{Dual,Primal},q::Edges{Dual})\n\nEvaluate the discrete gradient of dual edge data q and return it as edge gradient data d, where the diagonal entries of the gradient lie on dual nodes and the off-diagonal entries lie at primal nodes.\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/fields/#ViscousFlow.Fields.grad!-Union{Tuple{NY}, Tuple{NX}, Tuple{EdgeGradient{Primal,Dual,NX,NY},Edges{Primal,NX,NY}}} where NY where NX",
+    "page": "Fields",
+    "title": "ViscousFlow.Fields.grad!",
+    "category": "method",
+    "text": "grad!(d::EdgeGradient{Primal,Dual},q::Edges{Primal})\n\nEvaluate the discrete gradient of primal edge data q and return it as edge gradient data d, where the diagonal entries of the gradient lie on primal nodes and the off-diagonal entries lie at dual nodes.\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/fields/#ViscousFlow.Fields.grad!-Union{Tuple{NY}, Tuple{NX}, Tuple{Edges{Dual,NX,NY},Nodes{Dual,NX,NY}}} where NY where NX",
+    "page": "Fields",
+    "title": "ViscousFlow.Fields.grad!",
+    "category": "method",
+    "text": "grad!(q::Edges{Dual},w::Nodes{Dual})\n\nEvaluate the discrete gradient of dual nodal data w and return it as dual edge data q.\n\n\n\n\n\n"
+},
+
+{
     "location": "manual/fields/#ViscousFlow.Fields.grad!-Union{Tuple{NY}, Tuple{NX}, Tuple{Edges{Primal,NX,NY},Nodes{Primal,NX,NY}}} where NY where NX",
     "page": "Fields",
     "title": "ViscousFlow.Fields.grad!",
     "category": "method",
     "text": "grad!(q::Edges{Primal},w::Nodes{Primal})\n\nEvaluate the discrete gradient of primal nodal data w and return it as primal edge data q.\n\nExample\n\njulia> w = Nodes(Primal,(8,6));\n\njulia> w[3,4] = 1.0;\n\njulia> q = Edges(Primal,(8,6));\n\njulia> grad!(q,w)\nEdges{Primal,8,6} data\nu (in grid orientation)\n5×8 Array{Float64,2}:\n 0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0\n 0.0  0.0  1.0  -1.0  0.0  0.0  0.0  0.0\n 0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0\n 0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0\n 0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0\nv (in grid orientation)\n6×7 Array{Float64,2}:\n 0.0  0.0   0.0  0.0  0.0  0.0  0.0\n 0.0  0.0  -1.0  0.0  0.0  0.0  0.0\n 0.0  0.0   1.0  0.0  0.0  0.0  0.0\n 0.0  0.0   0.0  0.0  0.0  0.0  0.0\n 0.0  0.0   0.0  0.0  0.0  0.0  0.0\n 0.0  0.0   0.0  0.0  0.0  0.0  0.0\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/fields/#ViscousFlow.Fields.grad-Union{Tuple{Edges{C,NX,NY}}, Tuple{NY}, Tuple{NX}, Tuple{C}} where NY where NX where C<:ViscousFlow.Fields.CellType",
+    "page": "Fields",
+    "title": "ViscousFlow.Fields.grad",
+    "category": "method",
+    "text": "grad(q::Edges{Primal/Dual}) --> EdgeGradient{Dual/Primal,Primal/Dual}\n\nEvaluate the discrete gradient of primal or dual edge data q. Can also perform this operation by creating an object of Grad type and applying it with *.\n\n\n\n\n\n"
+},
+
+{
+    "location": "manual/fields/#ViscousFlow.Fields.grad-Union{Tuple{Nodes{Dual,NX,NY}}, Tuple{NY}, Tuple{NX}} where NY where NX",
+    "page": "Fields",
+    "title": "ViscousFlow.Fields.grad",
+    "category": "method",
+    "text": "grad(w::Nodes{Dual}) --> Edges{Dual}\n\nEvaluate the discrete gradient of dual nodal data w. Can also perform this operation by creating an object of Grad type and applying it with *.\n\n\n\n\n\n"
 },
 
 {
@@ -757,7 +797,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Navier-Stokes systems",
     "title": "ViscousFlow.Systems.NavierStokes",
     "category": "type",
-    "text": "mutable struct NavierStokes{NX, NY, N, isstatic}\n\nA system type that utilizes a grid of NX x NY dual cells and N Lagrange forcing points to solve the discrete Navier-Stokes equations in vorticity form. The parameter isstatic specifies whether the forcing points remain static in the grid.\n\nFields\n\nRe: Reynolds number\nU∞: Tuple of components of free-stream velocity\nΔx: Size of each side of a grid cell\nI0: Tuple of indices of the primal node corresponding to physical origin\nΔt: Time step\nrk: Runge-Kutta coefficients\nL: Pre-planned discrete Laplacian operator and inverse\nX̃: Lagrange point coordinate data (if present), expressed in inertial coordinates       (if static) or in body-fixed coordinates (if moving)\nHmat: Pre-computed regularization matrix (if present)\nEmat: Pre-computed interpolation matrix (if present)\nVb: Buffer space for vector data on Lagrange points\nFq: Buffer space for primal cell edge data\nWw: Buffer space for dual cell edge data\nQq: More buffer space for dual cell edge data\n_isstore: flag to specify whether to store regularization/interpolation matrices\n\nConstructors:\n\nNavierStokes(Re,Δx,xlimits,ylimits,Δt               [,U∞ = (0.0, 0.0)][,X̃ = VectorData{0}()]               [,isstore=false][,isstatic=true]               [,rk=TimeMarching.RK31]) specifies the Reynolds number Re, the grid               spacing Δx, the dimensions of the domain in the tuples xlimits               and ylimits (excluding the ghost cells), and the time step size Δt.               The other arguments are optional. Note that isstore set to true               would store matrix versions of the operators. This makes the method               faster, at the cost of storage.\n\n\n\n\n\n"
+    "text": "mutable struct NavierStokes{NX, NY, N, isstatic}\n\nA system type that utilizes a grid of NX x NY dual cells and N Lagrange forcing points to solve the discrete Navier-Stokes equations in vorticity form. The parameter isstatic specifies whether the forcing points remain static in the grid.\n\nFields\n\nRe: Reynolds number\nU∞: Tuple of components of free-stream velocity\nΔx: Size of each side of a grid cell\nI0: Tuple of indices of the primal node corresponding to physical origin\nΔt: Time step\nrk: Runge-Kutta coefficients\nL: Pre-planned discrete Laplacian operator and inverse\nX̃: Lagrange point coordinate data (if present), expressed in inertial coordinates       (if static) or in body-fixed coordinates (if moving)\nHmat: Pre-computed regularization matrix (if present)\nEmat: Pre-computed interpolation matrix (if present)\nVb: Buffer space for vector data on Lagrange points\nFq: Buffer space for primal cell edge data\nWw: Buffer space for dual cell edge data\nQq: More buffer space for dual cell edge data\n_isstore: flag to specify whether to store regularization/interpolation matrices\n\nConstructors:\n\nNavierStokes(Re,Δx,xlimits,ylimits,Δt               [,U∞ = (0.0, 0.0)][,X̃ = VectorData{0}()]               [,isstore=false][,isstatic=true][,isfilter=false]               [,rk=TimeMarching.RK31]               [,ddftype=Fields.Roma]) specifies the Reynolds number Re, the grid               spacing Δx, the dimensions of the domain in the tuples xlimits               and ylimits (excluding the ghost cells), and the time step size Δt.               The other arguments are optional. Note that isstore set to true               would store matrix versions of the operators. This makes the method               faster, at the cost of storage. If isfilter is set to true, then               the regularization relies on a filtered version.\n\n\n\n\n\n"
 },
 
 {

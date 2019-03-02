@@ -25,7 +25,212 @@ julia&gt; for ti in T
 Plot{Plots.PyPlotBackend() n=1}
 
 julia&gt; plot!(T,uex.(T),label=&quot;exact soln&quot;)
-Plot{Plots.PyPlotBackend() n=2}</code></pre><p><img src="../ifrk.svg" alt/></p><p>As we can see, the results are nearly indistinguishable.</p><h2><a class="nav-anchor" id="Constrained-systems-1" href="#Constrained-systems-1">Constrained systems</a></h2><h2><a class="nav-anchor" id="Constrained-integrating-factor-systems-1" href="#Constrained-integrating-factor-systems-1">Constrained integrating factor systems</a></h2><p>Constrained integrating factor systems that we encounter in <code>ViscousFlow</code> are of the form</p><div>\[\ddt u = A u - B_1^T f + r_1(u,t), \quad B_2 u = r_2(u,t), \quad u(0) = u_0\]</div><p>where <span>$f$</span> is again the Lagrange multiplier for enforcing the constraints on <span>$u$</span>. Now, we combine the ideas of the last two sections into a single integrator.</p><p>Let&#39;s demonstrate this on the example of heat diffusion from a circular ring whose temperature is held constant. In this case, <span>$A$</span> is the discrete Laplace operator, <span>$L$</span>, times the heat diffusivity, <span>$r_1$</span> is zero (in the absence of volumetric heating sources), and <span>$r_2$</span> is the temperature of the ring. The operators <span>$B_1^T$</span> and <span>$B_2$</span> will be the regularization and interpolation operators between discrete point-wise data on the ring and the field data.</p><p>The ring will have radius <span>$1/2$</span> and fixed temperature <span>$1$</span>, and the heat diffusivity is <span>$1$</span>. (In other words, the problem has been non-dimensionalized by the diameter of the circle, the dimensional ring temperature, and the dimensional diffusivity.)</p><p>First, we will construct a field to accept the temperature on</p><pre><code class="language-julia-repl">julia&gt; nx = 129; ny = 129; Lx = 2.0; Δx = Lx/(nx-2);
+Plot{Plots.PyPlotBackend() n=2}
+
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:935
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:935
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:937
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:937
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:938
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:938
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:939
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:939
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:942
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:942
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:942
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:942
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = py_init_subplot(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Subplot{Plots.PyPlotBackend}) at pyplot.jl:342
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:342
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_add_series(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Series) at pyplot.jl:443
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:443
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1029
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1029
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1029
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1029
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1030
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1030
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1030
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1030
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1038
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1038
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1038
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1038
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1039
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1039
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1039
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1039
+┌ Warning: `haskey(o::PyObject, s::Union{Symbol, AbstractString})` is deprecated, use `hasproperty(o, s)` instead.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1058
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1058
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1060
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1060
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_scale(::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:894
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:894
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_lims(::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:844
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:844
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_ticks(::PyCall.PyObject, ::Tuple{Array{Float64,1},Array{String,1}}, ::Symbol) at pyplot.jl:849
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:849
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_ticks(::PyCall.PyObject, ::Tuple{Array{Float64,1},Array{String,1}}, ::Symbol) at pyplot.jl:863
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:863
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_ticks(::PyCall.PyObject, ::Tuple{Array{Float64,1},Array{String,1}}, ::Symbol) at pyplot.jl:864
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:864
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1081
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1081
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1082
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1082
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1086
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1086
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1086
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1086
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1087
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1087
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1087
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1087
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1088
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1088
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1089
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1089
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1090
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1090
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1091
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1091
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1095
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1095
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1100
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1100
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:914
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:914
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:915
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:915
+┌ Warning: `haskey(o::PyObject, s::Union{Symbol, AbstractString})` is deprecated, use `hasproperty(o, s)` instead.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:918
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:918
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:920
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:920
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:923
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:923
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:923
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:923
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:923
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:923
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_add_legend(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject) at pyplot.jl:1254
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1254
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_add_legend(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject) at pyplot.jl:1271
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1271
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_add_legend(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject) at pyplot.jl:1280
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1280
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_add_legend(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject) at pyplot.jl:1281
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1281
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_add_legend(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject) at pyplot.jl:1282
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1282
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_add_legend(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject) at pyplot.jl:1285
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1285
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_add_legend(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject) at pyplot.jl:1286
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1286
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1148
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1148
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = py_drawfig(::PyPlot.Figure) at pyplot.jl:257
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:257
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = py_canvas at pyplot.jl:251 [inlined]
+└ @ Core ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:251
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_renderer(::PyPlot.Figure) at pyplot.jl:254
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:254
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox(::PyCall.PyObject) at pyplot.jl:266
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:266
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = py_extents(::PyPlot.Figure) at pyplot.jl:261
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:261
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_extents(::PyPlot.Figure) at pyplot.jl:261
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:261
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_extents(::PyCall.PyObject) at pyplot.jl:261
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:261
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_extents(::PyCall.PyObject) at pyplot.jl:261
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:261
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox_ticks(::PyCall.PyObject, ::String) at pyplot.jl:282
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:282
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox_axislabel(::PyCall.PyObject, ::String) at pyplot.jl:288
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:288
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox_axislabel(::PyCall.PyObject, ::String) at pyplot.jl:288
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:288
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox_title(::PyCall.PyObject) at pyplot.jl:304
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:304
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox_title(::PyCall.PyObject) at pyplot.jl:304
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:304
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox_title(::PyCall.PyObject) at pyplot.jl:304
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:304
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _update_plot_object(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1304
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1304
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = _show(::IOStream, ::MIME{Symbol(&quot;image/svg+xml&quot;)}, ::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1343
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1343
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _show(::IOStream, ::MIME{Symbol(&quot;image/svg+xml&quot;)}, ::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1343
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1343
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = _show(::IOStream, ::MIME{Symbol(&quot;image/svg+xml&quot;)}, ::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1343
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1343</code></pre><p><img src="../ifrk.svg" alt/></p><p>As we can see, the results are nearly indistinguishable.</p><h2><a class="nav-anchor" id="Constrained-systems-1" href="#Constrained-systems-1">Constrained systems</a></h2><h2><a class="nav-anchor" id="Constrained-integrating-factor-systems-1" href="#Constrained-integrating-factor-systems-1">Constrained integrating factor systems</a></h2><p>Constrained integrating factor systems that we encounter in <code>ViscousFlow</code> are of the form</p><div>\[\ddt u = A u - B_1^T f + r_1(u,t), \quad B_2 u = r_2(u,t), \quad u(0) = u_0\]</div><p>where <span>$f$</span> is again the Lagrange multiplier for enforcing the constraints on <span>$u$</span>. Now, we combine the ideas of the last two sections into a single integrator.</p><p>Let&#39;s demonstrate this on the example of heat diffusion from a circular ring whose temperature is held constant. In this case, <span>$A$</span> is the discrete Laplace operator, <span>$L$</span>, times the heat diffusivity, <span>$r_1$</span> is zero (in the absence of volumetric heating sources), and <span>$r_2$</span> is the temperature of the ring. The operators <span>$B_1^T$</span> and <span>$B_2$</span> will be the regularization and interpolation operators between discrete point-wise data on the ring and the field data.</p><p>The ring will have radius <span>$1/2$</span> and fixed temperature <span>$1$</span>, and the heat diffusivity is <span>$1$</span>. (In other words, the problem has been non-dimensionalized by the diameter of the circle, the dimensional ring temperature, and the dimensional diffusivity.)</p><p>First, we will construct a field to accept the temperature on</p><pre><code class="language-julia-repl">julia&gt; nx = 129; ny = 129; Lx = 2.0; Δx = Lx/(nx-2);
 
 julia&gt; u₀ = Nodes(Dual,(nx,ny)); # field initial condition</code></pre><p>Now set up a ring of points on the circle at center <span>$(1,1)$</span>.</p><pre><code class="language-julia-repl">julia&gt; n = 128; θ = range(0,stop=2π,length=n+1);
 
@@ -53,11 +258,400 @@ Order-1 IF-HERK integrator with
    Time step size 1.0</code></pre><p>Here we&#39;ve set the method to forward Euler. The resulting integrator accepts as arguments the current time <code>t</code> and the current state <code>u</code>, and returns the time, state, and Lagrange multiplier data at the end of the time step.</p><p>Now, let&#39;s advance the system. We&#39;ll also time it.</p><pre><code class="language-julia-repl">julia&gt; @time for i = 1:20
          global t, u, f = ifherk(t,u)
        end
-  3.072180 seconds (1.50 M allocations: 127.398 MiB, 2.59% gc time)</code></pre><p>Now let&#39;s plot it</p><pre><code class="language-julia-repl">julia&gt; xg, yg = coordinates(u,dx=Δx);
+  3.082528 seconds (1.50 M allocations: 127.335 MiB, 2.21% gc time)</code></pre><p>Now let&#39;s plot it</p><pre><code class="language-julia-repl">julia&gt; xg, yg = coordinates(u,dx=Δx);
 
 julia&gt; plot(xg,yg,u)
 Plot{Plots.PyPlotBackend() n=1}
 
 julia&gt; plot!(xb,yb,linecolor=:black,linewidth=1.5)
-Plot{Plots.PyPlotBackend() n=2}</code></pre><p><img src="../ifherk.svg" alt/></p><p>From a side view, we can see that it enforces the boundary condition:</p><pre><code class="language-julia-repl">julia&gt; plot(xg,u[65,:],xlabel=&quot;x&quot;,ylabel=&quot;u(x,1)&quot;)
-Plot{Plots.PyPlotBackend() n=1}</code></pre><p><img src="../ifherk-side.svg" alt/></p><h2><a class="nav-anchor" id="Methods-1" href="#Methods-1">Methods</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="ViscousFlow.TimeMarching.IFHERK" href="#ViscousFlow.TimeMarching.IFHERK"><code>ViscousFlow.TimeMarching.IFHERK</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">IFHERK(u,f,Δt,plan_intfact,B₁ᵀ,B₂,r₁,r₂;[tol=1e-3],[issymmetric=false],[rk::RKParams=RK31])</code></pre><p>Construct an integrator to advance a system of the form</p><p>du/dt - Au = -B₁ᵀf + r₁(u,t) B₂u = r₂(u,t)</p><p>The resulting integrator will advance the system <code>(u,f)</code> by one time step, <code>Δt</code>. The optional argument <code>tol</code> sets the tolerance of iterative saddle-point solution, if applicable.</p><p><strong>Arguments</strong></p><ul><li><code>u</code> : example of state vector data</li><li><code>f</code> : example of constraint force vector data</li><li><code>Δt</code> : time-step size</li><li><code>plan_intfact</code> : constructor to set up integrating factor operator for <code>A</code> that             will act on type <code>u</code> (by left multiplication) and return same type as <code>u</code></li><li><code>plan_constraints</code> : constructor to set up the</li><li><code>B₁ᵀ</code> : operator acting on type <code>f</code> and returning type <code>u</code></li><li><code>B₂</code> : operator acting on type <code>u</code> and returning type <code>f</code></li><li><code>r₁</code> : operator acting on type <code>u</code> and <code>t</code> and returning <code>u</code></li><li><code>r₂</code> : operator acting on type <code>u</code> and <code>t</code> and returning type <code>f</code></li></ul></div></div><a class="source-link" target="_blank" href="https://github.com/jdeldre/ViscousFlow.jl/blob/918c0741ebf78aa5ab52638a0947ec429d4e2e58/src/timemarching/ifherk.jl#L3-L27">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="ViscousFlow.TimeMarching.IFRK" href="#ViscousFlow.TimeMarching.IFRK"><code>ViscousFlow.TimeMarching.IFRK</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">IFRK(u,Δt,plan_intfact,r₁;[rk::RKParams=RK31])</code></pre><p>Construct an integrator to advance a system of the form</p><p>du/dt - Au = r₁(u,t)</p><p>The resulting integrator will advance the state <code>u</code> by one time step, <code>Δt</code>.</p><p><strong>Arguments</strong></p><ul><li><code>u</code> : example of state vector data</li><li><code>Δt</code> : time-step size</li><li><code>plan_intfact</code> : constructor to set up integrating factor operator for <code>A</code> that             will act on type <code>u</code> (by left multiplication) and return same type as <code>u</code></li><li><code>r₁</code> : operator acting on type <code>u</code> and <code>t</code> and returning <code>u</code></li></ul></div></div><a class="source-link" target="_blank" href="https://github.com/jdeldre/ViscousFlow.jl/blob/918c0741ebf78aa5ab52638a0947ec429d4e2e58/src/timemarching/ifrk.jl#L3-L19">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="ViscousFlow.TimeMarching.RK" href="#ViscousFlow.TimeMarching.RK"><code>ViscousFlow.TimeMarching.RK</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">RK(u,Δt,r₁;[rk::RKParams=RK31])</code></pre><p>Construct an integrator to advance a system of the form</p><p>du/dt = r₁(u,t)</p><p>The resulting integrator will advance the state <code>u</code> by one time step, <code>Δt</code>.</p><p><strong>Arguments</strong></p><ul><li><code>u</code> : example of state vector data</li><li><code>Δt</code> : time-step size</li><li><code>r₁</code> : operator acting on type <code>u</code> and <code>t</code> and returning <code>u</code></li></ul></div></div><a class="source-link" target="_blank" href="https://github.com/jdeldre/ViscousFlow.jl/blob/918c0741ebf78aa5ab52638a0947ec429d4e2e58/src/timemarching/rk.jl#L3-L17">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="ViscousFlow.TimeMarching.System" href="#ViscousFlow.TimeMarching.System"><code>ViscousFlow.TimeMarching.System</code></a> — <span class="docstring-category">Type</span>.</div><div><div><p>Abstract type for a system of ODEs</p></div></div><a class="source-link" target="_blank" href="https://github.com/jdeldre/ViscousFlow.jl/blob/918c0741ebf78aa5ab52638a0947ec429d4e2e58/src/TimeMarching.jl#L19">source</a></section><h2><a class="nav-anchor" id="Index-1" href="#Index-1">Index</a></h2><ul><li><a href="#ViscousFlow.TimeMarching.IFHERK"><code>ViscousFlow.TimeMarching.IFHERK</code></a></li><li><a href="#ViscousFlow.TimeMarching.IFRK"><code>ViscousFlow.TimeMarching.IFRK</code></a></li><li><a href="#ViscousFlow.TimeMarching.RK"><code>ViscousFlow.TimeMarching.RK</code></a></li><li><a href="#ViscousFlow.TimeMarching.System"><code>ViscousFlow.TimeMarching.System</code></a></li></ul><footer><hr/><a class="previous" href="../saddlesystems/"><span class="direction">Previous</span><span class="title">Saddle point systems</span></a><a class="next" href="../navierstokes/"><span class="direction">Next</span><span class="title">Navier-Stokes systems</span></a></footer></article></body></html>
+Plot{Plots.PyPlotBackend() n=2}
+
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:935
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:935
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:937
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:937
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:938
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:938
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:939
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:939
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:942
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:942
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:942
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:942
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = py_init_subplot(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Subplot{Plots.PyPlotBackend}) at pyplot.jl:342
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:342
+┌ Warning: `getindex(o::PyObject, s::AbstractString)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.&quot;s&quot;` instead of `o[&quot;s&quot;]`.
+│   caller = py_colormap(::PlotUtils.ColorGradient) at pyplot.jl:67
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:67
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_colormap(::PlotUtils.ColorGradient) at pyplot.jl:67
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:67
+┌ Warning: `getindex(c::ColorMap, x)` is deprecated, use `getproperty(c, x)` instead.
+│   caller = py_colormap(::PlotUtils.ColorGradient) at pyplot.jl:68
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:68
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_add_series(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Series) at pyplot.jl:638
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:638
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_add_series(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Series) at pyplot.jl:443
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:443
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1029
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1029
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1029
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1029
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1030
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1030
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1030
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1030
+┌ Warning: `haskey(o::PyObject, s::Union{Symbol, AbstractString})` is deprecated, use `hasproperty(o, s)` instead.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1058
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1058
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1060
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1060
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_scale(::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:894
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:894
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_lims(::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:844
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:844
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_ticks(::PyCall.PyObject, ::Tuple{Array{Float64,1},Array{String,1}}, ::Symbol) at pyplot.jl:849
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:849
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_ticks(::PyCall.PyObject, ::Tuple{Array{Float64,1},Array{String,1}}, ::Symbol) at pyplot.jl:863
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:863
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_ticks(::PyCall.PyObject, ::Tuple{Array{Float64,1},Array{String,1}}, ::Symbol) at pyplot.jl:864
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:864
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1081
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1081
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1082
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1082
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1086
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1086
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1086
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1086
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1087
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1087
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1087
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1087
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1088
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1088
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1089
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1089
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1090
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1090
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1091
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1091
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1102
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1102
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:914
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:914
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:915
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:915
+┌ Warning: `haskey(o::PyObject, s::Union{Symbol, AbstractString})` is deprecated, use `hasproperty(o, s)` instead.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:918
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:918
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:920
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:920
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:923
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:923
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:923
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:923
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:923
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:923
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1134
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1134
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1148
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1148
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = py_drawfig(::PyPlot.Figure) at pyplot.jl:257
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:257
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = py_canvas at pyplot.jl:251 [inlined]
+└ @ Core ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:251
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_renderer(::PyPlot.Figure) at pyplot.jl:254
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:254
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox(::PyCall.PyObject) at pyplot.jl:266
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:266
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = py_extents(::PyPlot.Figure) at pyplot.jl:261
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:261
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_extents(::PyPlot.Figure) at pyplot.jl:261
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:261
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_extents(::PyCall.PyObject) at pyplot.jl:261
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:261
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_extents(::PyCall.PyObject) at pyplot.jl:261
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:261
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox_ticks(::PyCall.PyObject, ::String) at pyplot.jl:282
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:282
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox_axislabel(::PyCall.PyObject, ::String) at pyplot.jl:288
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:288
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox_axislabel(::PyCall.PyObject, ::String) at pyplot.jl:288
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:288
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox_title(::PyCall.PyObject) at pyplot.jl:304
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:304
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox_title(::PyCall.PyObject) at pyplot.jl:304
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:304
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox_title(::PyCall.PyObject) at pyplot.jl:304
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:304
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _update_plot_object(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1304
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1304
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = _show(::IOStream, ::MIME{Symbol(&quot;image/svg+xml&quot;)}, ::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1343
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1343
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _show(::IOStream, ::MIME{Symbol(&quot;image/svg+xml&quot;)}, ::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1343
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1343
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = _show(::IOStream, ::MIME{Symbol(&quot;image/svg+xml&quot;)}, ::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1343
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1343</code></pre><p><img src="../ifherk.svg" alt/></p><p>From a side view, we can see that it enforces the boundary condition:</p><pre><code class="language-julia-repl">julia&gt; plot(xg,u[65,:],xlabel=&quot;x&quot;,ylabel=&quot;u(x,1)&quot;)
+Plot{Plots.PyPlotBackend() n=1}
+
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:935
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:935
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:937
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:937
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:938
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:938
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:939
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:939
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:942
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:942
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:942
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:942
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = py_init_subplot(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Subplot{Plots.PyPlotBackend}) at pyplot.jl:342
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:342
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_add_series(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Series) at pyplot.jl:443
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:443
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1029
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1029
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1029
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1029
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1030
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1030
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1030
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1030
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1038
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1038
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1038
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1038
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1039
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1039
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1039
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1039
+┌ Warning: `haskey(o::PyObject, s::Union{Symbol, AbstractString})` is deprecated, use `hasproperty(o, s)` instead.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1058
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1058
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1060
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1060
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_scale(::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:894
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:894
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_lims(::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:844
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:844
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_ticks(::PyCall.PyObject, ::Tuple{Array{Float64,1},Array{String,1}}, ::Symbol) at pyplot.jl:849
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:849
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_ticks(::PyCall.PyObject, ::Tuple{Array{Float64,1},Array{String,1}}, ::Symbol) at pyplot.jl:863
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:863
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_ticks(::PyCall.PyObject, ::Tuple{Array{Float64,1},Array{String,1}}, ::Symbol) at pyplot.jl:864
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:864
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1081
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1081
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1082
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1082
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1086
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1086
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1086
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1086
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1087
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1087
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1087
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1087
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1088
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1088
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1089
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1089
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1090
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1090
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1091
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1091
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1095
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1095
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1100
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1100
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:914
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:914
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:915
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:915
+┌ Warning: `haskey(o::PyObject, s::Union{Symbol, AbstractString})` is deprecated, use `hasproperty(o, s)` instead.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:918
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:918
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:920
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:920
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:923
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:923
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:923
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:923
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_set_axis_colors(::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject, ::Plots.Axis) at pyplot.jl:923
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:923
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_add_legend(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject) at pyplot.jl:1254
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1254
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_add_legend(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject) at pyplot.jl:1271
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1271
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_add_legend(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject) at pyplot.jl:1280
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1280
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_add_legend(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject) at pyplot.jl:1281
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1281
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_add_legend(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject) at pyplot.jl:1282
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1282
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_add_legend(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject) at pyplot.jl:1285
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1285
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_add_legend(::Plots.Plot{Plots.PyPlotBackend}, ::Plots.Subplot{Plots.PyPlotBackend}, ::PyCall.PyObject) at pyplot.jl:1286
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1286
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _before_layout_calcs(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1148
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1148
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = py_drawfig(::PyPlot.Figure) at pyplot.jl:257
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:257
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = py_canvas at pyplot.jl:251 [inlined]
+└ @ Core ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:251
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_renderer(::PyPlot.Figure) at pyplot.jl:254
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:254
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox(::PyCall.PyObject) at pyplot.jl:266
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:266
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = py_extents(::PyPlot.Figure) at pyplot.jl:261
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:261
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_extents(::PyPlot.Figure) at pyplot.jl:261
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:261
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_extents(::PyCall.PyObject) at pyplot.jl:261
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:261
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_extents(::PyCall.PyObject) at pyplot.jl:261
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:261
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox_ticks(::PyCall.PyObject, ::String) at pyplot.jl:282
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:282
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox_axislabel(::PyCall.PyObject, ::String) at pyplot.jl:288
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:288
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox_axislabel(::PyCall.PyObject, ::String) at pyplot.jl:288
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:288
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox_title(::PyCall.PyObject) at pyplot.jl:304
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:304
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox_title(::PyCall.PyObject) at pyplot.jl:304
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:304
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = py_bbox_title(::PyCall.PyObject) at pyplot.jl:304
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:304
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _update_plot_object(::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1304
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1304
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = _show(::IOStream, ::MIME{Symbol(&quot;image/svg+xml&quot;)}, ::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1343
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1343
+┌ Warning: `getindex(o::PyObject, s::Symbol)` is deprecated in favor of dot overloading (`getproperty`) so elements should now be accessed as e.g. `o.s` instead of `o[:s]`.
+│   caller = _show(::IOStream, ::MIME{Symbol(&quot;image/svg+xml&quot;)}, ::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1343
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1343
+┌ Warning: `getindex(f::Figure, x)` is deprecated, use `getproperty(f, x)` instead.
+│   caller = _show(::IOStream, ::MIME{Symbol(&quot;image/svg+xml&quot;)}, ::Plots.Plot{Plots.PyPlotBackend}) at pyplot.jl:1343
+└ @ Plots ~/.julia/packages/Plots/gylTh/src/backends/pyplot.jl:1343</code></pre><p><img src="../ifherk-side.svg" alt/></p><h2><a class="nav-anchor" id="Methods-1" href="#Methods-1">Methods</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="ViscousFlow.TimeMarching.IFHERK" href="#ViscousFlow.TimeMarching.IFHERK"><code>ViscousFlow.TimeMarching.IFHERK</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">IFHERK(u,f,Δt,plan_intfact,B₁ᵀ,B₂,r₁,r₂;[tol=1e-3],[issymmetric=false],[rk::RKParams=RK31])</code></pre><p>Construct an integrator to advance a system of the form</p><p>du/dt - Au = -B₁ᵀf + r₁(u,t) B₂u = r₂(u,t)</p><p>The resulting integrator will advance the system <code>(u,f)</code> by one time step, <code>Δt</code>. The optional argument <code>tol</code> sets the tolerance of iterative saddle-point solution, if applicable.</p><p><strong>Arguments</strong></p><ul><li><code>u</code> : example of state vector data</li><li><code>f</code> : example of constraint force vector data</li><li><code>Δt</code> : time-step size</li><li><code>plan_intfact</code> : constructor to set up integrating factor operator for <code>A</code> that             will act on type <code>u</code> (by left multiplication) and return same type as <code>u</code></li><li><code>plan_constraints</code> : constructor to set up the</li><li><code>B₁ᵀ</code> : operator acting on type <code>f</code> and returning type <code>u</code></li><li><code>B₂</code> : operator acting on type <code>u</code> and returning type <code>f</code></li><li><code>r₁</code> : operator acting on type <code>u</code> and <code>t</code> and returning <code>u</code></li><li><code>r₂</code> : operator acting on type <code>u</code> and <code>t</code> and returning type <code>f</code></li></ul></div></div><a class="source-link" target="_blank" href="https://github.com/jdeldre/ViscousFlow.jl/blob/52771b919df9e5e9d50ad44bbbc5dbf366ccbfea/src/timemarching/ifherk.jl#L3-L27">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="ViscousFlow.TimeMarching.IFRK" href="#ViscousFlow.TimeMarching.IFRK"><code>ViscousFlow.TimeMarching.IFRK</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">IFRK(u,Δt,plan_intfact,r₁;[rk::RKParams=RK31])</code></pre><p>Construct an integrator to advance a system of the form</p><p>du/dt - Au = r₁(u,t)</p><p>The resulting integrator will advance the state <code>u</code> by one time step, <code>Δt</code>.</p><p><strong>Arguments</strong></p><ul><li><code>u</code> : example of state vector data</li><li><code>Δt</code> : time-step size</li><li><code>plan_intfact</code> : constructor to set up integrating factor operator for <code>A</code> that             will act on type <code>u</code> (by left multiplication) and return same type as <code>u</code></li><li><code>r₁</code> : operator acting on type <code>u</code> and <code>t</code> and returning <code>u</code></li></ul></div></div><a class="source-link" target="_blank" href="https://github.com/jdeldre/ViscousFlow.jl/blob/52771b919df9e5e9d50ad44bbbc5dbf366ccbfea/src/timemarching/ifrk.jl#L3-L19">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="ViscousFlow.TimeMarching.RK" href="#ViscousFlow.TimeMarching.RK"><code>ViscousFlow.TimeMarching.RK</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">RK(u,Δt,r₁;[rk::RKParams=RK31])</code></pre><p>Construct an integrator to advance a system of the form</p><p>du/dt = r₁(u,t)</p><p>The resulting integrator will advance the state <code>u</code> by one time step, <code>Δt</code>.</p><p><strong>Arguments</strong></p><ul><li><code>u</code> : example of state vector data</li><li><code>Δt</code> : time-step size</li><li><code>r₁</code> : operator acting on type <code>u</code> and <code>t</code> and returning <code>u</code></li></ul></div></div><a class="source-link" target="_blank" href="https://github.com/jdeldre/ViscousFlow.jl/blob/52771b919df9e5e9d50ad44bbbc5dbf366ccbfea/src/timemarching/rk.jl#L3-L17">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="ViscousFlow.TimeMarching.System" href="#ViscousFlow.TimeMarching.System"><code>ViscousFlow.TimeMarching.System</code></a> — <span class="docstring-category">Type</span>.</div><div><div><p>Abstract type for a system of ODEs</p></div></div><a class="source-link" target="_blank" href="https://github.com/jdeldre/ViscousFlow.jl/blob/52771b919df9e5e9d50ad44bbbc5dbf366ccbfea/src/TimeMarching.jl#L19">source</a></section><h2><a class="nav-anchor" id="Index-1" href="#Index-1">Index</a></h2><ul><li><a href="#ViscousFlow.TimeMarching.IFHERK"><code>ViscousFlow.TimeMarching.IFHERK</code></a></li><li><a href="#ViscousFlow.TimeMarching.IFRK"><code>ViscousFlow.TimeMarching.IFRK</code></a></li><li><a href="#ViscousFlow.TimeMarching.RK"><code>ViscousFlow.TimeMarching.RK</code></a></li><li><a href="#ViscousFlow.TimeMarching.System"><code>ViscousFlow.TimeMarching.System</code></a></li></ul><footer><hr/><a class="previous" href="../saddlesystems/"><span class="direction">Previous</span><span class="title">Saddle point systems</span></a><a class="next" href="../navierstokes/"><span class="direction">Next</span><span class="title">Navier-Stokes systems</span></a></footer></article></body></html>
