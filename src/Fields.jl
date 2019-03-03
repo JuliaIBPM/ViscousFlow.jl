@@ -53,7 +53,8 @@ export Primal, Dual, Edges, Nodes,
        product, product!, ∘,
        cellshift!,
        coordinates,
-       DDF, Regularize, RegularizationMatrix, InterpolationMatrix,
+       DDF, GradDDF,
+       Regularize, RegularizationMatrix, InterpolationMatrix,
        CircularConvolution
 
 abstract type CellType end

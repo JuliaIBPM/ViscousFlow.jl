@@ -20,7 +20,7 @@ struct Regularize{N,F}
   buffer3 :: Vector{Float64}
 
   "Discrete Delta function"
-  ddf :: DDF
+  ddf :: AbstractDDF
 
   "Symmetry flag"
   _issymmetric :: Bool
@@ -29,7 +29,7 @@ end
 
 
 """
-    Regularize(x,y,dx,[ddftype=Roma],[I0=(1,1)], [weights=1.0], [filter=false],
+    Regularize(x,y,dx,[ddftype=Roma],[graddir=0],[I0=(1,1)], [weights=1.0], [filter=false],
                        [issymmetric=false])
 
 Constructor to set up an operator for regularizing and interpolating data from/to
@@ -41,7 +41,13 @@ coordinates.
 
 The operations of regularization and interpolation are carried out with a discrete
 delta function (ddf), which defaults to the type `Roma`. Others are also possible,
-such as `Goza`. The optional tuple
+such as `Goza` or `M3`. The optional argument `graddir`, if set to 1 or 2, will
+generate an interpolation operator that evaluates the negative of the
+respective component of the gradient of a grid field at the immersed points. The
+default value of this argument is 0, which simply interpolates. Note that the
+regularization form of this gradient type is also possible.
+
+The optional tuple
 `I0` represents the indices of the primary node that coincides with `(x,y) = (0,0)`.
 This defaults to `(1,1)`, which leaves one layer of ghost (dual) cells and sets
 the physical origin in the lower left corner of the grid of interior dual cells.
@@ -124,7 +130,7 @@ v (in grid orientation)
 ```
 """
 function Regularize(x::Vector{T},y::Vector{T},dx::T;
-                    ddftype=Roma,
+                    ddftype=Roma,graddir::Int=0,
                     I0::Tuple{Int,Int}=(1,1),
                     weights::Union{T,Vector{T}}=1.0,
                     filter::Bool = false,
@@ -150,9 +156,15 @@ function Regularize(x::Vector{T},y::Vector{T},dx::T;
     fill!(wtvec,1.0)
   end
 
+  if graddir == 0
+    ddf = DDF(ddftype=ddftype,dx=1.0)
+  else
+    ddf = GradDDF(graddir,ddftype=ddftype,dx=1.0)
+  end
+
   Regularize{length(x),filter}(x/dx.+I0[1],y/dx.+I0[2],1.0/(dx*dx),
                       wtvec,zeros(T,n),zeros(T,n),zeros(T,n),
-                      DDF(ddftype=ddftype,dx=1.0),_issymmetric)
+                      ddf,_issymmetric)
 end
 
 Regularize(x::T,y::T,a...;b...) where {T<:Real} = Regularize([x],[y],a...;b...)

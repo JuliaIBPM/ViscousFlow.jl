@@ -1,6 +1,8 @@
 abstract type DDFType end
 
-struct DDF{C <: DDFType,OVERDX} end
+abstract type AbstractDDF end
+
+struct DDF{C <: DDFType,OVERDX} <: AbstractDDF end
 
 """
     DDF([ddftype=Fields.Roma],[dx=1.0])
@@ -39,10 +41,17 @@ function DDF(;dx::Real=1.0,ddftype=Roma)
   DDF{ddftype,1.0/dx}()
 end
 
+struct GradDDF{C <: Fields.DDFType,OVERDX,D} <: AbstractDDF end
+
+function GradDDF(dir::Int;dx::Real=1.0,ddftype=Roma)
+  GradDDF{ddftype,1.0/dx,dir}()
+end
+
 # This macro creates an abstract type in the DDFType system for the named ddftype
 # It also creates functions to evaluate the ddf in 1-d,2-d or 3-d.
 macro ddffunc(ddftype)
     fname = Symbol("ddf_",lowercase(string(ddftype)))
+    dfname = Symbol("ddf_d",lowercase(string(ddftype)))
     return esc(quote
             abstract type $ddftype <: DDFType end
             @inline (::DDF{$ddftype,OVERDX})(x::T) where {OVERDX,T <: Real} =
@@ -51,6 +60,21 @@ macro ddffunc(ddftype)
                           $fname(abs(x)*OVERDX)*OVERDX*$fname(abs(y)*OVERDX)*OVERDX
             @inline (::DDF{$ddftype,OVERDX})(x::T,y::T,z::T) where {OVERDX,T <: Real} =
                           $fname(abs(x)*OVERDX)*OVERDX*$fname(abs(y)*OVERDX)*OVERDX*$fname(abs(z)*OVERDX)*OVERDX
+
+            @inline (::GradDDF{$ddftype,OVERDX,1})(x::T) where {OVERDX,T <: Real} =
+                   $dfname(x*OVERDX)*OVERDX*OVERDX
+
+            @inline (::GradDDF{$ddftype,OVERDX,1})(x::T,y::T) where {OVERDX,T <: Real} =
+                   $dfname(x*OVERDX)*OVERDX*OVERDX*$fname(abs(y)*OVERDX)*OVERDX
+            @inline (::GradDDF{$ddftype,OVERDX,2})(x::T,y::T) where {OVERDX,T <: Real} =
+                   $fname(abs(x)*OVERDX)*OVERDX*$dfname(y*OVERDX)*OVERDX*OVERDX
+
+            @inline (::GradDDF{$ddftype,OVERDX,1})(x::T,y::T,z::T) where {OVERDX,T <: Real} =
+                   $dfname(x*OVERDX)*OVERDX*OVERDX*$fname(abs(y)*OVERDX)*OVERDX*$fname(abs(z)*OVERDX)*OVERDX
+            @inline (::GradDDF{$ddftype,OVERDX,2})(x::T,y::T,z::T) where {OVERDX,T <: Real} =
+                   $fname(abs(x)*OVERDX)*OVERDX*$dfname(y*OVERDX)*OVERDX*OVERDX*$fname(abs(z)*OVERDX)*OVERDX
+            @inline (::GradDDF{$ddftype,OVERDX,3})(x::T,y::T,z::T) where {OVERDX,T <: Real} =
+                   $fname(abs(x)*OVERDX)*OVERDX*$fname(abs(y)*OVERDX)*OVERDX*$dfname(z*OVERDX)*OVERDX*OVERDX
             end)
 end
 
@@ -61,15 +85,34 @@ roma2(r) = (5-3r-sqrt(1-3(1-r)^2))/6
 
 @inline ddf_roma(r::Real) = r > 1.5 ? 0.0 : r <= 0.5 ? roma1(r) : roma2(r)
 
+droma1(r) = -r/sqrt(-3r^2+1)
+droma2(r) = -0.5*(1+(1-r)/sqrt(1-3(1-r)^2))
+
+@inline ddf_droma(r::Real) = abs(r) > 1.5 ? 0.0 : abs(r) <= 0.5 ? sign(r)*droma1(abs(r)) : sign(r)*droma2(abs(r))
 
 @ddffunc Goza
 
 @inline ddf_goza(r::Real) = r > 14 ? 0.0 : exp(-π^2/36 * r^2)*sqrt(π/36)
 
+@inline ddf_dgoza(r::Real) = abs(r) > 14 ? 0.0 : (-π^2/18)*r*exp(-π^2/36 * r^2)*sqrt(π/36)
+
 
 @ddffunc Witchhat
 
 @inline ddf_witchhat(r::Real) = r > 1 ? 0.0 : 1-r
+
+@inline ddf_dwitchhat(r::Real) = abs(r) > 1 ? 0.0 : -sign(r)
+
+
+@ddffunc M3
+
+M31(r) = 0.75-r^2
+M32(r) = 0.5*(1.5-r)^2
+@inline ddf_m3(r::Real) = r > 1.5 ? 0.0 : r <= 0.5 ? M31(r) : M32(r)
+
+dM31(r) = -2*r
+dM32(r) = r-1.5
+@inline ddf_dm3(r::Real) = abs(r) > 1.5 ? 0.0 : abs(r) <= 0.5 ? dM31(r) : sign(r)*dM32(abs(r))
 
 
 function Base.show(io::IO, ddf::DDF{C,OVERDX}) where {C<:DDFType,OVERDX}
