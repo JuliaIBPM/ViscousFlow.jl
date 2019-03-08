@@ -247,8 +247,8 @@ end
 
 # Constraint operators, using stored regularization and interpolation operators
 # B₁ᵀ = CᵀEᵀ, B₂ = -ECL⁻¹
-TimeMarching.B₁ᵀ(f,sys::NavierStokes{NX,NY,N,C}) where {NX,NY,N,C} = Curl()*(sys.Hmat*f)
-TimeMarching.B₂(w,sys::NavierStokes{NX,NY,N,C}) where {NX,NY,N,C} = -(sys.Emat*(Curl()*(sys.L\w)))
+TimeMarching.B₁ᵀ(f::VectorData{N},sys::NavierStokes{NX,NY,N,C}) where {NX,NY,N,C} = Curl()*(sys.Hmat*f)
+TimeMarching.B₂(w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY,N,C}) where {NX,NY,N,C} = -(sys.Emat*(Curl()*(sys.L\w)))
 
 # Constraint operators, using non-stored regularization and interpolation operators
 TimeMarching.B₁ᵀ(f::VectorData{N},regop::Regularize,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,N} = Curl()*regop(sys.Fq,f)
