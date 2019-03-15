@@ -34,7 +34,7 @@ function TimeMarching.plan_constraints(u::Tuple{Nodes{Dual,NX,NY},Vector{Float64
   # should be able to save some time and memory allocation here...
   x, y = T(sys.X̃.u,sys.X̃.v)
   X = VectorData(x,y)
-  regop = Regularize(X,sys.Δx;issymmetric=true)
+  regop = Regularize(X,cellsize(sys);issymmetric=true,I0=origin(sys))
   if sys._isstore
     Hmat, Emat = RegularizationMatrix(regop,VectorData{N}(),Edges{Primal,NX,NY}())
     sys.Hmat = Hmat
