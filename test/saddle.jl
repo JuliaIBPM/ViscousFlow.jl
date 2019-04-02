@@ -12,6 +12,7 @@ dx = Lx/(nx-2)
 w = Nodes(Dual,(nx,ny))
 
 L = plan_laplacian(size(w),with_inverse=true)
+Linv(x) = L\x
 #L⁻¹(w::T) where {T} = L\w
 
 n = 128
@@ -26,7 +27,7 @@ f = ScalarData(X)
 E = Regularize(X,dx;ddftype=Fields.Roma,issymmetric=true)
 Hmat,Emat = RegularizationMatrix(E,f,w)
 
-PS = SaddleSystem((w,f),(x->L\x,Hmat,Emat),issymmetric=true,isposdef=true)
+PS = SaddleSystem((w,f),(Linv,Hmat,Emat),issymmetric=true,isposdef=true)
 
 ψb = ScalarData(X)
 w = Nodes(Dual,(nx,ny))
