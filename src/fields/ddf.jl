@@ -78,6 +78,8 @@ macro ddffunc(ddftype)
             end)
 end
 
+#==== ROMA ====#
+
 @ddffunc Roma
 
 roma1(r) = (1+sqrt(-3r^2+1))/3
@@ -90,12 +92,15 @@ droma2(r) = -0.5*(1+(1-r)/sqrt(1-3(1-r)^2))
 
 @inline ddf_droma(r::Real) = abs(r) > 1.5 ? 0.0 : abs(r) <= 0.5 ? sign(r)*droma1(abs(r)) : sign(r)*droma2(abs(r))
 
+#==== GOZA ====#
+
 @ddffunc Goza
 
 @inline ddf_goza(r::Real) = r > 14 ? 0.0 : exp(-π^2/36 * r^2)*sqrt(π/36)
 
 @inline ddf_dgoza(r::Real) = abs(r) > 14 ? 0.0 : (-π^2/18)*r*exp(-π^2/36 * r^2)*sqrt(π/36)
 
+#==== WITCHHAT ====#
 
 @ddffunc Witchhat
 
@@ -103,6 +108,7 @@ droma2(r) = -0.5*(1+(1-r)/sqrt(1-3(1-r)^2))
 
 @inline ddf_dwitchhat(r::Real) = abs(r) > 1 ? 0.0 : -sign(r)
 
+#==== M3 ====#
 
 @ddffunc M3
 
@@ -114,6 +120,14 @@ dM31(r) = -2*r
 dM32(r) = r-1.5
 @inline ddf_dm3(r::Real) = abs(r) > 1.5 ? 0.0 : abs(r) <= 0.5 ? dM31(r) : sign(r)*dM32(abs(r))
 
+#==== YANG3 ====#
+
+@ddffunc Yang3
+
+Yang31(r) = 17/48+sqrt(3)π/108+r/4-r^2/4+(1-2*r)/16*sqrt(-12*r^2+12*r+1)-sqrt(3)/12*asin(sqrt(3)/2*(2*r-1))
+Yang32(r) = 55/48-sqrt(3)π/108-13*r/12+r^2/4+(2*r-3)/48*sqrt(-12*r^2+36*r-23)+sqrt(3)/36*asin(sqrt(3)/2*(2*r-3))
+
+@inline ddf_yang3(r::Real) = r > 2.0 ? 0.0 : r <= 1.0 ? Yang31(r) : Yang32(r)
 
 function Base.show(io::IO, ddf::DDF{C,OVERDX}) where {C<:DDFType,OVERDX}
     print(io, "Discrete delta function operator of type $C, with spacing $(1.0/OVERDX)")
