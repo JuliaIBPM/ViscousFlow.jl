@@ -286,7 +286,7 @@ for (lf,inplace) in ((:plan_intfact,false),
 
         #qtab = [intfact(x, y, a) for x in 0:NX-1, y in 0:NY-1]
         Nmax = 0
-        while intfact(Nmax,0,a) > eps(Float64)
+        while abs(intfact(Nmax,0,a)) > eps(Float64)
           Nmax += 1
         end
         qtab = [max(x,y) <= Nmax ? intfact(x, y, a) : 0.0 for x in 0:NX-1, y in 0:NY-1]
