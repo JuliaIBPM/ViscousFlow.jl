@@ -22,6 +22,9 @@ struct Regularize{N,F}
   "Discrete Delta function"
   ddf :: AbstractDDF
 
+  "Radius of the DDF"
+  ddf_radius :: Float64
+
   "Symmetry flag"
   _issymmetric :: Bool
 
@@ -162,9 +165,18 @@ function Regularize(x::Vector{T},y::Vector{T},dx::T;
     ddf = GradDDF(graddir,ddftype=ddftype,dx=1.0)
   end
 
+  # Determine the radius of the ddf
+  v = 1.0
+  r = 0.0
+  dr = 0.01
+  while (v = abs(ddf(r))) > eps()
+    r += dr
+  end
+  ddf_radius = r
+
   Regularize{length(x),filter}(x/dx.+I0[1],y/dx.+I0[2],1.0/(dx*dx),
                       wtvec,zeros(T,n),zeros(T,n),zeros(T,n),
-                      ddf,_issymmetric)
+                      ddf,ddf_radius,_issymmetric)
 end
 
 Regularize(x::T,y::T,a...;b...) where {T<:Real} = Regularize([x],[y],a...;b...)
@@ -215,54 +227,149 @@ ftype = :(VectorData{N})
 for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
 
 # Regularization
+  # @eval function (H::Regularize{N,F})(target::$ctype,source::$ftype) where {N,F,NX,NY}
+  #       fill!(target.u,0.0)
+  #       H.buffer2 .= source.u.*H.wgt
+  #       @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
+  #         H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
+  #         target.u[x,y] = transpose(H.buffer)*H.buffer2
+  #       end
+  #       fill!(target.v,0.0)
+  #       H.buffer2 .= source.v.*H.wgt
+  #       @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
+  #         H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
+  #         target.v[x,y] = transpose(H.buffer)*H.buffer2
+  #       end
+  #       target
+  # end
+
+  # new one
   @eval function (H::Regularize{N,F})(target::$ctype,source::$ftype) where {N,F,NX,NY}
+        radius = H.ddf_radius
         fill!(target.u,0.0)
-        H.buffer2 .= source.u.*H.wgt
-        @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
-          H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
-          target.u[x,y] = transpose(H.buffer)*H.buffer2
+        xmin = -radius+$shiftux; xmax = radius+$shiftux
+        ymin = -radius+$shiftuy; ymax = radius+$shiftuy
+        @inbounds for pt in 1:N
+            prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dunx,floor(Int,H.x[pt]+xmax))
+            prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$duny,floor(Int,H.y[pt]+ymax))
+            for y in prangey, x in prangex
+                target.u[x,y] += source.u[pt]*H.wgt[pt]*H.ddf(x-$shiftux-H.x[pt],y-$shiftuy-H.y[pt])
+            end
         end
         fill!(target.v,0.0)
-        H.buffer2 .= source.v.*H.wgt
-        @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
-          H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
-          target.v[x,y] = transpose(H.buffer)*H.buffer2
+        xmin = -radius+$shiftvx; xmax = radius+$shiftvx
+        ymin = -radius+$shiftvy; ymax = radius+$shiftvy
+        @inbounds for pt in 1:N
+            prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dvnx,floor(Int,H.x[pt]+xmax))
+            prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$dvny,floor(Int,H.y[pt]+ymax))
+            for y in prangey, x in prangex
+                target.v[x,y] += source.v[pt]*H.wgt[pt]*H.ddf(x-$shiftvx-H.x[pt],y-$shiftvy-H.y[pt])
+            end
         end
         target
   end
 
 # Interpolation
-  @eval function (H::Regularize{N,false})(target::$ftype,
-                                       source::$ctype) where {N,NX,NY}
-    target.u .= target.v .= zeros(Float64,N)
-    @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
-      H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
-      target.u .+= H.buffer*source.u[x,y]
-    end
-    @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
-      H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
-      target.v .+= H.buffer*source.v[x,y]
-    end
-    target
+  # @eval function (H::Regularize{N,false})(target::$ftype,
+  #                                      source::$ctype) where {N,NX,NY}
+  #   target.u .= target.v .= zeros(Float64,N)
+  #   @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
+  #     H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
+  #     target.u .+= H.buffer*source.u[x,y]
+  #   end
+  #   @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
+  #     H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
+  #     target.v .+= H.buffer*source.v[x,y]
+  #   end
+  #   target
+  # end
+
+  @eval function (H::Regularize{N,false})(target::$ftype,source::$ctype) where {N,NX,NY}
+        radius = H.ddf_radius
+        fill!(target.u,0.0)
+        xmin = -radius+$shiftux; xmax = radius+$shiftux
+        ymin = -radius+$shiftuy; ymax = radius+$shiftuy
+        @inbounds for pt in 1:N
+            prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dunx,floor(Int,H.x[pt]+xmax))
+            prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$duny,floor(Int,H.y[pt]+ymax))
+            for y in prangey, x in prangex
+                target.u[pt] += source.u[x,y]*H.ddf(x-$shiftux-H.x[pt],y-$shiftuy-H.y[pt])
+            end
+        end
+        fill!(target.v,0.0)
+        xmin = -radius+$shiftvx; xmax = radius+$shiftvx
+        ymin = -radius+$shiftvy; ymax = radius+$shiftvy
+        @inbounds for pt in 1:N
+            prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dvnx,floor(Int,H.x[pt]+xmax))
+            prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$dvny,floor(Int,H.y[pt]+ymax))
+            for y in prangey, x in prangex
+                target.v[pt] += source.v[x,y]*H.ddf(x-$shiftvx-H.x[pt],y-$shiftvy-H.y[pt])
+            end
+        end
+        target
   end
 
-# Interpolation with filtering
-  @eval function (H::Regularize{N,true})(target::$ftype,
-                                      source::$ctype) where {N,NX,NY}
-    target.u .= target.v .= zeros(Float64,N)
-    @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
-      H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
-      w = transpose(H.buffer)*H.wgt
-      w = w ≢ 0.0 ? source.u[x,y]/w : 0.0
-      target.u .+= H.buffer*w
-    end
-    @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
-      H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
-      w = transpose(H.buffer)*H.wgt
-      w = w ≢ 0.0 ? source.v[x,y]/w : 0.0
-      target.v .+= H.buffer*w
-    end
-    target
+# Interpolation with filtering -- need to speed this up
+  # @eval function (H::Regularize{N,true})(target::$ftype,
+  #                                     source::$ctype) where {N,NX,NY}
+  #   target.u .= target.v .= zeros(Float64,N)
+  #   @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
+  #     H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
+  #     w = transpose(H.buffer)*H.wgt
+  #     w = w ≢ 0.0 ? source.u[x,y]/w : 0.0
+  #     target.u .+= H.buffer*w
+  #   end
+  #   @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
+  #     H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
+  #     w = transpose(H.buffer)*H.wgt
+  #     w = w ≢ 0.0 ? source.v[x,y]/w : 0.0
+  #     target.v .+= H.buffer*w
+  #   end
+  #   target
+  # end
+
+  @eval function (H::Regularize{N,true})(target::$ftype,source::$ctype) where {N,NX,NY}
+        tmp = typeof(source)()
+        radius = H.ddf_radius
+        fill!(target.u,0.0)
+        xmin = -radius+$shiftux; xmax = radius+$shiftux
+        ymin = -radius+$shiftuy; ymax = radius+$shiftuy
+        @inbounds for pt in 1:N
+            prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dunx,floor(Int,H.x[pt]+xmax))
+            prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$duny,floor(Int,H.y[pt]+ymax))
+            for y in prangey, x in prangex
+                tmp.u[x,y] += H.wgt[pt]*H.ddf(x-$shiftux-H.x[pt],y-$shiftuy-H.y[pt])
+            end
+        end
+        @inbounds for pt in 1:N
+            prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dunx,floor(Int,H.x[pt]+xmax))
+            prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$duny,floor(Int,H.y[pt]+ymax))
+            @inbounds for y in prangey, x in prangex
+                w = tmp.u[x,y]
+                w = w > eps() ? source.u[x,y]/w : 0.0
+                target.u[pt]  += w*H.ddf(x-$shiftux-H.x[pt],y-$shiftuy-H.y[pt])
+            end
+        end
+        fill!(target.v,0.0)
+        xmin = -radius+$shiftvx; xmax = radius+$shiftvx
+        ymin = -radius+$shiftvy; ymax = radius+$shiftvy
+        @inbounds for pt in 1:N
+            prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dvnx,floor(Int,H.x[pt]+xmax))
+            prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$dvny,floor(Int,H.y[pt]+ymax))
+            for y in prangey, x in prangex
+                tmp.v[x,y] += H.wgt[pt]*H.ddf(x-$shiftvx-H.x[pt],y-$shiftvy-H.y[pt])
+            end
+        end
+        @inbounds for pt in 1:N
+            prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dvnx,floor(Int,H.x[pt]+xmax))
+            prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$dvny,floor(Int,H.y[pt]+ymax))
+            @inbounds for y in prangey, x in prangex
+                w = tmp.v[x,y]
+                w = w > eps() ? source.v[x,y]/w : 0.0
+                target.v[pt] += w*H.ddf(x-$shiftvx-H.x[pt],y-$shiftvy-H.y[pt])
+            end
+        end
+        target
   end
 
   # Construct regularization matrix
@@ -404,38 +511,94 @@ ftype = :(ScalarData{N})
 for (ctype,dnx,dny,shiftx,shifty) in scalarlist
 
 # Regularization
+  # @eval function (H::Regularize{N,F})(target::$ctype,source::$ftype) where {N,F,NX,NY}
+  #   fill!(target,0.0)
+  #   H.buffer2 .= source.data.*H.wgt
+  #   @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
+  #     H.buffer .= H.ddf.(x.-$shiftx.-H.x,y.-$shifty.-H.y)
+  #     target[x,y] = transpose(H.buffer)*H.buffer2
+  #   end
+  #   target
+  # end
+
+
   @eval function (H::Regularize{N,F})(target::$ctype,source::$ftype) where {N,F,NX,NY}
-    fill!(target,0.0)
-    H.buffer2 .= source.data.*H.wgt
-    @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
-      H.buffer .= H.ddf.(x.-$shiftx.-H.x,y.-$shifty.-H.y)
-      target[x,y] = transpose(H.buffer)*H.buffer2
-    end
-    target
+        radius = H.ddf_radius
+        fill!(target,0.0)
+        xmin = -radius+$shiftx; xmax = radius+$shiftx
+        ymin = -radius+$shifty; ymax = radius+$shifty
+        @inbounds for pt in 1:N
+            prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dnx,floor(Int,H.x[pt]+xmax))
+            prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$dny,floor(Int,H.y[pt]+ymax))
+            for y in prangey, x in prangex
+                target[x,y] += source[pt]*H.wgt[pt]*H.ddf(x-$shiftx-H.x[pt],y-$shifty-H.y[pt])
+            end
+        end
+        target
   end
+
 
 # Interpolation
-  @eval function (H::Regularize{N,false})(target::$ftype,
-                                       source::$ctype) where {N,NX,NY}
-    target .= zeros(Float64,N)
-    @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
-      H.buffer .= H.ddf.(x.-$shiftx.-H.x,y.-$shifty.-H.y)
-      target .+= H.buffer*source[x,y]
-    end
-    target
+  # @eval function (H::Regularize{N,false})(target::$ftype,
+  #                                      source::$ctype) where {N,NX,NY}
+  #   target .= zeros(Float64,N)
+  #   @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
+  #     H.buffer .= H.ddf.(x.-$shiftx.-H.x,y.-$shifty.-H.y)
+  #     target .+= H.buffer*source[x,y]
+  #   end
+  #   target
+  # end
+
+  @eval function (H::Regularize{N,false})(target::$ftype,source::$ctype) where {N,NX,NY}
+        radius = H.ddf_radius
+        fill!(target,0.0)
+        xmin = -radius+$shiftx; xmax = radius+$shiftx
+        ymin = -radius+$shifty; ymax = radius+$shifty
+        @inbounds for pt in 1:N
+            prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dnx,floor(Int,H.x[pt]+xmax))
+            prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$dny,floor(Int,H.y[pt]+ymax))
+            for y in prangey, x in prangex
+                target[pt] += source[x,y]*H.ddf(x-$shiftx-H.x[pt],y-$shifty-H.y[pt])
+            end
+        end
+        target
   end
 
-# Interpolation with filtering
-  @eval function (H::Regularize{N,true})(target::$ftype,
-                                       source::$ctype) where {N,NX,NY}
-    target .= zeros(Float64,N)
-    @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
-      H.buffer .= H.ddf.(x.-$shiftx.-H.x,y.-$shifty.-H.y)
-      w = transpose(H.buffer)*H.wgt
-      w = w ≢ 0.0 ? source[x,y]/w : 0.0
-      target .+= H.buffer*w
-    end
-    target
+# Interpolation with filtering -- need to speed up
+  # @eval function (H::Regularize{N,true})(target::$ftype,
+  #                                      source::$ctype) where {N,NX,NY}
+  #   target .= zeros(Float64,N)
+  #   @inbounds for y in 1:NY-$dny, x in 1:NX-$dnx
+  #     H.buffer .= H.ddf.(x.-$shiftx.-H.x,y.-$shifty.-H.y)
+  #     w = transpose(H.buffer)*H.wgt
+  #     w = w ≢ 0.0 ? source[x,y]/w : 0.0
+  #     target .+= H.buffer*w
+  #   end
+  #   target
+  # end
+  @eval function (H::Regularize{N,true})(target::$ftype,source::$ctype) where {N,NX,NY}
+        tmp = typeof(source)()
+        radius = H.ddf_radius
+        fill!(target,0.0)
+        xmin = -radius+$shiftx; xmax = radius+$shiftx
+        ymin = -radius+$shifty; ymax = radius+$shifty
+        @inbounds for pt in 1:N
+            prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dnx,floor(Int,H.x[pt]+xmax))
+            prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$dny,floor(Int,H.y[pt]+ymax))
+            for y in prangey, x in prangex
+                tmp[x,y] += H.wgt[pt]*H.ddf(x-$shiftx-H.x[pt],y-$shifty-H.y[pt])
+            end
+        end
+        @inbounds for pt in 1:N
+            prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dnx,floor(Int,H.x[pt]+xmax))
+            prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$dny,floor(Int,H.y[pt]+ymax))
+            @inbounds for y in prangey, x in prangex
+                w = tmp[x,y]
+                w = w > eps() ? source[x,y]/w : 0.0
+                target[pt]  += w*H.ddf(x-$shiftx-H.x[pt],y-$shifty-H.y[pt])
+            end
+        end
+        target
   end
 
   # Construct regularization matrix
@@ -559,66 +722,182 @@ ftype = :(TensorData{N})
 for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tensorlist
 
 # Regularization
+  # @eval function (H::Regularize{N,F})(target::$ctype,source::$ftype) where {N,F,NX,NY}
+  #       fill!(target.dudx,0.0)
+  #       fill!(target.dvdy,0.0)
+  #       H.buffer2 .= source.dudx.*H.wgt
+  #       H.buffer3 .= source.dvdy.*H.wgt
+  #       @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
+  #         H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
+  #         target.dudx[x,y] = transpose(H.buffer)*H.buffer2
+  #         target.dvdy[x,y] = transpose(H.buffer)*H.buffer3
+  #       end
+  #       fill!(target.dudy,0.0)
+  #       fill!(target.dvdx,0.0)
+  #       H.buffer2 .= source.dudy.*H.wgt
+  #       H.buffer3 .= source.dvdx.*H.wgt
+  #       @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
+  #         H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
+  #         target.dudy[x,y] = transpose(H.buffer)*H.buffer2
+  #         target.dvdx[x,y] = transpose(H.buffer)*H.buffer3
+  #       end
+  #       target
+  # end
+
   @eval function (H::Regularize{N,F})(target::$ctype,source::$ftype) where {N,F,NX,NY}
+        radius = H.ddf_radius
         fill!(target.dudx,0.0)
         fill!(target.dvdy,0.0)
-        H.buffer2 .= source.dudx.*H.wgt
-        H.buffer3 .= source.dvdy.*H.wgt
-        @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
-          H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
-          target.dudx[x,y] = transpose(H.buffer)*H.buffer2
-          target.dvdy[x,y] = transpose(H.buffer)*H.buffer3
+        xmin = -radius+$shiftux; xmax = radius+$shiftux
+        ymin = -radius+$shiftuy; ymax = radius+$shiftuy
+        @inbounds for pt in 1:N
+            prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dunx,floor(Int,H.x[pt]+xmax))
+            prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$duny,floor(Int,H.y[pt]+ymax))
+            for y in prangey, x in prangex
+                d = H.wgt[pt]*H.ddf(x-$shiftux-H.x[pt],y-$shiftuy-H.y[pt])
+                target.dudx[x,y] += source.dudx[pt]*d
+                target.dvdy[x,y] += source.dvdy[pt]*d
+            end
         end
         fill!(target.dudy,0.0)
         fill!(target.dvdx,0.0)
-        H.buffer2 .= source.dudy.*H.wgt
-        H.buffer3 .= source.dvdx.*H.wgt
-        @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
-          H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
-          target.dudy[x,y] = transpose(H.buffer)*H.buffer2
-          target.dvdx[x,y] = transpose(H.buffer)*H.buffer3
+        xmin = -radius+$shiftvx; xmax = radius+$shiftvx
+        ymin = -radius+$shiftvy; ymax = radius+$shiftvy
+        @inbounds for pt in 1:N
+            prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dvnx,floor(Int,H.x[pt]+xmax))
+            prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$dvny,floor(Int,H.y[pt]+ymax))
+            for y in prangey, x in prangex
+                d = H.wgt[pt]*H.ddf(x-$shiftvx-H.x[pt],y-$shiftvy-H.y[pt])
+                target.dudy[x,y] += source.dudy[pt]*d
+                target.dvdx[x,y] += source.dvdx[pt]*d
+            end
         end
         target
   end
 
 # Interpolation
-  @eval function (H::Regularize{N,false})(target::$ftype,
-                                       source::$ctype) where {N,NX,NY}
-    target.dudx .= target.dudy .= target.dvdx .= target.dvdy .= zeros(Float64,N)
-    @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
-      H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
-      target.dudx .+= H.buffer*source.dudx[x,y]
-      target.dvdy .+= H.buffer*source.dvdy[x,y]
-    end
-    @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
-      H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
-      target.dudy .+= H.buffer*source.dudy[x,y]
-      target.dvdx .+= H.buffer*source.dvdx[x,y]
-    end
-    target
+  # @eval function (H::Regularize{N,false})(target::$ftype,
+  #                                      source::$ctype) where {N,NX,NY}
+  #   target.dudx .= target.dudy .= target.dvdx .= target.dvdy .= zeros(Float64,N)
+  #   @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
+  #     H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
+  #     target.dudx .+= H.buffer*source.dudx[x,y]
+  #     target.dvdy .+= H.buffer*source.dvdy[x,y]
+  #   end
+  #   @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
+  #     H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
+  #     target.dudy .+= H.buffer*source.dudy[x,y]
+  #     target.dvdx .+= H.buffer*source.dvdx[x,y]
+  #   end
+  #   target
+  # end
+
+  @eval function (H::Regularize{N,false})(target::$ftype,source::$ctype) where {N,NX,NY}
+        radius = H.ddf_radius
+        fill!(target.dudx,0.0)
+        fill!(target.dvdy,0.0)
+        xmin = -radius+$shiftux; xmax = radius+$shiftux
+        ymin = -radius+$shiftuy; ymax = radius+$shiftuy
+        @inbounds for pt in 1:N
+            prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dunx,floor(Int,H.x[pt]+xmax))
+            prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$duny,floor(Int,H.y[pt]+ymax))
+            for y in prangey, x in prangex
+                d = H.ddf(x-$shiftux-H.x[pt],y-$shiftuy-H.y[pt])
+                target.dudx[pt] += source.dudx[x,y]*d
+                target.dvdy[pt] += source.dvdy[x,y]*d
+            end
+        end
+        fill!(target.dudy,0.0)
+        fill!(target.dvdx,0.0)
+        xmin = -radius+$shiftvx; xmax = radius+$shiftvx
+        ymin = -radius+$shiftvy; ymax = radius+$shiftvy
+        @inbounds for pt in 1:N
+            prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dvnx,floor(Int,H.x[pt]+xmax))
+            prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$dvny,floor(Int,H.y[pt]+ymax))
+            for y in prangey, x in prangex
+                d = H.ddf(x-$shiftvx-H.x[pt],y-$shiftvy-H.y[pt])
+                target.dudy[pt] += source.dudy[x,y]*d
+                target.dvdx[pt] += source.dvdx[x,y]*d
+            end
+        end
+        target
   end
 
-# Interpolation with filtering
-  @eval function (H::Regularize{N,true})(target::$ftype,
-                                      source::$ctype) where {N,NX,NY}
-    target.dudx .= target.dudy .= target.dvdx .= target.dvdy .= zeros(Float64,N)
-    @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
-      H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
-      w = transpose(H.buffer)*H.wgt
-      w1 = w ≢ 0.0 ? source.dudx[x,y]/w : 0.0
-      w2 = w ≢ 0.0 ? source.dvdy[x,y]/w : 0.0
-      target.dudx .+= H.buffer*w1
-      target.dvdy .+= H.buffer*w2
-    end
-    @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
-      H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
-      w = transpose(H.buffer)*H.wgt
-      w1 = w ≢ 0.0 ? source.dudy[x,y]/w : 0.0
-      w2 = w ≢ 0.0 ? source.dvdx[x,y]/w : 0.0
-      target.dudy .+= H.buffer*w1
-      target.dvdx .+= H.buffer*w2
-    end
-    target
+# Interpolation with filtering -- need to speed up
+  # @eval function (H::Regularize{N,true})(target::$ftype,
+  #                                     source::$ctype) where {N,NX,NY}
+  #   target.dudx .= target.dudy .= target.dvdx .= target.dvdy .= zeros(Float64,N)
+  #   @inbounds for y in 1:NY-$duny, x in 1:NX-$dunx
+  #     H.buffer .= H.ddf.(x.-$shiftux.-H.x,y.-$shiftuy.-H.y)
+  #     w = transpose(H.buffer)*H.wgt
+  #     w1 = w ≢ 0.0 ? source.dudx[x,y]/w : 0.0
+  #     w2 = w ≢ 0.0 ? source.dvdy[x,y]/w : 0.0
+  #     target.dudx .+= H.buffer*w1
+  #     target.dvdy .+= H.buffer*w2
+  #   end
+  #   @inbounds for y in 1:NY-$dvny, x in 1:NX-$dvnx
+  #     H.buffer .= H.ddf.(x.-$shiftvx.-H.x,y.-$shiftvy.-H.y)
+  #     w = transpose(H.buffer)*H.wgt
+  #     w1 = w ≢ 0.0 ? source.dudy[x,y]/w : 0.0
+  #     w2 = w ≢ 0.0 ? source.dvdx[x,y]/w : 0.0
+  #     target.dudy .+= H.buffer*w1
+  #     target.dvdx .+= H.buffer*w2
+  #   end
+  #   target
+  # end
+
+  @eval function (H::Regularize{N,true})(target::$ftype,source::$ctype) where {N,NX,NY}
+        tmp = typeof(source)()
+        radius = H.ddf_radius
+        fill!(target.dudx,0.0)
+        fill!(target.dvdy,0.0)
+        xmin = -radius+$shiftux; xmax = radius+$shiftux
+        ymin = -radius+$shiftuy; ymax = radius+$shiftuy
+        @inbounds for pt in 1:N
+            prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dunx,floor(Int,H.x[pt]+xmax))
+            prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$duny,floor(Int,H.y[pt]+ymax))
+            for y in prangey, x in prangex
+                tmp.dudx[x,y] += H.wgt[pt]*H.ddf(x-$shiftux-H.x[pt],y-$shiftuy-H.y[pt])
+            end
+        end
+        tmp.dvdy .= tmp.dudx
+        @inbounds for pt in 1:N
+            prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dunx,floor(Int,H.x[pt]+xmax))
+            prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$duny,floor(Int,H.y[pt]+ymax))
+            @inbounds for y in prangey, x in prangex
+                w = tmp.dudx[x,y]
+                w = w > eps() ? source.dudx[x,y]/w : 0.0
+                target.dudx[pt]  += w*H.ddf(x-$shiftux-H.x[pt],y-$shiftuy-H.y[pt])
+                w = tmp.dvdy[x,y]
+                w = w > eps() ? source.dvdy[x,y]/w : 0.0
+                target.dvdy[pt]  += w*H.ddf(x-$shiftux-H.x[pt],y-$shiftuy-H.y[pt])
+            end
+        end
+        fill!(target.dudy,0.0)
+        fill!(target.dvdx,0.0)
+        xmin = -radius+$shiftvx; xmax = radius+$shiftvx
+        ymin = -radius+$shiftvy; ymax = radius+$shiftvy
+        @inbounds for pt in 1:N
+            prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dvnx,floor(Int,H.x[pt]+xmax))
+            prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$dvny,floor(Int,H.y[pt]+ymax))
+            for y in prangey, x in prangex
+                tmp.dudy[x,y] += H.wgt[pt]*H.ddf(x-$shiftvx-H.x[pt],y-$shiftvy-H.y[pt])
+            end
+        end
+        tmp.dvdx .= tmp.dudy
+        @inbounds for pt in 1:N
+            prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dvnx,floor(Int,H.x[pt]+xmax))
+            prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$dvny,floor(Int,H.y[pt]+ymax))
+            @inbounds for y in prangey, x in prangex
+                w = tmp.dudy[x,y]
+                w = w > eps() ? source.dudy[x,y]/w : 0.0
+                target.dudy[pt] += w*H.ddf(x-$shiftvx-H.x[pt],y-$shiftvy-H.y[pt])
+                w = tmp.dvdx[x,y]
+                w = w > eps() ? source.dvdx[x,y]/w : 0.0
+                target.dvdx[pt] += w*H.ddf(x-$shiftvx-H.x[pt],y-$shiftvy-H.y[pt])
+            end
+        end
+        target
   end
 
   # Construct regularization matrix
