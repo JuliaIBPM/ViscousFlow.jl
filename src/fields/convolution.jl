@@ -48,20 +48,27 @@ function Base.show(io::IO, c::CircularConvolution{M, N}) where {M, N}
 end
 
 function CircularConvolution(G::AbstractMatrix{Float64}, fftw_flags = FFTW.ESTIMATE)
+    FFTW.set_num_threads(2)
+
     M, N = size(G)
-    paddedSpace = Matrix{Float64}(undef, 2M-1, 2N-1)
+    #paddedSpace = Matrix{Float64}(undef, 2M-1, 2N-1)
+    paddedSpace = Matrix{Float64}(undef, 2M, 2N)
+
     F = FFTW.plan_rfft(paddedSpace, flags = fftw_flags)
 
     mirror!(paddedSpace, G)
     Ĝ = F * paddedSpace
 
     Â = similar(Ĝ)
-    F⁻¹ = FFTW.plan_irfft(Â, 2M - 1, flags = fftw_flags)
+    #F⁻¹ = FFTW.plan_irfft(Â, 2M - 1, flags = fftw_flags)
+    F⁻¹ = FFTW.plan_irfft(Â, 2M, flags = fftw_flags)
+
 
     CircularConvolution{M, N, typeof(F), typeof(F⁻¹)}(Ĝ, F, F⁻¹, paddedSpace, Â)
 end
 
 function mul!(out, C::CircularConvolution{M, N}, B) where {M, N}
+    FFTW.set_num_threads(2)
     @assert size(out) == size(B) == (M, N)
 
     inds = CartesianIndices((M,N))
@@ -73,17 +80,24 @@ function mul!(out, C::CircularConvolution{M, N}, B) where {M, N}
 
     mul!(C.paddedSpace, C.F⁻¹, C.Â)
 
-    copyto!(out, inds, C.paddedSpace, CartesianIndices((M:2M-1,N:2N-1)))
+    #copyto!(out, inds, C.paddedSpace, CartesianIndices((M:2M-1,N:2N-1)))
+    copyto!(out, inds, C.paddedSpace, CartesianIndices((M+1:2M,N+1:2N)))
+
 end
 
 C::CircularConvolution * B = mul!(similar(B), C, B)
 
 function mirror!(A, a::AbstractArray{T,2}) where {T}
     Nr, Nc = size(a)
-    A[1:Nr-1, 1:Nc-1] .= a[Nr:-1:2, Nc:-1:2]
-    A[1:Nr-1, Nc:end] .= a[Nr:-1:2, 1:Nc]
-    A[Nr:end, 1:Nc-1] .= a[1:Nr, Nc:-1:2]
-    A[Nr:end, Nc:end] .= a
+    #A[1:Nr-1, 1:Nc-1] .= a[Nr:-1:2, Nc:-1:2]
+    #A[1:Nr-1, Nc:end] .= a[Nr:-1:2, 1:Nc]
+    #A[Nr:end, 1:Nc-1] .= a[1:Nr, Nc:-1:2]
+    #A[Nr:end, Nc:end] .= a
+    A .= 0
+    A[2:Nr, 2:Nc] .= a[Nr:-1:2, Nc:-1:2]
+    A[2:Nr, Nc+1:end] .= a[Nr:-1:2, 1:Nc]
+    A[Nr+1:end, 2:Nc] .= a[1:Nr, Nc:-1:2]
+    A[Nr+1:end, Nc+1:end] .= a[1:Nr, 1:Nc]
     A
 end
 
