@@ -33,7 +33,7 @@ grid.
               [,U∞ = (0.0, 0.0)][,X̃ = VectorData{0}()]
               [,isstore=false][,isstatic=true][,isfilter=false]
               [,rk=TimeMarching.RK31]
-              [,ddftype=Fields.Roma])` specifies the Reynolds number `Re`, the grid
+              [,ddftype=Fields.Yang3])` specifies the Reynolds number `Re`, the grid
               spacing `Δx`, the dimensions of the domain in the tuples `xlimits`
               and `ylimits` (excluding the ghost cells), and the time step size `Δt`.
               The other arguments are optional. Note that `isstore` set to `true`
@@ -100,7 +100,7 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
                        isasymptotic = false,
                        isfilter = false,
                        rk::TimeMarching.RKParams=TimeMarching.RK31,
-                       ddftype=Fields.Roma)
+                       ddftype=Fields.Yang3)
 
     g = PhysicalGrid(xlimits,ylimits,Δx)
     NX, NY = size(g)
