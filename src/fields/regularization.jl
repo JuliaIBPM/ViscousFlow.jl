@@ -32,7 +32,7 @@ end
 
 
 """
-    Regularize(x,y,dx,[ddftype=Roma],[graddir=0],[I0=(1,1)], [weights=1.0], [filter=false],
+    Regularize(x,y,dx,[ddftype=Yang3],[graddir=0],[I0=(1,1)], [weights=1.0], [filter=false],
                        [issymmetric=false])
 
 Constructor to set up an operator for regularizing and interpolating data from/to
@@ -43,7 +43,7 @@ denotes a uniform physical cell size of the grid. The separate arguments `x` and
 coordinates.
 
 The operations of regularization and interpolation are carried out with a discrete
-delta function (ddf), which defaults to the type `Roma`. Others are also possible,
+delta function (ddf), which defaults to the type `Yang3`. Others are also possible,
 such as `Goza` or `M3`. The optional argument `graddir`, if set to 1 or 2, will
 generate an interpolation operator that evaluates the negative of the
 respective component of the gradient of a grid field at the immersed points. The
@@ -133,7 +133,7 @@ v (in grid orientation)
 ```
 """
 function Regularize(x::Vector{T},y::Vector{T},dx::T;
-                    ddftype=Roma,graddir::Int=0,
+                    ddftype=Yang3,graddir::Int=0,
                     I0::Tuple{Int,Int}=(1,1),
                     weights::Union{T,Vector{T}}=1.0,
                     filter::Bool = false,
@@ -159,8 +159,9 @@ function Regularize(x::Vector{T},y::Vector{T},dx::T;
     fill!(wtvec,1.0)
   end
 
+  baseddf = DDF(ddftype=ddftype,dx=1.0)
   if graddir == 0
-    ddf = DDF(ddftype=ddftype,dx=1.0)
+    ddf = baseddf
   else
     ddf = GradDDF(graddir,ddftype=ddftype,dx=1.0)
   end
@@ -169,7 +170,7 @@ function Regularize(x::Vector{T},y::Vector{T},dx::T;
   v = 1.0
   r = 0.0
   dr = 0.01
-  while (v = abs(ddf(r))) > eps()
+  while (v = abs(baseddf(r))) > eps()
     r += dr
   end
   ddf_radius = r

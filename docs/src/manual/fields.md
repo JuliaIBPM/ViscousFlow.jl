@@ -386,7 +386,7 @@ H = Regularize(X,dx,weights=ds)
 ```
 
 We have omitted some optional arguments. For example, it chooses a default DDF
-kernel (the Roma kernel); this can be changed with the `ddftype` argument. Also,
+kernel (the 3rd-order Yang kernel `Yang3`); this can be changed with the `ddftype` argument. Also,
 the lower left corner, where we've set the origin, is the location of the $(1,1)$
 primal node; this is the default choice for `I0` (the tuple $I_0$ of coordinates in index
 space discussed in the previous section).

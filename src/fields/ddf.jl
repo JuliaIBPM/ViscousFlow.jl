@@ -129,6 +129,12 @@ Yang32(r) = 55/48-sqrt(3)π/108-13*r/12+r^2/4+(2*r-3)/48*sqrt(-12*r^2+36*r-23)+s
 
 @inline ddf_yang3(r::Real) = r > 2.0 ? 0.0 : r <= 1.0 ? Yang31(r) : Yang32(r)
 
+dYang31(r) =    1/4-r/2-sqrt(-12*r^2+12*r+1)/4
+dYang32(r) = -13/12+r/2+sqrt(-12*r^2+36*r-23)/12
+
+@inline ddf_dyang3(r::Real) = abs(r) > 2.0 ? 0.0 : abs(r) <= 1.0 ? sign(r)*dYang31(abs(r)) : sign(r)*dYang32(abs(r))
+
+
 function Base.show(io::IO, ddf::DDF{C,OVERDX}) where {C<:DDFType,OVERDX}
     print(io, "Discrete delta function operator of type $C, with spacing $(1.0/OVERDX)")
 end
