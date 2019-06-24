@@ -1,6 +1,6 @@
 module Bodies
 
-import Base:diff,length
+import Base:diff,length,push!
 
 using Compat
 using Compat.Statistics: mean
@@ -9,6 +9,8 @@ using Compat: range, reverse
 export Body,RigidTransform,Ellipse,Plate
 
 abstract type Body{N} end
+
+include("bodies/bodylist.jl")
 
 """
     RigidTransform(x::Tuple{Float64,Float64},α::Float64)

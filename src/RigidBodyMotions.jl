@@ -1,6 +1,6 @@
 module RigidBodyMotions
 
-export RigidBodyMotion, Kinematics, d_dt
+export RigidBodyMotion, Kinematics, d_dt, assign_velocity!
 
 using DocStringExtensions
 import ForwardDiff
@@ -54,7 +54,7 @@ RigidBodyMotion(kin::Kinematics) = RigidBodyMotion(kin(0)..., kin)
 (m::RigidBodyMotion)(t) = m.kin(t)
 
 
-function (m::RigidBodyMotion)(t,x̃::Tuple{Float64,Float64})
+function (m::RigidBodyMotion)(t,x̃::Tuple{Real,Real})
   # This expects coordinates in body's own coordinate system
   #
   z̃ = ComplexF64(x̃[1],x̃[2])
@@ -63,6 +63,28 @@ function (m::RigidBodyMotion)(t,x̃::Tuple{Float64,Float64})
   return m.c + z, m.ċ + im*m.α̇*z, m.c̈ + (im*m.α̈-m.α̇^2)*z
 end
 
+"""
+    assign_velocity!(u::AbstractVector{Float64},v::AbstractVector{Float64},
+                     x::AbstractVector{Float64},y::AbstractVector{Float64},
+                     xc::Real,yc::Real,α::Real,
+                     motion,t::Real)
+
+Assign the components of rigid body velocity `u` and `v` (in inertial coordinate system)
+at positions described by coordinates `x`, `y` (also in inertial coordinate system) at time `t`,
+based on supplied motion `motion` for the body.
+"""
+function assign_velocity!(u::AbstractVector{Float64},v::AbstractVector{Float64},
+                          x::AbstractVector{Float64},y::AbstractVector{Float64},
+                          xc::Real,yc::Real,α::Real,m::RigidBodyMotion,t::Real)
+   _,ċ,_,_,α̇,_ = m(t)
+  for i = 1:length(x)
+      Δz = (x[i]-xc)+im*(y[i]-yc)
+      ċi = ċ + im*α̇*Δz
+      u[i] = real(ċi)
+      v[i] = imag(ċi)
+  end
+  nothing
+end
 
 
 function show(io::IO, m::RigidBodyMotion)
