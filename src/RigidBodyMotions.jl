@@ -188,8 +188,11 @@ struct PitchHeave <: Kinematics
     "Reduced frequency ``K = \\frac{\\Omega c}{2U_0}``"
     K::Float64
 
-    "Phase lag of pitch to heave (in radians)"
-    ϕ::Float64
+    "Phase of pitch (in radians)"
+    ϕp::Float64
+
+    "Phase of heave (in radians)"
+    ϕh::Float64
 
     "Mean angle of attack"
     α₀::Float64
@@ -209,14 +212,14 @@ struct PitchHeave <: Kinematics
     α̈::Profile
 end
 
-function PitchHeave(U₀, a, K, ϕ, α₀, Δα, A)
-    p = A*Sinusoid(2K)
+function PitchHeave(U₀, a, K, ϕp, α₀, Δα, A, ϕh)
+    p = A*(Sinusoid(2K) >> (ϕp/(2K)))
     ṗ = d_dt(p)
     p̈ = d_dt(ṗ)
-    α = ConstantProfile(α₀) + Δα*(Sinusoid(2K) >> (ϕ/(2K)))
+    α = ConstantProfile(α₀) + Δα*(Sinusoid(2K) >> (ϕh/(2K)))
     α̇ = d_dt(α)
     α̈ = d_dt(α̇)
-    PitchHeave(U₀, a, K, ϕ, α₀, Δα, A, p, ṗ, p̈, α, α̇, α̈)
+    PitchHeave(U₀, a, K, ϕp, ϕh, α₀, Δα, A, p, ṗ, p̈, α, α̇, α̈)
 end
 
 function (p::PitchHeave)(t)
@@ -236,7 +239,8 @@ function show(io::IO, p::PitchHeave)
     println(io, "     Reduced frequency K = $(p.K)")
     println(io, "     Heaving amplitude A = $(p.A)")
     println(io, "     Pitching amplitude Δα = $(p.Δα)")
-    println(io, "     Pitch-to-heave lag ϕ = $(p.ϕ)")
+    println(io, "     Pitch lag ϕp = $(p.ϕp)")
+    println(io, "     Heave lag ϕh = $(p.ϕh)")
 end
 
 struct Oscillation <: Kinematics

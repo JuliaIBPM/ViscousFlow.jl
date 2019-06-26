@@ -38,7 +38,7 @@ function RigidBodyMotions.assign_velocity!(V::VectorData{N},X::VectorData{N},
     end
 end
 
-
+include("systems/rigidbodies.jl")
 include("systems/navier_stokes.jl")
 
 end
