@@ -1,7 +1,7 @@
 name = "ViscousFlow"
 uuid = "103da179-b3e4-57c1-99a4-586354eb2c5a"
 authors = ["Jeff Eldredge <jdeldre@g.ucla.edu>"]
-version = "0.1.7"
+version = "0.1.8"
 
 [compat]
 julia = "1"
