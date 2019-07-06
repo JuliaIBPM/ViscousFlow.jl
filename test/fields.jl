@@ -72,6 +72,11 @@ import Base: to_indices, uncolon, tail, _maybetail
     q.u .= 1.0
     q2 = deepcopy(q)
     @test Fields.dot(q,q2) == 1.0
+
+    @test Fields.integrate(w) == 1.0
+
+    @test Fields.integrate(p) == 1.0
+
   end
 
   @testset "Dual cell center data Laplacian" begin
