@@ -43,7 +43,7 @@ else
   const GAMMA = MathConstants.γ
 end
 
-export Primal, Dual, Edges, Nodes,
+export Primal, Dual, Edges, Nodes, ScalarGridData, VectorGridData,
        EdgeGradient, NodePair,
        Points, ScalarData, VectorData, TensorData,
        curl, curl!, Curl, divergence, divergence!, Divergence,
@@ -122,9 +122,13 @@ vectorlist = ((:(Edges{Primal,NX,NY}),          0,1,1,0,0.5,0.0,0.0,0.5),
 tensorlist = ((:(EdgeGradient{Dual,Primal,NX,NY}), 0,0,1,1,0.5,0.5,0.0,0.0),
               (:(EdgeGradient{Primal,Dual,NX,NY}), 1,1,0,0,0.0,0.0,0.5,0.5))
 
+GridData = Union{Nodes{T,NX,NY},Edges{T,NX,NY}} where {T,NX,NY}
+
+include("fields/basicoperations.jl")
+
+
 include("fields/points.jl")
 
-GridData = Union{Nodes{T,NX,NY},Edges{T,NX,NY}} where {T,NX,NY}
 
 CollectedData = Union{EdgeGradient{T,S,NX,NY},NodePair{T,S,NX,NY}} where {T,S,NX,NY}
 

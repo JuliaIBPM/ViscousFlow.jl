@@ -21,6 +21,14 @@ import Base: to_indices, uncolon, tail, _maybetail
   facezero = Edges(Primal,cellzero)
   dualfacezero = Edges(Dual,cellzero)
 
+  @test typeof(cellzero) <: ScalarGridData
+
+  @test typeof(nodezero) <: ScalarGridData
+
+  @test typeof(facezero) <: VectorGridData
+
+  @test typeof(dualfacezero) <: VectorGridData
+
   cellunit = deepcopy(cellzero)
   cellunit[i,j] = 1.0
 
@@ -62,6 +70,7 @@ import Base: to_indices, uncolon, tail, _maybetail
     @test Fields.norm(p) == 1.0
     p2 = deepcopy(p)
     @test Fields.dot(p,p2) == 1.0
+    @test Fields.norm(p-p2) == 0.0
 
     q = Edges(Dual,w)
     q.u .= 1.0
@@ -76,6 +85,9 @@ import Base: to_indices, uncolon, tail, _maybetail
     @test Fields.integrate(w) == 1.0
 
     @test Fields.integrate(p) == 1.0
+
+    q .= 1
+    @test Fields.norm(2*q) == sqrt(8)
 
   end
 

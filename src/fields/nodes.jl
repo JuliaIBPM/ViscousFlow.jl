@@ -18,6 +18,9 @@ struct Nodes{C <: CellType, NX, NY} <: AbstractMatrix{Float64}
     data::Matrix{Float64}
 end
 
+ScalarGridData = Nodes{T,NX,NY} where {T,NX,NY}
+
+
 # This macro allows us to access Nodes.data via just the wrapper itself
 @wraparray Nodes data
 
@@ -44,23 +47,4 @@ function Base.show(io::IO, nodes::Nodes{T, NX, NY}) where {T, NX, NY}
     dims = "(nx = $(size(nodes,1)), ny = $(size(nodes,2)))"
     println(io, "$T nodes in a $nodedims cell grid")
     print(io, "  Number of $T nodes: $dims")
-end
-
-function product!(out::Nodes{T, NX, NY},
-                  p::Nodes{T, NX, NY},
-                  q::Nodes{T, NX, NY}) where {T, NX, NY}
-
-    inds = node_inds(T, (NX, NY))
-    @inbounds for y in 1:inds[2], x in 1:inds[1]
-        out[x,y] = p[x,y] * q[x,y]
-    end
-    out
-end
-
-function product(p::Nodes{T, NX, NY}, q::Nodes{T, NX, NY}) where {T, NX, NY}
-    product!(Nodes(T, (NX, NY)), p, q)
-end
-
-function (∘)(p::Nodes{T, NX, NY}, q::Nodes) where {T, NX, NY}
-    product!(Nodes(T, (NX, NY)), p, q)
 end
