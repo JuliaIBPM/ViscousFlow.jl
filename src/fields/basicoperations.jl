@@ -45,6 +45,8 @@ function (∘)(p::Nodes{T, NX, NY}, q::Nodes) where {T, NX, NY}
     product!(Nodes(T, (NX, NY)), p, q)
 end
 
+(*)(c::Number,p::T) where {T<:GridData} = *(p,c)
+
 
 ### On vector grid data ####
 
@@ -168,5 +170,3 @@ function (∘)(p::Edges{T, NX, NY}, q::Edges) where {T, NX, NY}
 end
 
 #### ON ALL TYPES ####
-
-(*)(c::Number,p::T) where {T<:GridData} = *(p,c)

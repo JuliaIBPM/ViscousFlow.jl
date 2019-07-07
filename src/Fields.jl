@@ -43,7 +43,8 @@ else
   const GAMMA = MathConstants.γ
 end
 
-export Primal, Dual, Edges, Nodes, XEdges, YEdges, ScalarGridData, VectorGridData,
+export Primal, Dual, ScalarGridData, VectorGridData, GridData,
+       Edges, Nodes, XEdges, YEdges,
        EdgeGradient, NodePair,
        Points, ScalarData, VectorData, TensorData,
        curl, curl!, Curl, divergence, divergence!, Divergence,
@@ -64,6 +65,8 @@ abstract type Dual <: CellType end
 abstract type ScalarGridData{NX,NY} <: AbstractMatrix{Float64} end
 
 abstract type VectorGridData{NX,NY} <: AbstractMatrix{Float64} end
+
+GridData = Union{ScalarGridData,VectorGridData}
 
 
 
@@ -134,7 +137,7 @@ vectorlist = ((:(Edges{Primal,NX,NY}),          0,1,1,0,0.5,0.0,0.0,0.5),
 tensorlist = ((:(EdgeGradient{Dual,Primal,NX,NY}), 0,0,1,1,0.5,0.5,0.0,0.0),
               (:(EdgeGradient{Primal,Dual,NX,NY}), 1,1,0,0,0.0,0.0,0.5,0.5))
 
-GridData = Union{Nodes{T,NX,NY},Edges{T,NX,NY}} where {T,NX,NY}
+#GridData = Union{Nodes{T,NX,NY},Edges{T,NX,NY}} where {T,NX,NY}
 
 include("fields/basicoperations.jl")
 
