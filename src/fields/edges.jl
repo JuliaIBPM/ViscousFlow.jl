@@ -1,4 +1,48 @@
-import Base: fill!, ∘
+import Base: fill!
+
+# EDGE COMPONENT DATA
+
+struct XEdges{C <: CellType, NX, NY} <: ScalarGridData{NX,NY}
+    data::Matrix{Float64}
+end
+
+struct YEdges{C <: CellType, NX, NY} <: ScalarGridData{NX,NY}
+    data::Matrix{Float64}
+end
+
+# Based on number of dual nodes, return the number of edges
+xedge_inds(::Type{Dual}, dualnodedims) = (dualnodedims[1]-1, dualnodedims[2])
+yedge_inds(::Type{Dual}, dualnodedims) = (dualnodedims[1], dualnodedims[2]-1)
+
+xedge_inds(::Type{Primal}, dualnodedims) = (dualnodedims[1], dualnodedims[2]-1)
+yedge_inds(::Type{Primal}, dualnodedims) = (dualnodedims[1]-1, dualnodedims[2])
+
+function XEdges(T::Type{C}, dualnodedims::Tuple{Int, Int}) where {C <: CellType}
+    dims = xedge_inds(T, dualnodedims)
+    XEdges{T, dualnodedims...}(zeros(dims))
+end
+
+function YEdges(T::Type{C}, dualnodedims::Tuple{Int, Int}) where {C <: CellType}
+    dims = yedge_inds(T, dualnodedims)
+    YEdges{T, dualnodedims...}(zeros(dims))
+end
+
+XEdges(T, nodes::Nodes{S,NX,NY}) where {S <: CellType, NX, NY} = XEdges(T, (NX, NY) )
+YEdges(T, nodes::Nodes{S,NX,NY}) where {S <: CellType, NX, NY} = YEdges(T, (NX, NY) )
+
+XEdges(T, nx::Int, ny::Int) = XEdges(T,(nx,ny))
+YEdges(T, nx::Int, ny::Int) = YEdges(T,(nx,ny))
+
+(::Type{XEdges{T,NX,NY}})() where {T,NX,NY} = XEdges(T, (NX, NY))
+(::Type{YEdges{T,NX,NY}})() where {T,NX,NY} = YEdges(T, (NX, NY))
+
+
+Base.similar(::XEdges{T,NX,NY}) where {T,NX,NY} = XEdges(T, (NX, NY))
+Base.similar(::YEdges{T,NX,NY}) where {T,NX,NY} = YEdges(T, (NX, NY))
+
+
+# VECTOR EDGE DATA
+
 
 """
     Edges{Dual/Primal}
@@ -15,21 +59,19 @@ and horizontal faces of the corresponding cell.
 - `Edges(C,w)` performs the same construction, but uses existing field data `w`
   of `Nodes` type to determine the size of the grid.
 """
-struct Edges{C <: CellType, NX, NY} <: AbstractMatrix{Float64}
-    u::Matrix{Float64}
-    v::Matrix{Float64}
+struct Edges{C <: CellType, NX, NY} <: VectorGridData{NX,NY}
+    u::XEdges{C,NX,NY}
+    v::YEdges{C,NX,NY}
 end
 
-VectorGridData = Edges{T,NX,NY} where {T,NX,NY}
-
 # Based on number of dual nodes, return the number of edges
-edge_inds(::Type{Dual},   dualnodedims) = (dualnodedims[1]-1, dualnodedims[2]), (dualnodedims[1], dualnodedims[2]-1)
-edge_inds(::Type{Primal}, dualnodedims) = (dualnodedims[1], dualnodedims[2]-1), (dualnodedims[1]-1, dualnodedims[2])
+edge_inds(T::Type{C},   dualnodedims) where {C <: CellType} =
+            xedge_inds(T,dualnodedims), yedge_inds(T,dualnodedims)
 
 function Edges(T::Type{C}, dualnodedims::Tuple{Int, Int}) where {C <: CellType}
     udims, vdims = edge_inds(T, dualnodedims)
-    u = zeros(udims)
-    v = zeros(vdims)
+    u = XEdges(T,dualnodedims...)
+    v = YEdges(T,dualnodedims...)
     Edges{T, dualnodedims...}(u, v)
 end
 

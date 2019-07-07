@@ -29,6 +29,13 @@ import Base: to_indices, uncolon, tail, _maybetail
 
   @test typeof(dualfacezero) <: VectorGridData
 
+  @test typeof(facezero.u) <: XEdges{Primal}
+  @test typeof(facezero.v) <: YEdges{Primal}
+
+  @test typeof(dualfacezero.u) <: XEdges{Dual}
+  @test typeof(dualfacezero.v) <: YEdges{Dual}
+
+
   cellunit = deepcopy(cellzero)
   cellunit[i,j] = 1.0
 
@@ -64,6 +71,8 @@ import Base: to_indices, uncolon, tail, _maybetail
     @test Fields.norm(w)*sqrt((nx-2)*(ny-2)) == 1.0
     w .= 1.0
     @test Fields.norm(w) == 1.0
+
+    @test 2*w == w*2
 
     p = Nodes(Primal,w)
     p .= 1.0

@@ -43,7 +43,7 @@ else
   const GAMMA = MathConstants.γ
 end
 
-export Primal, Dual, Edges, Nodes, ScalarGridData, VectorGridData,
+export Primal, Dual, Edges, Nodes, XEdges, YEdges, ScalarGridData, VectorGridData,
        EdgeGradient, NodePair,
        Points, ScalarData, VectorData, TensorData,
        curl, curl!, Curl, divergence, divergence!, Divergence,
@@ -60,6 +60,12 @@ export Primal, Dual, Edges, Nodes, ScalarGridData, VectorGridData,
 abstract type CellType end
 abstract type Primal <: CellType end
 abstract type Dual <: CellType end
+
+abstract type ScalarGridData{NX,NY} <: AbstractMatrix{Float64} end
+
+abstract type VectorGridData{NX,NY} <: AbstractMatrix{Float64} end
+
+
 
 macro wraparray(wrapper, field)
     T = supertype(eval(wrapper))
@@ -105,9 +111,15 @@ end
 @othertype Dual Primal
 @othertype CellType CellType
 
+# This macro allows us to access scalar grid data via just the wrapper itself
+@wraparray ScalarGridData data
+
 include("fields/nodes.jl")
 include("fields/edges.jl")
 include("fields/collections.jl")
+
+
+
 
 scalarlist = ((:(Nodes{Primal,NX,NY}),1,1,0.0,0.0),
               (:(Nodes{Dual,NX,NY}),  0,0,0.5,0.5))
