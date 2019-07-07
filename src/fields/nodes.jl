@@ -19,9 +19,12 @@ struct Nodes{C <: CellType, NX, NY} <: ScalarGridData{NX,NY}
     data::Matrix{Float64}
 end
 
+# Number of indices
 # Based on number of dual nodes, return the number of nodes
 node_inds(::Type{Dual},   dualnodedims) = (dualnodedims[1], dualnodedims[2])
 node_inds(::Type{Primal}, dualnodedims) = (dualnodedims[1]-1, dualnodedims[2]-1)
+
+# Constructors
 
 function Nodes(T::Type{C}, dualnodedims::Tuple{Int, Int}) where {C <: CellType}
     dims = node_inds(T, dualnodedims)
@@ -30,8 +33,9 @@ end
 
 # This allows easy construction of nodes of either type from existing nodes of either
 # type on the same grid.
-# NOTE: Need to open this up to all types of grid data
-Nodes(T, nodes::Nodes{S,NX,NY}) where {S <: CellType, NX, NY} = Nodes(T, (NX, NY) )
+Nodes(T, ::ScalarGridData{NX,NY}) where {NX, NY} = Nodes(T, (NX, NY) )
+Nodes(T, ::VectorGridData{NX,NY}) where {NX, NY} = Nodes(T, (NX, NY) )
+
 
 Nodes(T, nx::Int, ny::Int) = Nodes(T,(nx,ny))
 (::Type{Nodes{T,NX,NY}})() where {T,NX,NY} = Nodes(T, (NX, NY))

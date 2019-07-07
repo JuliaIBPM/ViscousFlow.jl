@@ -62,17 +62,21 @@ abstract type CellType end
 abstract type Primal <: CellType end
 abstract type Dual <: CellType end
 
-abstract type ScalarGridData{NX,NY} <: AbstractMatrix{Float64} end
+abstract type GridData{NX,NY} <: AbstractMatrix{Float64} end
 
-abstract type VectorGridData{NX,NY} <: AbstractMatrix{Float64} end
+abstract type ScalarGridData{NX,NY} <: GridData{NX,NY} end
 
-GridData = Union{ScalarGridData,VectorGridData}
-
+abstract type VectorGridData{NX,NY} <: GridData{NX,NY} end
 
 
 macro wraparray(wrapper, field)
-    T = supertype(eval(wrapper))
+    T = eval(wrapper)
     @assert T <: AbstractArray "Wrapped type must be a subtype of AbstractArray"
+    while supertype(T) <: AbstractArray
+        T = supertype(T)
+    end
+    #T = supertype(eval(wrapper))
+    #@assert T <: AbstractArray "Wrapped type must be a subtype of AbstractArray"
     el_type, N = T.parameters
 
     quote

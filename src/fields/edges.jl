@@ -10,12 +10,15 @@ struct YEdges{C <: CellType, NX, NY} <: ScalarGridData{NX,NY}
     data::Matrix{Float64}
 end
 
+# Number of indices
 # Based on number of dual nodes, return the number of edges
 xedge_inds(::Type{Dual}, dualnodedims) = (dualnodedims[1]-1, dualnodedims[2])
 yedge_inds(::Type{Dual}, dualnodedims) = (dualnodedims[1], dualnodedims[2]-1)
 
 xedge_inds(::Type{Primal}, dualnodedims) = (dualnodedims[1], dualnodedims[2]-1)
 yedge_inds(::Type{Primal}, dualnodedims) = (dualnodedims[1]-1, dualnodedims[2])
+
+# Constructors
 
 function XEdges(T::Type{C}, dualnodedims::Tuple{Int, Int}) where {C <: CellType}
     dims = xedge_inds(T, dualnodedims)
@@ -27,8 +30,12 @@ function YEdges(T::Type{C}, dualnodedims::Tuple{Int, Int}) where {C <: CellType}
     YEdges{T, dualnodedims...}(zeros(dims))
 end
 
-XEdges(T, nodes::Nodes{S,NX,NY}) where {S <: CellType, NX, NY} = XEdges(T, (NX, NY) )
-YEdges(T, nodes::Nodes{S,NX,NY}) where {S <: CellType, NX, NY} = YEdges(T, (NX, NY) )
+XEdges(T, ::ScalarGridData{NX,NY}) where {NX, NY} = XEdges(T, (NX, NY) )
+XEdges(T, ::VectorGridData{NX,NY}) where {NX, NY} = XEdges(T, (NX, NY) )
+
+YEdges(T, ::ScalarGridData{NX,NY}) where {NX, NY} = YEdges(T, (NX, NY) )
+YEdges(T, ::VectorGridData{NX,NY}) where {NX, NY} = YEdges(T, (NX, NY) )
+
 
 XEdges(T, nx::Int, ny::Int) = XEdges(T,(nx,ny))
 YEdges(T, nx::Int, ny::Int) = YEdges(T,(nx,ny))
