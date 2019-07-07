@@ -76,28 +76,6 @@ function dot(p1::YEdges{Dual,NX,NY},p2::YEdges{Dual,NX,NY}) where {NX,NY}
 end
 
 
-"""
-    dot(p1::Edges{Dual},p2::Edges{Dual}) -> Real
-
-Computes the inner product between two sets of dual edge data on the same grid.
-"""
-function dot(p1::Edges{Dual,NX,NY},p2::Edges{Dual,NX,NY}) where {NX,NY}
-
-  #udims, vdims = edge_inds(Dual,(NX,NY))
-
-  # # interior
-  # tmp = dot(p1.u[2:udims[1]-1,2:udims[2]-1],p2.u[2:udims[1]-1,2:udims[2]-1]) +
-  #       dot(p1.v[2:vdims[1]-1,2:vdims[2]-1],p2.v[2:vdims[1]-1,2:vdims[2]-1])
-  #
-  # # boundaries
-  # tmp += 0.5*dot(p1.u[1,       2:udims[2]-1],p2.u[1,       2:udims[2]-1])
-  # tmp += 0.5*dot(p1.u[udims[1],2:udims[2]-1],p2.u[udims[1],2:udims[2]-1])
-  # tmp += 0.5*dot(p1.v[2:vdims[1]-1,1],       p2.v[2:vdims[1]-1,1])
-  # tmp += 0.5*dot(p1.v[2:vdims[1]-1,vdims[2]],p2.v[2:vdims[1]-1,vdims[2]])
-
-  #return tmp/((NX-2)*(NY-2))
-  return dot(p1.u,p2.u) + dot(p1.v,p2.v)
-end
 
 """
     dot(p1::XEdges{Primal},p2::XEdges{Primal}) -> Real
@@ -138,27 +116,13 @@ function dot(p1::YEdges{Primal,NX,NY},p2::YEdges{Primal,NX,NY}) where {NX,NY}
 end
 
 """
-    dot(p1::Edges{Primal},p2::Edges{Primal}) -> Real
+    dot(p1::Edges{Dual/Primal},p2::Edges{Dual/Primal}) -> Real
 
-Computes the inner product between two sets of primal edge data on the same grid.
+Computes the inner product between two sets of dual edge data on the same grid.
 """
-function dot(p1::Edges{Primal,NX,NY},p2::Edges{Primal,NX,NY}) where {NX,NY}
+dot(p1::Edges{C,NX,NY},p2::Edges{C,NX,NY}) where {C<:CellType,NX,NY} =
+      dot(p1.u,p2.u) + dot(p1.v,p2.v)
 
-  # udims, vdims = edge_inds(Primal,(NX,NY))
-  #
-  # # interior
-  # tmp = dot(p1.u[2:udims[1]-1,2:udims[2]-1],p2.u[2:udims[1]-1,2:udims[2]-1]) +
-  #       dot(p1.v[2:vdims[1]-1,2:vdims[2]-1],p2.v[2:vdims[1]-1,2:vdims[2]-1])
-  #
-  # # boundaries
-  # tmp += 0.5*dot(p1.u[2:udims[1]-1,1],       p2.u[2:udims[1]-1,1])
-  # tmp += 0.5*dot(p1.u[2:udims[1]-1,udims[2]],p2.u[2:udims[1]-1,udims[2]])
-  # tmp += 0.5*dot(p1.v[1,       2:vdims[2]-1],p2.v[1,       2:vdims[2]-1])
-  # tmp += 0.5*dot(p1.v[vdims[1],2:vdims[2]-1],p2.v[vdims[1],2:vdims[2]-1])
-  #
-  # return tmp/((NX-2)*(NY-2))
-  return dot(p1.u,p2.u) + dot(p1.v,p2.v)
-end
 
 ######## NORMS ###########
 
