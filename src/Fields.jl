@@ -15,6 +15,32 @@ Also, note that there might be dual cells that are "ghosts" (i.e. lie outside
 the grid), but these are not distinguished in these basic definitions and operators.
 =#
 
+#=
+Notes on data types:
+All data types can be reduced to one of two different types in each direction.
+(1) Lying on dual cell centers (C), numbered 1 through N
+(2) Lying on dual cell edges (E), numbered 1 through N-1 (i.e. lying midway between C)
+
+For example, Nodes{Dual} by definition lie on dual cell centers in both directions,
+so they would be C x C. Nodes{Primal} are aligned with the corners of the dual
+cells, so they lie along dual cell edges in both directions, E x E.
+
+Nodes{Dual}    -- C x C
+Nodes{Primal}  -- E x E
+XEdges{Dual}   -- E x C
+YEdges{Dual}   -- C x E
+XEdges{Primal} -- C x E
+YEdges{Primal} -- E x C
+
+This is important when considering the interpolation and differentiation operations,
+both of which must account for the relative indexing between E and C. The
+key to remember is that E[1] is bounded by C[1] and C[2] in our indexing convention,
+so that, for either interpolation or differentiation:
+      E[i] <- C[i], C[i+1]
+and
+      C[i] <- E[i-1], E[i]
+=#
+
 
 module Fields
 

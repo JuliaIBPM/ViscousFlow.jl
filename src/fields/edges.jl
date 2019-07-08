@@ -100,75 +100,7 @@ Base.size(A::Edges{C,NX,NY}) where {C,NX,NY} = (length(A.u)+length(A.v),1)
    i > length(A.u) ? A.v[i-length(A.u)] = convert(Float64, v) : A.u[i] = convert(Float64, v)
 Base.IndexStyle(::Type{<:Edges}) = IndexLinear()
 
-"""
-    interpolate!(v::Edges{Dual/Primal},q::Edges{Primal/Dual})
 
-Interpolate the primal (resp. dual) edge data `q` to the
-edges of the dual (resp. primal) cells, and return the result in `v`.
-
-# Example
-
-```jldoctest
-julia> q = Edges(Primal,(8,6));
-
-julia> q.u[3,2] = 1.0;
-
-julia> v = Edges(Dual,(8,6));
-
-julia> Fields.interpolate!(v,q)
-Edges{Dual,8,6} data
-u (in grid orientation)
-6×7 Array{Float64,2}:
- 0.0  0.0   0.0   0.0  0.0  0.0  0.0
- 0.0  0.0   0.0   0.0  0.0  0.0  0.0
- 0.0  0.0   0.0   0.0  0.0  0.0  0.0
- 0.0  0.25  0.25  0.0  0.0  0.0  0.0
- 0.0  0.25  0.25  0.0  0.0  0.0  0.0
- 0.0  0.0   0.0   0.0  0.0  0.0  0.0
-v (in grid orientation)
-5×8 Array{Float64,2}:
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
- 0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
-```
-"""
-function interpolate!(dual::Edges{Dual, NX, NY},
-                primal::Edges{Primal, NX, NY}) where {NX, NY}
-    uₚ = primal.u
-    @inbounds for y in 2:NY-1, x in 1:NX-1
-        dual.u[x,y] = (uₚ[x,y] + uₚ[x+1,y] + uₚ[x,y-1] + uₚ[x+1,y-1])/4
-    end
-
-    vₚ = primal.v
-    @inbounds for y in 1:NY-1, x in 2:NX-1
-        dual.v[x,y] = (vₚ[x,y] + vₚ[x-1,y] + vₚ[x,y+1] + vₚ[x-1,y+1])/4
-    end
-    dual
-end
-
-function interpolate(primal::Edges{Primal, NX, NY}) where {NX, NY}
-    interpolate!(Edges(Dual, (NX, NY)), primal)
-end
-
-function interpolate!(primal::Edges{Primal, NX, NY},
-                dual::Edges{Dual, NX, NY}) where {NX, NY}
-    uₚ = dual.u
-    @inbounds for y in 1:NY-1, x in 2:NX-1
-        primal.u[x,y] = (uₚ[x,y] + uₚ[x-1,y] + uₚ[x,y+1] + uₚ[x-1,y+1])/4
-    end
-
-    vₚ = dual.v
-    @inbounds for y in 2:NY-1, x in 1:NX-1
-        primal.v[x,y] = (vₚ[x,y] + vₚ[x+1,y] + vₚ[x,y-1] + vₚ[x+1,y-1])/4
-    end
-    primal
-end
-
-function interpolate(dual::Edges{Dual, NX, NY}) where {NX, NY}
-    interpolate!(Edges(Primal, (NX, NY)), dual)
-end
 
 
 
