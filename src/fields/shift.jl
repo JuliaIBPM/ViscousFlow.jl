@@ -1,19 +1,5 @@
 # Interpolation operations
 
-function interpolate!(qu::XEdges{Dual, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
-    @inbounds for y in 2:NY-1, x in 1:NX-1
-        qu[x,y] = (w[x,y] + w[x+1,y])/2
-    end
-    qu
-end
-
-function interpolate!(qv::YEdges{Dual, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
-
-    @inbounds for y in 1:NY-1, x in 2:NX-1
-        qv[x,y] = (w[x,y] + w[x,y+1])/2
-    end
-    qv
-end
 
 """
     interpolate!(q::Edges{Dual},w::Nodes{Dual})
@@ -49,14 +35,17 @@ v (in grid orientation)
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
 ```
 """
-function interpolate!(dual::Edges{Dual, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
-    interpolate!(dual.u,w)
-    interpolate!(dual.v,w)
-    dual
+function interpolate!(q::Edges{Dual, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
+    interpolate!(q.u,w)
+    interpolate!(q.v,w)
+    q
 end
 
-
+# This is not necessarily desirable
 interpolate(nodes::Nodes{Dual,NX,NY}) where {NX,NY} = interpolate!(Edges(Dual, nodes), nodes)
+
+
+
 
 """
     interpolate!((wx::Nodes,wy::Nodes),q::Edges)
@@ -99,48 +88,10 @@ Printing in grid orientation (lower left is (1,1))
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
 ```
 """
-function interpolate!(dual::Tuple{Nodes{Dual, NX, NY},Nodes{Dual, NX, NY}}, w::Edges{Primal,NX, NY}) where {NX, NY}
-    @inbounds for y in 2:NY-1, x in 1:NX
-        dual[1][x,y] = (w.u[x,y-1] + w.u[x,y])/2
-    end
-
-    @inbounds for y in 1:NY, x in 2:NX-1
-        dual[2][x,y] = (w.v[x-1,y] + w.v[x,y])/2
-    end
-    dual
-end
-
-function interpolate!(dual::Tuple{Nodes{Dual, NX, NY},Nodes{Dual, NX, NY}}, w::Edges{Dual,NX, NY}) where {NX, NY}
-    @inbounds for y in 1:NY, x in 2:NX-1
-        dual[1][x,y] = (w.u[x-1,y] + w.u[x,y])/2
-    end
-
-    @inbounds for y in 2:NY-1, x in 1:NX
-        dual[2][x,y] = (w.v[x,y-1] + w.v[x,y])/2
-    end
-    dual
-end
-
-function interpolate!(primal::Tuple{Nodes{Primal, NX, NY},Nodes{Primal, NX, NY}}, w::Edges{Primal,NX, NY}) where {NX, NY}
-    @inbounds for y in 1:NY-1, x in 1:NX-1
-        primal[1][x,y] = (w.u[x,y] + w.u[x+1,y])/2
-    end
-
-    @inbounds for y in 1:NY-1, x in 1:NX-1
-        primal[2][x,y] = (w.v[x,y] + w.v[x,y+1])/2
-    end
-    primal
-end
-
-function interpolate!(primal::Tuple{Nodes{Primal, NX, NY},Nodes{Primal, NX, NY}}, w::Edges{Dual,NX, NY}) where {NX, NY}
-    @inbounds for y in 1:NY-1, x in 1:NX-1
-        primal[1][x,y] = (w.u[x,y] + w.u[x,y+1])/2
-    end
-
-    @inbounds for y in 1:NY-1, x in 1:NX-1
-        primal[2][x,y] = (w.v[x,y] + w.v[x+1,y])/2
-    end
-    primal
+function interpolate!(out::Tuple{Nodes{C, NX, NY},Nodes{C, NX, NY}}, q::Edges{D,NX, NY}) where {C<:CellType, D<:CellType, NX, NY}
+    interpolate!(out[1],q.u)
+    interpolate!(out[2],q.v)
+    out
 end
 
 """
@@ -149,16 +100,103 @@ end
 Interpolate the primal nodal data `w` to the edges of the primal cells,
 and return the result in `q`.
 """
-function interpolate!(primal::Edges{Primal, NX, NY}, w::Nodes{Primal,NX, NY}) where {NX, NY}
-    @inbounds for y in 1:NY-1, x in 2:NX-1
-        primal.u[x,y] = (w[x-1,y] + w[x,y])/2
-    end
-
-    @inbounds for y in 2:NY-1, x in 1:NX-1
-        primal.v[x,y] = (w[x,y-1] + w[x,y])/2
-    end
-    primal
+function interpolate!(q::Edges{Primal, NX, NY}, w::Nodes{Primal,NX, NY}) where {NX, NY}
+    interpolate!(q.u,w)
+    interpolate!(q.v,w)
+    q
 end
+
+# Nodes to edge components
+
+function interpolate!(qu::XEdges{Dual, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
+    @inbounds for y in 2:NY-1, x in 1:NX-1
+        qu[x,y] = (w[x,y] + w[x+1,y])/2
+    end
+    qu
+end
+
+function interpolate!(qv::YEdges{Dual, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
+    @inbounds for y in 1:NY-1, x in 2:NX-1
+        qv[x,y] = (w[x,y] + w[x,y+1])/2
+    end
+    qv
+end
+
+function interpolate!(qu::XEdges{Primal, NX, NY}, w::Nodes{Primal,NX, NY}) where {NX, NY}
+    @inbounds for y in 1:NY-1, x in 2:NX-1
+      qu[x,y] = (w[x-1,y] + w[x,y])/2
+    end
+    qu
+end
+
+function interpolate!(qv::YEdges{Primal, NX, NY}, w::Nodes{Primal,NX, NY}) where {NX, NY}
+    @inbounds for y in 2:NY-1, x in 1:NX-1
+      qv[x,y] = (w[x,y-1] + w[x,y])/2
+    end
+    qv
+end
+
+# Edge components to nodes
+
+function interpolate!(w::Nodes{Dual, NX, NY}, qu::XEdges{Primal,NX, NY}) where {NX, NY}
+    @inbounds for y in 2:NY-1, x in 1:NX
+        w[x,y] = (qu[x,y-1] + qu[x,y])/2
+    end
+    w
+end
+
+function interpolate!(w::Nodes{Dual, NX, NY}, qv::YEdges{Primal,NX, NY}) where {NX, NY}
+    @inbounds for y in 1:NY, x in 2:NX-1
+        w[x,y] = (qv[x-1,y] + qv[x,y])/2
+    end
+    w
+end
+
+function interpolate!(w::Nodes{Dual, NX, NY}, qu::XEdges{Dual,NX, NY}) where {NX, NY}
+  @inbounds for y in 1:NY, x in 2:NX-1
+      w[x,y] = (qu[x-1,y] + qu[x,y])/2
+  end
+    w
+end
+
+function interpolate!(w::Nodes{Dual, NX, NY}, qv::YEdges{Dual,NX, NY}) where {NX, NY}
+    @inbounds for y in 2:NY-1, x in 1:NX
+      w[x,y] = (qv[x,y-1] + qv[x,y])/2
+    end
+    w
+end
+
+function interpolate!(w::Nodes{Primal, NX, NY}, qu::XEdges{Dual,NX, NY}) where {NX, NY}
+    @inbounds for y in 1:NY-1, x in 1:NX-1
+      w[x,y] = (qu[x,y] + qu[x+1,y])/2
+    end
+    w
+end
+
+function interpolate!(w::Nodes{Primal, NX, NY}, qv::YEdges{Dual,NX, NY}) where {NX, NY}
+    @inbounds for y in 1:NY-1, x in 1:NX-1
+      w[x,y] = (qv[x,y] + qv[x,y+1])/2
+    end
+    w
+end
+
+function interpolate!(w::Nodes{Primal, NX, NY}, qu::XEdges{Primal,NX, NY}) where {NX, NY}
+    @inbounds for y in 1:NY-1, x in 1:NX-1
+      w[x,y] = (qu[x,y] + qu[x,y+1])/2
+    end
+    w
+end
+
+function interpolate!(w::Nodes{Primal, NX, NY}, qv::YEdges{Primal,NX, NY}) where {NX, NY}
+    @inbounds for y in 1:NY-1, x in 1:NX-1
+      w[x,y] = (qv[x,y] + qv[x+1,y])/2
+    end
+    w
+end
+
+
+
+
 
 
 # I don't like this one. It is ambiguous what type of nodes are being shifted to.
