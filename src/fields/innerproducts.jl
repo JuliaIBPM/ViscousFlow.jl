@@ -1,6 +1,12 @@
 using LinearAlgebra
 import LinearAlgebra:dot, norm
 
+#=
+Note that all of the inner product operations defined here are based on a
+domain filled with dual cells, in which the dual nodes are at their centers, and surrounded
+by a layer of padding (i.e. ghost) cells.
+=#
+
 """
     dot(p1::Nodes{Dual},p2::Nodes{Dual}) -> Real
 

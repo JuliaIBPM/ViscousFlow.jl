@@ -1,7 +1,24 @@
-"""
-    cellshift!(q::Edges{Dual},w::Nodes{Dual})
+# Interpolation operations
 
-Shift (by linear interpolation) the dual nodal data `w` to the edges of the dual
+function interpolate!(qu::XEdges{Dual, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
+    @inbounds for y in 2:NY-1, x in 1:NX-1
+        qu[x,y] = (w[x,y] + w[x+1,y])/2
+    end
+    qu
+end
+
+function interpolate!(qv::YEdges{Dual, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
+
+    @inbounds for y in 1:NY-1, x in 2:NX-1
+        qv[x,y] = (w[x,y] + w[x,y+1])/2
+    end
+    qv
+end
+
+"""
+    interpolate!(q::Edges{Dual},w::Nodes{Dual})
+
+Interpolate the dual nodal data `w` to the edges of the dual
 cells, and return the result in `q`.
 
 # Example
@@ -13,7 +30,7 @@ julia> w[3,4] = 1.0;
 
 julia> q = Edges(Dual,w);
 
-julia> cellshift!(q,w)
+julia> interpolate!(q,w)
 Edges{Dual,8,6} data
 u (in grid orientation)
 6×7 Array{Float64,2}:
@@ -32,24 +49,19 @@ v (in grid orientation)
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
 ```
 """
-function cellshift!(dual::Edges{Dual, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
-    @inbounds for y in 2:NY-1, x in 1:NX-1
-        dual.u[x,y] = (w[x,y] + w[x+1,y])/2
-    end
-
-    @inbounds for y in 1:NY-1, x in 2:NX-1
-        dual.v[x,y] = (w[x,y] + w[x,y+1])/2
-    end
+function interpolate!(dual::Edges{Dual, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
+    interpolate!(dual.u,w)
+    interpolate!(dual.v,w)
     dual
 end
 
 
-cellshift(nodes::Nodes{Dual,NX,NY}) where {NX,NY} = cellshift!(Edges(Dual, nodes), nodes)
+interpolate(nodes::Nodes{Dual,NX,NY}) where {NX,NY} = interpolate!(Edges(Dual, nodes), nodes)
 
 """
-    cellshift!((wx::Nodes,wy::Nodes),q::Edges)
+    interpolate!((wx::Nodes,wy::Nodes),q::Edges)
 
-Shift (by linear interpolation) the edge data `q` (of either dual or primal
+Interpolate the edge data `q` (of either dual or primal
 type) to the dual or primal nodes, and return the result in `wx` and `wy`. `wx`
 holds the shifted `q.u` data and `wy` the shifted `q.v` data.
 
@@ -62,7 +74,7 @@ julia> q.u[3,2] = 1.0;
 
 julia> wx = Nodes(Dual,(8,6)); wy = deepcopy(wx);
 
-julia> Fields.cellshift!((wx,wy),q);
+julia> Fields.interpolate!((wx,wy),q);
 
 julia> wx
 Nodes{Dual,8,6} data
@@ -87,7 +99,7 @@ Printing in grid orientation (lower left is (1,1))
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
 ```
 """
-function cellshift!(dual::Tuple{Nodes{Dual, NX, NY},Nodes{Dual, NX, NY}}, w::Edges{Primal,NX, NY}) where {NX, NY}
+function interpolate!(dual::Tuple{Nodes{Dual, NX, NY},Nodes{Dual, NX, NY}}, w::Edges{Primal,NX, NY}) where {NX, NY}
     @inbounds for y in 2:NY-1, x in 1:NX
         dual[1][x,y] = (w.u[x,y-1] + w.u[x,y])/2
     end
@@ -98,7 +110,7 @@ function cellshift!(dual::Tuple{Nodes{Dual, NX, NY},Nodes{Dual, NX, NY}}, w::Edg
     dual
 end
 
-function cellshift!(dual::Tuple{Nodes{Dual, NX, NY},Nodes{Dual, NX, NY}}, w::Edges{Dual,NX, NY}) where {NX, NY}
+function interpolate!(dual::Tuple{Nodes{Dual, NX, NY},Nodes{Dual, NX, NY}}, w::Edges{Dual,NX, NY}) where {NX, NY}
     @inbounds for y in 1:NY, x in 2:NX-1
         dual[1][x,y] = (w.u[x-1,y] + w.u[x,y])/2
     end
@@ -109,7 +121,7 @@ function cellshift!(dual::Tuple{Nodes{Dual, NX, NY},Nodes{Dual, NX, NY}}, w::Edg
     dual
 end
 
-function cellshift!(primal::Tuple{Nodes{Primal, NX, NY},Nodes{Primal, NX, NY}}, w::Edges{Primal,NX, NY}) where {NX, NY}
+function interpolate!(primal::Tuple{Nodes{Primal, NX, NY},Nodes{Primal, NX, NY}}, w::Edges{Primal,NX, NY}) where {NX, NY}
     @inbounds for y in 1:NY-1, x in 1:NX-1
         primal[1][x,y] = (w.u[x,y] + w.u[x+1,y])/2
     end
@@ -120,7 +132,7 @@ function cellshift!(primal::Tuple{Nodes{Primal, NX, NY},Nodes{Primal, NX, NY}}, 
     primal
 end
 
-function cellshift!(primal::Tuple{Nodes{Primal, NX, NY},Nodes{Primal, NX, NY}}, w::Edges{Dual,NX, NY}) where {NX, NY}
+function interpolate!(primal::Tuple{Nodes{Primal, NX, NY},Nodes{Primal, NX, NY}}, w::Edges{Dual,NX, NY}) where {NX, NY}
     @inbounds for y in 1:NY-1, x in 1:NX-1
         primal[1][x,y] = (w.u[x,y] + w.u[x,y+1])/2
     end
@@ -132,12 +144,12 @@ function cellshift!(primal::Tuple{Nodes{Primal, NX, NY},Nodes{Primal, NX, NY}}, 
 end
 
 """
-    cellshift!(q::Edges{Primal},w::Nodes{Primal})
+    interpolate!(q::Edges{Primal},w::Nodes{Primal})
 
-Shift (by linear interpolation) the primal nodal data `w` to the edges of the primal cells,
+Interpolate the primal nodal data `w` to the edges of the primal cells,
 and return the result in `q`.
 """
-function cellshift!(primal::Edges{Primal, NX, NY}, w::Nodes{Primal,NX, NY}) where {NX, NY}
+function interpolate!(primal::Edges{Primal, NX, NY}, w::Nodes{Primal,NX, NY}) where {NX, NY}
     @inbounds for y in 1:NY-1, x in 2:NX-1
         primal.u[x,y] = (w[x-1,y] + w[x,y])/2
     end
@@ -150,4 +162,4 @@ end
 
 
 # I don't like this one. It is ambiguous what type of nodes are being shifted to.
-nodeshift(edges::Edges{Primal,NX,NY}) where {NX,NY} = cellshift!((Nodes(Dual, (NX,NY)),Nodes(Dual, (NX,NY))),edges)
+nodeshift(edges::Edges{Primal,NX,NY}) where {NX,NY} = interpolate!((Nodes(Dual, (NX,NY)),Nodes(Dual, (NX,NY))),edges)

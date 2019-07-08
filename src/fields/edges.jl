@@ -101,9 +101,9 @@ Base.size(A::Edges{C,NX,NY}) where {C,NX,NY} = (length(A.u)+length(A.v),1)
 Base.IndexStyle(::Type{<:Edges}) = IndexLinear()
 
 """
-    cellshift!(v::Edges{Dual/Primal},q::Edges{Primal/Dual})
+    interpolate!(v::Edges{Dual/Primal},q::Edges{Primal/Dual})
 
-Shift (by linear interpolation) the primal (resp. dual) edge data `q` to the
+Interpolate the primal (resp. dual) edge data `q` to the
 edges of the dual (resp. primal) cells, and return the result in `v`.
 
 # Example
@@ -115,7 +115,7 @@ julia> q.u[3,2] = 1.0;
 
 julia> v = Edges(Dual,(8,6));
 
-julia> Fields.cellshift!(v,q)
+julia> Fields.interpolate!(v,q)
 Edges{Dual,8,6} data
 u (in grid orientation)
 6×7 Array{Float64,2}:
@@ -134,7 +134,7 @@ v (in grid orientation)
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
 ```
 """
-function cellshift!(dual::Edges{Dual, NX, NY},
+function interpolate!(dual::Edges{Dual, NX, NY},
                 primal::Edges{Primal, NX, NY}) where {NX, NY}
     uₚ = primal.u
     @inbounds for y in 2:NY-1, x in 1:NX-1
@@ -148,11 +148,11 @@ function cellshift!(dual::Edges{Dual, NX, NY},
     dual
 end
 
-function cellshift(primal::Edges{Primal, NX, NY}) where {NX, NY}
-    cellshift!(Edges(Dual, (NX, NY)), primal)
+function interpolate(primal::Edges{Primal, NX, NY}) where {NX, NY}
+    interpolate!(Edges(Dual, (NX, NY)), primal)
 end
 
-function cellshift!(primal::Edges{Primal, NX, NY},
+function interpolate!(primal::Edges{Primal, NX, NY},
                 dual::Edges{Dual, NX, NY}) where {NX, NY}
     uₚ = dual.u
     @inbounds for y in 1:NY-1, x in 2:NX-1
@@ -166,8 +166,8 @@ function cellshift!(primal::Edges{Primal, NX, NY},
     primal
 end
 
-function cellshift(dual::Edges{Dual, NX, NY}) where {NX, NY}
-    cellshift!(Edges(Primal, (NX, NY)), dual)
+function interpolate(dual::Edges{Dual, NX, NY}) where {NX, NY}
+    interpolate!(Edges(Primal, (NX, NY)), dual)
 end
 
 
