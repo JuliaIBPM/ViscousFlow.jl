@@ -1,6 +1,6 @@
 # Collections of data
 
-struct EdgeGradient{C <: CellType,D <: CellType, NX,NY} <: AbstractMatrix{Float64}
+struct EdgeGradient{C <: CellType,D <: CellType, NX,NY} <: GridData{NX,NY}
   dudx :: Nodes{C,NX,NY}
   dvdy :: Nodes{C,NX,NY}
   dudy :: Nodes{D,NX,NY}
@@ -43,7 +43,7 @@ function Base.show(io::IO, nodes::EdgeGradient{T, S, NX, NY}) where {T, S, NX, N
     println(io, "  du/dy and dv/dx as $S nodes : $vdims")
 end
 
-struct NodePair{C <: CellType,D <: CellType, NX,NY} <: AbstractMatrix{Float64}
+struct NodePair{C <: CellType,D <: CellType, NX,NY} <: GridData{NX,NY}
   u :: Nodes{C,NX,NY}
   v :: Nodes{D,NX,NY}
 end
