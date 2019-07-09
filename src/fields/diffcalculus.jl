@@ -1,3 +1,5 @@
+# Differential calculus mimetic operators
+
 """
     curl!(q::Edges{Primal},w::Nodes{Dual})
 
@@ -349,3 +351,7 @@ end
 struct Grad end
 
 (*)(::Grad,w::Union{Nodes{Primal, NX, NY},Nodes{Dual, NX, NY},Edges{Dual,NX,NY},Edges{Primal,NX,NY}}) where {NX,NY} = grad(w)
+
+
+
+include("differencing1d.jl")
