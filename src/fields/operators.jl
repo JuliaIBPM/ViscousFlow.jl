@@ -1,16 +1,17 @@
+import Base: *, \
+
+# Identity operator
+
+struct Identity end
+
+(*)(::Identity,s::GridData) = s
+
+# Lots of other operators
+
 include("innerproducts.jl")
 include("convolution.jl")
 include("lgf.jl")
 include("ddf.jl")
-
-import Base: *, \
-
-# Identity
-
-struct Identity end
-
-(*)(::Identity,s::Union{Nodes,Edges}) = s
-
 include("laplacian.jl")
 include("intfact.jl")
 include("diffcalculus.jl")
