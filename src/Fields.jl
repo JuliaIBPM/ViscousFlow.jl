@@ -36,9 +36,13 @@ This is important when considering the interpolation and differentiation operati
 both of which must account for the relative indexing between E and C. The
 key to remember is that E[1] is bounded by C[1] and C[2] in our indexing convention,
 so that, for either interpolation or differentiation:
-      E[i] <- C[i], C[i+1]
+      E[i] <- C[i], C[i+1] for i in 1:N-1
 and
-      C[i] <- E[i-1], E[i]
+      C[i] <- E[i-1], E[i] for i in 2:N-1
+and
+      C[i] <- C[i] for i in 1:N
+and
+      E[i] <- E[i] for i in 1:N-1
 =#
 
 
@@ -73,12 +77,12 @@ export Primal, Dual, ScalarGridData, VectorGridData, GridData,
        Edges, Nodes, XEdges, YEdges,
        EdgeGradient, NodePair,
        Points, ScalarData, VectorData, TensorData,
+       diff!,interpolate!,
        curl, curl!, Curl, divergence, divergence!, Divergence,
        grad, grad!, Grad,
        laplacian, laplacian!, plan_laplacian, plan_laplacian!,
        plan_intfact,plan_intfact!,Identity,
        product, product!, ∘,
-       interpolate!,
        coordinates,
        DDF, GradDDF,
        Regularize, RegularizationMatrix, InterpolationMatrix,
@@ -218,10 +222,6 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
 end
 
 include("fields/physicalgrid.jl")
-include("fields/innerproducts.jl")
 include("fields/operators.jl")
-include("fields/shift.jl")
-
-
 
 end

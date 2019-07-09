@@ -41,7 +41,7 @@ function interpolate!(q::Edges{Dual, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, 
     q
 end
 
-# This is not necessarily desirable
+# This operation is not necessarily desirable, since its meaning is ambiguous
 interpolate(nodes::Nodes{Dual,NX,NY}) where {NX,NY} = interpolate!(Edges(Dual, nodes), nodes)
 
 
@@ -106,139 +106,8 @@ function interpolate!(q::Edges{Primal, NX, NY}, w::Nodes{Primal,NX, NY}) where {
     q
 end
 
-# Nodes to edge components
-
-function interpolate!(qu::XEdges{Dual, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
-    # E x C <- C x C
-    @inbounds for y in 2:NY-1, x in 1:NX-1
-        qu[x,y] = (w[x,y] + w[x+1,y])/2
-    end
-    qu
-end
-
-function interpolate!(qv::YEdges{Dual, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
-    # C x E <- C x C
-    @inbounds for y in 1:NY-1, x in 2:NX-1
-        qv[x,y] = (w[x,y] + w[x,y+1])/2
-    end
-    qv
-end
-
-function interpolate!(qu::XEdges{Primal, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
-    # C x E <- C x C
-    @inbounds for y in 1:NY-1, x in 2:NX-1
-        qu[x,y] = (w[x,y] + w[x,y+1])/2
-    end
-    qu
-end
-
-function interpolate!(qv::YEdges{Primal, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
-   # E x C <- C x C
-    @inbounds for y in 2:NY-1, x in 1:NX-1
-        qv[x,y] = (w[x,y] + w[x+1,y])/2
-    end
-    qv
-end
-
-function interpolate!(qu::XEdges{Primal, NX, NY}, w::Nodes{Primal,NX, NY}) where {NX, NY}
-    # C x E <- E x E
-    @inbounds for y in 1:NY-1, x in 2:NX-1
-      qu[x,y] = (w[x-1,y] + w[x,y])/2
-    end
-    qu
-end
-
-function interpolate!(qv::YEdges{Primal, NX, NY}, w::Nodes{Primal,NX, NY}) where {NX, NY}
-    # E x C <- E x E
-    @inbounds for y in 2:NY-1, x in 1:NX-1
-      qv[x,y] = (w[x,y-1] + w[x,y])/2
-    end
-    qv
-end
-
-function interpolate!(qu::XEdges{Dual, NX, NY}, w::Nodes{Primal,NX, NY}) where {NX, NY}
-    # E x C <- E x E
-    @inbounds for y in 2:NY-1, x in 1:NX-1
-      qu[x,y] = (w[x,y-1] + w[x,y])/2
-    end
-    qu
-end
-
-function interpolate!(qv::YEdges{Dual, NX, NY}, w::Nodes{Primal,NX, NY}) where {NX, NY}
-    # C x E <- E x E
-    @inbounds for y in 1:NY-1, x in 2:NX-1
-      qv[x,y] = (w[x-1,y] + w[x,y])/2
-    end
-    qv
-end
-
-# Edge components to nodes
-
-function interpolate!(w::Nodes{Dual, NX, NY}, qu::XEdges{Primal,NX, NY}) where {NX, NY}
-    # C x C <- C x E
-    @inbounds for y in 2:NY-1, x in 1:NX
-        w[x,y] = (qu[x,y-1] + qu[x,y])/2
-    end
-    w
-end
-
-function interpolate!(w::Nodes{Dual, NX, NY}, qv::YEdges{Primal,NX, NY}) where {NX, NY}
-    # C x C <- E x C
-    @inbounds for y in 1:NY, x in 2:NX-1
-        w[x,y] = (qv[x-1,y] + qv[x,y])/2
-    end
-    w
-end
-
-function interpolate!(w::Nodes{Dual, NX, NY}, qu::XEdges{Dual,NX, NY}) where {NX, NY}
-  # C x C <- E x C
-  @inbounds for y in 1:NY, x in 2:NX-1
-      w[x,y] = (qu[x-1,y] + qu[x,y])/2
-  end
-    w
-end
-
-function interpolate!(w::Nodes{Dual, NX, NY}, qv::YEdges{Dual,NX, NY}) where {NX, NY}
-    # C x C <- C x E
-    @inbounds for y in 2:NY-1, x in 1:NX
-      w[x,y] = (qv[x,y-1] + qv[x,y])/2
-    end
-    w
-end
-
-function interpolate!(w::Nodes{Primal, NX, NY}, qu::XEdges{Dual,NX, NY}) where {NX, NY}
-    # E x E <- E x C
-    @inbounds for y in 1:NY-1, x in 1:NX-1
-      w[x,y] = (qu[x,y] + qu[x,y+1])/2
-    end
-    w
-end
-
-function interpolate!(w::Nodes{Primal, NX, NY}, qv::YEdges{Dual,NX, NY}) where {NX, NY}
-    # E x E <- C x E
-    @inbounds for y in 1:NY-1, x in 1:NX-1
-      w[x,y] = (qv[x,y] + qv[x+1,y])/2
-    end
-    w
-end
-
-function interpolate!(w::Nodes{Primal, NX, NY}, qu::XEdges{Primal,NX, NY}) where {NX, NY}
-    # E x E <- C x E
-    @inbounds for y in 1:NY-1, x in 1:NX-1
-      w[x,y] = (qu[x,y] + qu[x+1,y])/2
-    end
-    w
-end
-
-function interpolate!(w::Nodes{Primal, NX, NY}, qv::YEdges{Primal,NX, NY}) where {NX, NY}
-    # E x E <- E x C
-    @inbounds for y in 1:NY-1, x in 1:NX-1
-      w[x,y] = (qv[x,y] + qv[x,y+1])/2
-    end
-    w
-end
-
-# (Dual/Primal) edges to (Primal/Dual) edges. These require some rethinking.
+# (Dual/Primal) edges to (Primal/Dual) edges. These require some rethinking,
+# since they lead to broadened stencils.
 
 """
     interpolate!(v::Edges{Dual/Primal},q::Edges{Primal/Dual})
@@ -310,7 +179,8 @@ function interpolate(dual::Edges{Dual, NX, NY}) where {NX, NY}
     interpolate!(Edges(Primal, (NX, NY)), dual)
 end
 
-
+# 1-d interpolations on which most of above are based.
+include("interpolation1d.jl")
 
 
 
