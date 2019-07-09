@@ -155,12 +155,15 @@ include("fields/nodes.jl")
 include("fields/edges.jl")
 include("fields/collections.jl")
 
+# (ctype,dnx,dny,shiftx,shifty)
+scalarlist = ((:(Nodes{Primal,NX,NY}), 1,1,0.0,0.0),
+              (:(Nodes{Dual,NX,NY}),   0,0,0.5,0.5),
+              (:(XEdges{Primal,NX,NY}),0,1,0.5,0.0),
+              (:(YEdges{Primal,NX,NY}),1,0,0.0,0.5),
+              (:(XEdges{Dual,NX,NY}),  1,0,0.0,0.5),
+              (:(YEdges{Dual,NX,NY}),  0,1,0.5,0.0))
 
-
-
-scalarlist = ((:(Nodes{Primal,NX,NY}),1,1,0.0,0.0),
-              (:(Nodes{Dual,NX,NY}),  0,0,0.5,0.5))
-
+# (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy)
 vectorlist = ((:(Edges{Primal,NX,NY}),          0,1,1,0,0.5,0.0,0.0,0.5),
               (:(Edges{Dual,NX,NY}),            1,0,0,1,0.0,0.5,0.5,0.0),
               (:(NodePair{Dual,Dual,NX,NY}),    0,0,0,0,0.5,0.5,0.5,0.5),
@@ -171,8 +174,6 @@ vectorlist = ((:(Edges{Primal,NX,NY}),          0,1,1,0,0.5,0.0,0.0,0.5),
 tensorlist = ((:(EdgeGradient{Dual,Primal,NX,NY}), 0,0,1,1,0.5,0.5,0.0,0.0),
               (:(EdgeGradient{Primal,Dual,NX,NY}), 1,1,0,0,0.0,0.0,0.5,0.5))
 
-#GridData = Union{Nodes{T,NX,NY},Edges{T,NX,NY}} where {T,NX,NY}
-
 include("fields/basicoperations.jl")
 
 
@@ -182,7 +183,7 @@ include("fields/points.jl")
 CollectedData = Union{EdgeGradient{T,S,NX,NY},NodePair{T,S,NX,NY}} where {T,S,NX,NY}
 
 """
-    coordinates(w::Nodes/Edges;[dx=1.0],[I0=(1,1)])
+    coordinates(w::GridData;[dx=1.0],[I0=(1,1)])
 
 Return a tuple of the ranges of the physical coordinates in each direction for grid
 data `w`. If `w` is of `Nodes` type, then it returns a tuple of the form

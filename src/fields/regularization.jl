@@ -132,7 +132,7 @@ v (in grid orientation)
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
 ```
 """
-function Regularize(x::Vector{T},y::Vector{T},dx::T;
+function Regularize(x::AbstractVector{T},y::AbstractVector{T},dx::T;
                     ddftype=Yang3,graddir::Int=0,
                     I0::Tuple{Int,Int}=(1,1),
                     weights::Union{T,Vector{T}}=1.0,
@@ -192,7 +192,7 @@ function Base.show(io::IO, H::Regularize{N,F}) where {N,F}
 end
 
 """
-    RegularizationMatrix(H::Regularize,f::Points,u::CellData) -> Hmat
+    RegularizationMatrix(H::Regularize,f::PointData,u::CellData) -> Hmat
 
 Construct and store a matrix representation of regularization associated with `H`
 for data of type `f` to data of type `u`. The resulting matrix `Hmat` can then be
@@ -208,7 +208,7 @@ end
 
 
 """
-    InterpolationMatrix(H::Regularize,u::CellData,f::Points) -> Emat
+    InterpolationMatrix(H::Regularize,u::CellData,f::PointData) -> Emat
 
 Construct and store a matrix representation of interpolation associated with `H`
 for data of type `u` to data of type `f`. The resulting matrix `Emat` can then be
@@ -1043,10 +1043,10 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tensorlist
 end
 
 
-(*)(Hmat::RegularizationMatrix{TU,TF},src::TF) where {TU,TF<:Points} =
+(*)(Hmat::RegularizationMatrix{TU,TF},src::TF) where {TU,TF<:PointData} =
         mul!(TU(),Hmat,src)
 
-(*)(Emat::InterpolationMatrix{TU,TF},src::TU) where {TU<:Union{Nodes,Edges,EdgeGradient,NodePair},TF<:Points} =
+(*)(Emat::InterpolationMatrix{TU,TF},src::TU) where {TU<:Union{Nodes,Edges,EdgeGradient,NodePair},TF<:PointData} =
                 mul!(TF(),Emat,src)
 
 (*)(Emat::InterpolationMatrix,Hmat::RegularizationMatrix) =
