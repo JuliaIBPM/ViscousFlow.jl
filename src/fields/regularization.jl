@@ -14,11 +14,6 @@ struct Regularize{N,F}
   "weights for each point (e.g. arclengths), divided by dV"
   wgt :: Vector{Float64}
 
-  "buffer space"
-  buffer :: Vector{Float64}
-  buffer2 :: Vector{Float64}
-  buffer3 :: Vector{Float64}
-
   "Discrete Delta function"
   ddf :: AbstractDDF
 
@@ -176,8 +171,7 @@ function Regularize(x::AbstractVector{T},y::AbstractVector{T},dx::T;
   ddf_radius = r
 
   Regularize{length(x),filter}(x/dx.+I0[1],y/dx.+I0[2],1.0/(dx*dx),
-                      wtvec,zeros(T,n),zeros(T,n),zeros(T,n),
-                      ddf,ddf_radius,_issymmetric)
+                      wtvec,ddf,ddf_radius,_issymmetric)
 end
 
 Regularize(x::T,y::T,a...;b...) where {T<:Real} = Regularize([x],[y],a...;b...)
@@ -186,8 +180,10 @@ Regularize(x::VectorData,a...;b...) = Regularize(x.u,x.v,a...;b...)
 
 function Base.show(io::IO, H::Regularize{N,F}) where {N,F}
     filter = F ? "filtered" : "non-filtered"
+    ddftype,_ = typeof(H.ddf).parameters
     op = H._issymmetric ? "Symmetric regularization/interpolation" : "Regularization/interpolation"
     println(io, "$op operator with $filter interpolation")
+    println(io, "  DDF type $ddftype")
     println(io, "  $N points in grid with cell area $(sprint(show,1.0/H.overdv;context=:compact => true))")
 end
 
