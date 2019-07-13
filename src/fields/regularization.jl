@@ -323,7 +323,10 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
     InterpolationMatrix{$ctype,$ftype}(Emat)
   end
 
-  # Construct interpolation matrix with filtering
+  # Construct interpolation matrix with filtering. Because we construct
+  # the matrix by supplying unit vectors from the points, it is easier
+  # to carry out the filtering here rather than call the filtered operator
+  # we defined above
   @eval function InterpolationMatrix(H::Regularize{N,true},
     u::$ctype,
     f::$ftype) where {N,NX,NY}
@@ -633,6 +636,9 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tensorlist
 
 end
 
+###### Matrix multiplication extended to these Regularization/Interpolation matrices ########
+
+# Regularize
 function mul!(u::C,Hmat::RegularizationMatrix{C,F},f::F) where {C<:GridData,F<:PointData}
   fill!(u,0.0)
   nzv = Hmat.M.nzval
@@ -646,6 +652,7 @@ function mul!(u::C,Hmat::RegularizationMatrix{C,F},f::F) where {C<:GridData,F<:P
   u
 end
 
+# Interpolate
 function mul!(f::F,Emat::InterpolationMatrix{C,F},u::C) where {C<:GridData,F<:PointData}
   fill!(f,0.0)
   nzv = Emat.M.nzval
@@ -660,6 +667,7 @@ function mul!(f::F,Emat::InterpolationMatrix{C,F},u::C) where {C<:GridData,F<:Po
   f
 end
 
+# Interpolation of regularization, used for developing the filtering matrix
 function mul!(C::Array{Float64},Emat::InterpolationMatrix{G,F},
                               Hmat::RegularizationMatrix{G,F}) where {G<:GridData,F<:PointData}
   fill!(C,0.0)
