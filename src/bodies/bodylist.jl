@@ -7,6 +7,8 @@ struct BodyList
     list :: Vector{Body}
 end
 
+BodyList() = BodyList(Body[])
+
 @propagate_inbounds getindex(A::BodyList, i::Int) = A.list[i]
 @propagate_inbounds setindex!(A::BodyList, v::Body, i::Int) = A.list[i] = v
 @propagate_inbounds getindex(A::BodyList, I...) = A.list[I...]
@@ -63,3 +65,11 @@ function Base.view(f::AbstractVector,bl::BodyList,i::Int)
     length(f) == numpts(bl) || error("Inconsistent size of data for viewing")
     return view(f,getrange(bl,i))
 end
+
+"""
+    sum(f::AbstractVector,bl::BodyList,i::Int) -> Real
+
+Compute a sum of the elements of vector `f` corresponding to body `i` in body
+list `bl`.
+"""
+Base.sum(f::AbstractVector,bl::BodyList,i::Int) = sum(view(f,bl,i))
