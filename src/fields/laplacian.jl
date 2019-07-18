@@ -101,6 +101,32 @@ function laplacian(w::Edges{T,NX,NY}) where {T<:CellType,NX,NY}
   laplacian!(Edges(T,(NX,NY)), w)
 end
 
+"""
+    laplacian_symm!(v,w)
+
+Evaluate the symmetric 5-point discrete Laplacian of `w` and return it as `v`. The data `w` can be
+of type dual nodes only for now. This symmetric Laplacian also evaluates the
+partial Laplacians (using only available stencil data) on the ghost nodes.
+"""
+function laplacian_symm!(out::Nodes{Dual,NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
+    @inbounds for y in 2:NY-1, x in 2:NX-1
+        out[x,y] = w[x,y-1] + w[x-1,y] - 4w[x,y] + w[x+1,y] + w[x,y+1]
+    end
+    @inbounds for y in 2:NY-1
+        out[1,y]  = w[1,y-1]            - 4w[1,y] + w[2,y] + w[1,y+1]
+        out[NX,y] = w[NX,y-1] + w[NX-1,y]- 4w[NX,y]        + w[NX,y+1]
+    end
+    @inbounds for x in 2:NX-1
+        out[x,1]  = w[x-1,1] + w[x+1,1] - 4w[x,1] + w[x,2]
+        out[x,NY] = w[x-1,NY]+ w[x+1,NY]- 4w[x,NY] + w[x,NY-1]
+    end
+    out[1,1] = -4w[1,1] + w[1,2] + w[2,1]
+    out[NX,1] = -4w[NX,1] + w[NX-1,1] + w[NX,2]
+    out[1,NY] = -4w[1,NY] + w[1,NY-1] + w[2,NY]
+    out[NX,NY] = -4w[NX,NY] + w[NX,NY-1] + w[NX-1,NY]
+    out
+end
+
 
 """
     plan_laplacian(dims::Tuple,[with_inverse=false],[fftw_flags=FFTW.ESTIMATE],

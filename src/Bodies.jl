@@ -6,7 +6,7 @@ using Compat
 using Compat.Statistics: mean
 using Compat: range, reverse
 
-export Body,RigidTransform,Ellipse,Plate
+export Body,RigidTransform,dlength,Ellipse,Rectangle,Plate,NACA4
 
 abstract type Body{N} end
 
@@ -96,24 +96,25 @@ length(::Body{N}) where {N} = N
 """
     diff(body::Body) -> Tuple{Vector{Float64},Vector{Float64}}
 
-Compute the x and y differences of the faces on the perimeter of body `body`, whose centers
-are at the current `x` and `y` coordinates (in inertial space) of the body.
+Compute the x and y differences of the faces on the perimeter of body `body`, whose ends
+are at the current `x` and `y` coordinates (in inertial space) of the body. Face 1
+corresponds to the face between points 1 and 2, for example.
 """
 function diff(b::Body{N}) where {N}
   # need to modify this for thin flat plates
 
-  ip1(i) = 1 + mod(i,N)
-  im1(i) = 1 + mod(i-2,N)
-  dxtmp = [0.5*(b.x[ip1(i)] - b.x[im1(i)]) for i = 1:N]
-  dytmp = [0.5*(b.y[ip1(i)] - b.y[im1(i)]) for i = 1:N]
+  ip1(i) = 1+mod(i,N)
+  dxtmp = [b.x[ip1(i)] - b.x[i] for i = 1:N]
+  dytmp = [b.y[ip1(i)] - b.y[i] for i = 1:N]
   return dxtmp,dytmp
 end
 
 """
     dlength(body::Body) -> Vector{Float64}
 
-Compute the lengths of the faces on the perimeter of body `body`, whose centers
-are at the current `x` and `y` coordinates (in inertial space) of the body.
+Compute the lengths of the faces on the perimeter of body `body`, whose ends
+are at the current `x` and `y` coordinates (in inertial space) of the body. Face 1
+corresponds to the face between points 1 and 2, for example.
 """
 dlength(b::Body{N}) where {N} = sqrt.(diff(b)[1].^2+diff(b)[2].^2)
 
@@ -121,8 +122,8 @@ dlength(b::Body{N}) where {N} = sqrt.(diff(b)[1].^2+diff(b)[2].^2)
     normal(body::Body) -> Tuple{Vector{Float64},Vector{Float64}}
 
 Compute the current normals (in inertial components) of the faces on the perimeter
-of body `body`, whose centers are at the current `x` and `y` coordinates (in inertial space)
-of the body.
+of body `body`, whose ends are at the current `x` and `y` coordinates (in inertial space)
+of the body. Face 1 corresponds to the face between points 1 and 2, for example.
 """
 function normal(body::Body{N}) where {N}
   dx, dy = diff(body)
@@ -173,6 +174,60 @@ function Base.show(io::IO, body::Ellipse{N}) where {N}
 end
 
 """
+    Rectangle(length,width,n) <: Body
+
+Construct a rectangular shape with length `length` and width `width`,
+with `n` intervals between points distributed on the length side.
+"""
+mutable struct Rectangle{N} <: Body{N}
+  length :: Float64
+  width :: Float64
+  cent :: Tuple{Float64,Float64}
+  α :: Float64
+
+  x̃ :: Vector{Float64}
+  ỹ :: Vector{Float64}
+
+  x :: Vector{Float64}
+  y :: Vector{Float64}
+
+end
+
+function Rectangle(len::Float64,wid::Float64,nlen::Int)
+
+    # determine number of points on each side
+    dslen = len/nlen
+    nwid = max(1,ceil(Int,wid/dslen)) # number of intervals along width side
+    dswid = wid/nwid
+    N = 2nlen+2nwid
+
+    x̃ = zeros(N)
+    ỹ = zeros(N)
+    for i in 1:nlen
+      x̃[i] = -0.5*len + (i-1)*dslen
+      ỹ[i] = -0.5*wid
+      x̃[nlen+nwid+i] = 0.5*len - (i-1)*dslen
+      ỹ[nlen+nwid+i] = 0.5*wid
+    end
+    for i in 1:nwid
+      x̃[nlen+i] = 0.5*len
+      ỹ[nlen+i] = -0.5*wid + (i-1)*dswid
+      x̃[2nlen+nwid+i] = -0.5*len
+      ỹ[2nlen+nwid+i] = 0.5*wid - (i-1)*dswid
+    end
+
+    Rectangle{N}(len,wid,(0.0,0.0),0.0,x̃,ỹ,x̃,ỹ)
+
+end
+
+function Base.show(io::IO, body::Rectangle{N}) where {N}
+    println(io, "Rectangular body with $N points, length $(body.length) and width $(body.width))")
+    println(io, "   Current position: ($(body.cent[1]),$(body.cent[2]))")
+    println(io, "   Current angle (rad): $(body.α)")
+end
+
+
+"""
     Plate(length,thick,n,[λ=1.0]) <: Body
 
 Construct a flat plate with length `length` and thickness `thick`,
@@ -196,7 +251,6 @@ mutable struct Plate{N} <: Body{N}
   y :: Vector{Float64}
 
 end
-
 
 function Plate(len::Float64,N::Int;λ::Float64=1.0)
 
