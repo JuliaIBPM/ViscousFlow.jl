@@ -70,7 +70,7 @@ function (*)(p::T,c::Number) where {T<:VectorGridData}
 end
 
 function (/)(p::T,c::Number) where {T<:VectorGridData}
-  return T(p.qx / c, p.qy / c)
+  return T(p.u / c, p.v / c)
 end
 
 
