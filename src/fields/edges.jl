@@ -85,6 +85,8 @@ end
 Edges(T, nodes::Nodes{S,NX,NY}) where {S <: CellType, NX,NY} = Edges(T, (NX, NY))
 (::Type{Edges{T,NX,NY}})() where {T,NX,NY} = Edges(T, (NX, NY))
 
+Edges(T, ::GridData{NX,NY}) where {NX, NY} = Edges(T, (NX,NY))
+
 Base.similar(::Edges{T,NX,NY}) where {T,NX,NY} = Edges(T, (NX, NY))
 
 function fill!(edges::Edges, s::Number)

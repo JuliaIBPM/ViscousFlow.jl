@@ -171,6 +171,33 @@ function (∘)(p::Edges{T, NX, NY}, q::Edges) where {T, NX, NY}
     product!(Edges(T, (NX, NY)), p, q)
 end
 
+### ON TENSORS ####
+
+function (-)(p_in::EdgeGradient)
+  p = deepcopy(p_in)
+  p.dudx .= -p.dudx
+  p.dvdy .= -p.dvdy
+  p.dudy .= -p.dudy
+  p.dvdx .= -p.dvdx
+  return p
+end
+
+function (-)(p1::T,p2::T) where {T <: EdgeGradient}
+  return T(p1.dudx - p2.dudx, p1.dvdy - p2.dvdy, p1.dudy - p2.dudy, p1.dvdx - p2.dvdx)
+end
+
+function (+)(p1::T,p2::T) where {T <: EdgeGradient}
+  return T(p1.dudx + p2.dudx, p1.dvdy + p2.dvdy, p1.dudy + p2.dudy, p1.dvdx + p2.dvdx)
+end
+
+function (*)(p::T,c::Number) where {T <: EdgeGradient}
+  return T(c*p.dudx,c*p.dvdy,c*p.dudy,c*p.dvdx)
+end
+
+function (/)(p::T,c::Number) where {T <: EdgeGradient}
+  return T(p.dudx / c, p.dvdy / c, p.dudy / c, p.dvdx / c)
+end
+
 #### ON ALL TYPES ####
 
 zero(::Type{T}) where {T <: GridData} = T()

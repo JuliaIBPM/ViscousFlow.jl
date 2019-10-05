@@ -179,6 +179,35 @@ function divergence(edges::Edges{T, NX, NY}) where {T <: CellType, NX, NY}
     divergence!(Nodes(T, NX, NY), edges)
 end
 
+"""
+    divergence!(w::XEdges/YEdges,q::NodePair)
+
+Evaluate the discrete divergence of node pair data `q` and return it as data `w`.
+Note that `q` can be either primal/dual or dual/primal edge data, and `w`
+must be, respectively, primal x-edges/dual y-edges or primal y-edges/dual x-edges type.
+"""
+function divergence!(nodes::Union{XEdges{Primal, NX, NY},YEdges{Dual, NX, NY}},
+                     edges::NodePair{Primal, Dual,NX, NY}) where {NX, NY}
+
+    u, v = edges.u, edges.v
+
+    @inbounds for y in 1:NY-1, x in 2:NX-1
+        nodes[x,y] = - u[x-1,y] + u[x,y] - v[x,y] + v[x,y+1]
+    end
+    nodes
+end
+
+function divergence!(nodes::Union{YEdges{Primal, NX, NY},XEdges{Dual, NX, NY}},
+                     edges::NodePair{Dual, Primal,NX, NY}) where {NX, NY}
+
+    u, v = edges.u, edges.v
+
+    @inbounds for y in 2:NY-1, x in 1:NX-1
+        nodes[x,y] = - u[x,y] + u[x+1,y] - v[x,y-1] + v[x,y]
+    end
+    nodes
+end
+
 struct Divergence end
 
 (*)(::Divergence,w::Edges{T,NX,NY}) where {T<:CellType,NX,NY} = divergence(w)

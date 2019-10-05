@@ -19,6 +19,8 @@ end
 
 (::Type{EdgeGradient{T,S,NX,NY}})() where {T<:CellType,S<:CellType,NX,NY} = EdgeGradient(T, (NX, NY))
 
+EdgeGradient(T, ::GridData{NX,NY}) where {NX, NY} = EdgeGradient(T, (NX,NY))
+
 function Base.fill!(g::EdgeGradient, s::Number)
     fill!(g.dudx, s)
     fill!(g.dudy, s)
@@ -65,9 +67,9 @@ NodePair(T::Type{C},dualnodedims::Tuple{Int,Int}) where {C <: CellType}= NodePai
 NodePair(T::Type{C}, nodes::Nodes{S,NX,NY}) where {C <: CellType, S <: CellType, NX,NY} = NodePair(T, (NX, NY))
 
 
-
 (::Type{NodePair{T,S,NX,NY}})() where {T<:CellType,S<:CellType,NX,NY} = NodePair(T, S, (NX, NY))
 
+NodePair(T, S, ::GridData{NX,NY}) where {NX, NY} = NodePair(T, S, (NX,NY))
 
 function Base.show(io::IO, nodes::NodePair{T, S, NX, NY}) where {T, S, NX, NY}
     nodedims = "(nx = $NX, ny = $NY)"
