@@ -53,6 +53,7 @@ import Base: @propagate_inbounds, show, summary
 using Compat
 using FFTW
 using SpecialFunctions
+using Statistics
 using Compat.LinearAlgebra
 using Compat.SparseArrays
 using Compat: copyto!, reverse
