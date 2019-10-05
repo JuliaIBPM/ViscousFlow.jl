@@ -178,8 +178,6 @@ tensorlist = ((:(EdgeGradient{Dual,Primal,NX,NY}), 0,0,1,1,0.5,0.5,0.0,0.0),
               (:(EdgeGradient{Primal,Dual,NX,NY}), 1,1,0,0,0.0,0.0,0.5,0.5))
 
 include("fields/basicoperations.jl")
-
-
 include("fields/points.jl")
 
 

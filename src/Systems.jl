@@ -2,7 +2,7 @@ module Systems
 
 using DocStringExtensions
 
-export NavierStokes, PointForce
+export NavierStokes, PointForce, vorticity, velocity, streamfunction, nl
 
 using ..Fields
 using ..TimeMarching

@@ -266,6 +266,14 @@ function TimeMarching.plan_constraints(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{
   return f -> TimeMarching.B₁ᵀ(f,regop,sys),w -> TimeMarching.B₂(w,regop,sys)
 end
 
+# compute physical values of fields
+vorticity(w::Nodes{Dual},sys) = w/cellsize(sys)
+velocity(w::Nodes{Dual},sys) = -curl(sys.L\w)
+streamfunction(w::Nodes{Dual},sys) = -cellsize(sys)*sys.L\w
+nl(w::Nodes{Dual},sys) = TimeMarching.r₁(w,0.0,sys)/cellsize(sys)
+
+
+
 include("navierstokes/systemutils.jl")
 
 include("navierstokes/movingbody.jl")
