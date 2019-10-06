@@ -36,15 +36,47 @@ function PhysicalGrid(xlim::Tuple{Real,Real},
   Lx = xmax-xmin
   Ly = ymax-ymin
 
-  NX, i0, xlimnew = set_1d_grid(xmin,xmax,Δx)
-  NY, j0, ylimnew = set_1d_grid(ymin,ymax,Δx)
+  NX, i0, xlimnew = _find_efficient_1d_grid(xmin,xmax,Δx)
+  NY, j0, ylimnew = _find_efficient_1d_grid(ymin,ymax,Δx)
 
   PhysicalGrid((NX,NY),(i0,j0),Δx,(xlimnew,ylimnew))
 end
 
-function set_1d_grid(xmin::Real,xmax::Real,Δx::Float64)
+function _set_1d_grid(xmin::Real,xmax::Real,Δx::Float64)
   NL, NR = floor(Int,xmin/Δx), ceil(Int,xmax/Δx)
   return NR-NL+2, 1-NL, (Δx*NL, Δx*NR)
+end
+
+function _factor_prime(N::Integer)
+    # Determine if N can be factorized into small primes
+    # Returns the list of powers and the remaining factor
+    # after factorization.
+    Nr = N
+    blist = [2,3,5,7,11,13]
+    pow = zero(blist)
+    for (i,b) in enumerate(blist)
+        while mod(Nr,b) == 0
+            pow[i] += 1
+            Nr = Int(Nr/b)
+        end
+    end
+    return pow, Nr
+end
+
+function _find_efficient_1d_grid(xmin::Real,xmax::Real,Δx::Float64)
+    # Based on the provided grid dimensions and grid spacing,
+    # find the minimally larger grid that has a number of cells
+    # that can be factorized into small primes for efficient FFT calculations.
+    N, i0, xlimnew = _set_1d_grid(xmin,xmax,Δx)
+    pow, Nr = _factor_prime(N)
+    while Nr > 1 || sum(pow[end-1:end]) > 1
+        xminnew, xmaxnew = xlimnew
+        xminnew -= Δx
+        xmaxnew += Δx
+        N, i0, xlimnew = _set_1d_grid(xminnew,xmaxnew,Δx)
+        pow, Nr = _factor_prime(N)
+    end
+    return N, i0, xlimnew
 end
 
 """
