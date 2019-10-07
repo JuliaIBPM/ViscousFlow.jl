@@ -65,11 +65,12 @@ struct StorePlan
     max_t::Float64
     store_Δt::Float64
     varlist::Vector{DataType}
+    StorePlan(min_t,max_t,store_Δt,varlist...) = new(min_t,max_t,store_Δt,_get_type(varlist))
 end
 
-function StorePlan(min_t,max_t,store_Δt,v)
-    return StorePlan(min_t,max_t,store_Δt,_get_type(v))
-end
+#function StorePlan(min_t,max_t,store_Δt,v...)
+#    return StorePlan(min_t,max_t,store_Δt,_get_type(v))
+#end
 
 """
     initialize_storage(S::StorePlan) -> Vector
