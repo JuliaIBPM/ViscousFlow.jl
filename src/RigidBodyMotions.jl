@@ -336,6 +336,43 @@ function (p::OscilX)(t)
     #return [p.ċ(t),0.0], [p.c̈(t),0.0], α̇
 end
 
+abstract type Switch end
+abstract type SwitchOn <: Switch end
+abstract type SwitchOff <: Switch end
+
+"""
+    SwitchedKinematics <: Kinematics
+
+Modulates a given set of kinematics between simple on/off states. The velocity
+specified by the given kinematics is toggled on/off.
+
+# Fields
+$(FIELDS)
+"""
+struct SwitchedKinematics{S <: Switch} <: Kinematics
+
+    "time at which the kinematics should be turned on"
+    t_on :: Float64
+
+    "time at which the kinematics should be turned off"
+    t_off :: Float64
+
+    "kinematics to be followed in the on state"
+    kin :: Kinematics
+
+    off :: Kinematics
+
+    SwitchedKinematics(t_on,t_off,kin) = t_on > t_off ?
+            new{SwitchOn}(t_on,t_off,kin,RigidBodyMotions.Constant(0,0)) :
+            new{SwitchOff}(t_on,t_off,kin,RigidBodyMotions.Constant(0,0))
+end
+
+# note that these do not introduce impulsive changes into the derivatives
+(p::SwitchedKinematics{SwitchOn})(t) = t <= p.t_on ? p.off(t) : p.kin(t-p.t_on)
+
+(p::SwitchedKinematics{SwitchOff})(t) = t <= p.t_off ? p.kin(t-p.t_on) : p.off(t)
+
+
 #=
 Profiles
 =#
