@@ -76,3 +76,11 @@ end
     y := y
     ()
 end
+
+function RecipesBase.RecipesBase.apply_recipe(plotattributes::Dict{Symbol, Any}, bl::BodyList)
+    series_list = RecipesBase.RecipeData[]
+    for b in bl
+        append!(series_list, RecipesBase.RecipesBase.apply_recipe(copy(plotattributes), b) )
+    end
+    series_list
+end
