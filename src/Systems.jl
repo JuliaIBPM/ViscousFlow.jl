@@ -17,5 +17,6 @@ using Compat.SparseArrays
 
 
 include("systems/navier_stokes.jl")
+include("systems/utils.jl")
 
 end
