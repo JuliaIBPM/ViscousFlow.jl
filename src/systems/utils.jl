@@ -49,8 +49,6 @@ function _writelist(R::WritePlan,v)
 end
 
 
-
-
 """
     StorePlan(min_t,max_t,store_Δt,v)
 
@@ -88,16 +86,16 @@ end
 
 
 """
-    store_data!(data,t,S::StorePlan)
+    store_data!(data,t,S::StorePlan,v)
 
 Check whether time `t` is a time for saving for storage as described by plan `S`,
-and if so, push the variables specified in `S` onto the `data` stack.
+and if so, push the variables specified in `v` onto the `data` stack.
 """
 function store_data!(data,t,S::StorePlan,v...)
   tol = 1e-8
-  if t >= (R.min_t-tol) && t <= (R.max_t + tol) &&
-      ((isapprox(mod(t,R.store_Δt),0,atol=tol) ||
-        isapprox(mod(t,R.store_Δt),R.store_Δt,atol=tol)))
+  if t >= (S.min_t-tol) && t <= (S.max_t + tol) &&
+      ((isapprox(mod(t,S.store_Δt),0,atol=tol) ||
+        isapprox(mod(t,S.store_Δt),S.store_Δt,atol=tol)))
         store_data!(data,S::StorePlan,v)
   end
   return data
