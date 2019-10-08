@@ -99,17 +99,31 @@ a::(Tuple{T,T} where {T}) + A::VectorData = A + a
 a::(Tuple{T,T} where {T}) - A::VectorData = (B = A - a; @. B.u = -B.u; @. B.v = -B.v; return B)
 
 """
-    cross(a::Number,A::VectorData) -> VectorData
-    ×(a::Number,A::VectorData) -> VectorData
+    cross(a::Number/ScalarData,A::VectorData) -> VectorData
+    ×(a::Number/ScalarData,A::VectorData) -> VectorData
 
 Compute the cross product between the scalar `a` (treated as an out-of-plane component of a vector)
 and the planar vector data `A`.
 """
-function cross(a::Number,A::VectorData)
+function cross(a::Union{Number,ScalarData},A::VectorData)
     B = deepcopy(A)
     @. B.u = -a*A.v
     @. B.v = a*A.u
     return B
+end
+
+"""
+    cross(A::VectorData,B::VectorData) -> ScalarData
+    ×(A::VectorData,A::VectorData) -> ScalarData
+
+Compute the cross product between the vector point data `A` and `B`
+and return the result as scalar data (treated as an out-of-plane
+component of a vector).
+"""
+function cross(A::VectorData{N},B::VectorData{N}) where N
+    C = ScalarData(N)
+    @. C = A.u*B.v - A.v*B.u
+    return C
 end
 
 """
