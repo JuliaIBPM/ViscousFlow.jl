@@ -33,11 +33,13 @@ function save(t,R::WritePlan,v...)
 end
 
 """
-    load(R::WritePlan)
+    load(R::WritePlan[,var::String])
 
-Load the data stored in the file specified by the WritePlan `R`.
+Load the data stored in the file specified by the WritePlan `R`. If
+variable `var` is specified, outputs the specified variable.
 """
 load(R::WritePlan) = load(R.filen)
+load(R::WritePlan,v...) = load(R.filen,v...)
 
 function _writelist(R::WritePlan,v)
     list = ()

@@ -86,7 +86,7 @@ Compute the curl of the cross product of `a` and `b`,
 ``\\nabla\\times(a\\times b)``,
 and put the result into `out`. Note that the result is not scaled by any grid spacing.
 """
-function directional_derivative_rot!(out::Edges{C},a::Edges{C},b::Edges{C}) where {C <: CellType}
+function curl_cross!(out::Edges{C},a::Edges{C},b::Edges{C}) where {C <: CellType}
 
     # some temp storage
     bx_dual = Nodes(othertype(C),a)
