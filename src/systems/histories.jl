@@ -49,7 +49,7 @@ History(data::Vector{T}; htype::Type{H}=RegularHistory) where {T, H <: HistoryTy
 Base.length(h::History) = length(h.vec)
 Base.size(h::History) = size(h.vec)
 Base.@propagate_inbounds Base.getindex(h::History, i::Int) = h.vec[i]
-Base.@propagate_inbounds Base.setindex!(h::History{T}, v, i::Int) = h.vec[i] = convert(T, v)
+Base.@propagate_inbounds Base.setindex!(h::History{T}, v, i::Int) where {T} = h.vec[i] = convert(T, v)
 
 
 function mean!(h̄::T,h::History{T}) where {T}
