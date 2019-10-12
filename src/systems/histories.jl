@@ -64,4 +64,4 @@ mean(h::History{T}) where {T} = mean!(T(),h)
 
 Base.diff(h::History{T,RegularHistory}) where {T} = History(diff(h.vec),htype=RegularHistory)
 
-function Base.diff(h::History{T,PeriodicHistory}) where {T} = History(diff())
+#function Base.diff(h::History{T,PeriodicHistory}) where {T} = History(diff())
