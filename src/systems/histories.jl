@@ -66,7 +66,7 @@ end
 
 mean(h::History{T}) where {T} = mean!(T(),h)
 
-Base.diff(h::History{T,RegularHistory}) where {T} = History(diff([h.vec;h.vec[1]),htype=RegularHistory)
+Base.diff(h::History{T,RegularHistory}) where {T} = History(diff(h.vec),htype=RegularHistory)
 
 function Base.diff(h::History{T,PeriodicHistory}) where {T}
   r = axes(h.vec)
