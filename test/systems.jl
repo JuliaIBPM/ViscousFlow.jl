@@ -85,4 +85,39 @@ using Compat.LinearAlgebra
 
   end
 
+  @testset "Histories" begin
+
+    h = History(Nodes(Dual,(5,5)))
+    d = Nodes(Dual,(5,5))
+    fill!(d,1.0)
+    push!(h,deepcopy(d))
+    push!(h,Nodes(Dual,d))
+    fill!(d,5.0)
+    push!(h,deepcopy(d))
+
+    dh = diff(h)
+
+    @test typeof(dh) <: History
+
+    @test dh[2][1,1] == 5.0
+
+    hp = History(h.vec,htype=PeriodicHistory)
+
+    @test hp[4] == hp[1]
+
+    dhp = diff(hp)
+
+    @test typeof(dhp) <: History
+
+    @test dhp[1][1,1] == -1.0
+
+    @test dhp[5] == dhp[2]
+
+    hp2 = History(hp[1:2:5],htype=PeriodicHistory)
+
+    @test hp2[2][1,1] == 5.0
+
+
+  end
+
 end
