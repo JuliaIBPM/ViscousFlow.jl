@@ -51,6 +51,10 @@ Base.size(h::History) = size(h.vec)
 Base.@propagate_inbounds Base.getindex(h::History, i::Int) = h.vec[i]
 Base.@propagate_inbounds Base.setindex!(h::History{T}, v, i::Int) where {T} = h.vec[i] = convert(T, v)
 
+Base.@propagate_inbounds Base.getindex(h::History{T,PeriodicHistory}, i::Int) where {T} = h.vec[mod(i-1,length(h.vec))+1]
+Base.@propagate_inbounds Base.getindex(h::History{T,PeriodicHistory}, r::AbstractRange) where {T} = h.vec[mod.(r.-1,length(h.vec)).+1]
+
+Base.push!(h::History,v...) = push!(h.vec,v...)
 
 function mean!(h̄::T,h::History{T}) where {T}
     fill!(h̄,0.0)
@@ -62,6 +66,13 @@ end
 
 mean(h::History{T}) where {T} = mean!(T(),h)
 
-Base.diff(h::History{T,RegularHistory}) where {T} = History(diff(h.vec),htype=RegularHistory)
+Base.diff(h::History{T,RegularHistory}) where {T} = History(diff([h.vec;h.vec[1]),htype=RegularHistory)
 
-#function Base.diff(h::History{T,PeriodicHistory}) where {T} = History(diff())
+function Base.diff(h::History{T,PeriodicHistory}) where {T}
+  r = axes(h.vec)
+  r0 = ntuple(i -> i == 1 ? UnitRange(1, last(r[i])) : UnitRange(r[i]), 1)
+  r1 = ntuple(i -> i == 1 ? UnitRange(2, last(r[i]) + 1) : UnitRange(r[i]), 1)
+
+  # use unsafe_view to disable bounds checking
+  return History(Base.unsafe_view(h,r1...) .- Base.unsafe_view(h,r0...), htype=PeriodicHistory)
+end
