@@ -40,6 +40,7 @@ end
 
 include("systems/rigidbodies.jl")
 include("systems/navier_stokes.jl")
+include("systems/histories.jl")
 include("systems/utils.jl")
 
 end

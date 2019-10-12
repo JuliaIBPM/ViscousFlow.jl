@@ -1,5 +1,4 @@
 import Base: -, +, *, /, ∘, zero
-import Statistics: mean
 
 ### On scalar grid data ####
 
@@ -201,13 +200,3 @@ end
 #### ON ALL TYPES ####
 
 zero(::Type{T}) where {T <: GridData} = T()
-
-function mean!(q̄::T,q::Vector{T}) where {T <: GridData}
-    fill!(q̄,0.0)
-    for qi in q
-        q̄ .+= qi
-    end
-    return q̄/length(q)
-end
-
-mean(q::Vector{T}) where {T <: GridData} = mean!(T(),q)
