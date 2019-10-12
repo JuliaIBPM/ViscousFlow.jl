@@ -56,7 +56,7 @@ using Compat.LinearAlgebra
     U∞ = (U,0.0)
 
     n = 100
-    body = Bodies.Ellipse(0.5,n)
+    body = Bodies.Circle(0.5,n)
 
     xlim = (-1.0,3.0)
     ylim = (-1.0,1.0)
