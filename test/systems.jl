@@ -68,11 +68,11 @@ using Compat.LinearAlgebra
 
     sys = Systems.NavierStokes(Re,Δx,xlim,ylim,Δt,U∞ = U∞, X̃ = X, isstore = true)
 
-    @test size(sys,1) == 202
-    @test size(sys,2) == 102
-    @test size(sys) == (202,102)
+    @test size(sys,1) == 208
+    @test size(sys,2) == 104
+    @test size(sys) == (208,104)
 
-    @test Systems.origin(sys) == (51,51)
+    @test Systems.origin(sys) == (54,52)
 
     wf = Systems.PointForce(Nodes(Dual,size(sys)),(1.5,0.0),10.0,1.5,1.0,sys)
     @test sum(wf(1.5)) ≈ 10
