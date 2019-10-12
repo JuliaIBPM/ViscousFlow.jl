@@ -5,9 +5,7 @@ import Statistics: mean
 export History, PeriodicHistory, RegularHistory
 
 abstract type HistoryType end
-
 abstract type PeriodicHistory <: HistoryType end
-
 abstract type RegularHistory <: HistoryType end
 
 """
@@ -56,6 +54,9 @@ Base.@propagate_inbounds Base.getindex(h::History{T,PeriodicHistory}, r::Abstrac
 
 Base.push!(h::History,v...) = push!(h.vec,v...)
 
+#=
+ mean
+=#
 function mean!(h̄::T,h::History{T}) where {T}
     fill!(h̄,0.0)
     for hi in h
@@ -66,6 +67,9 @@ end
 
 mean(h::History{T}) where {T} = mean!(T(),h)
 
+#=
+diff
+=#
 Base.diff(h::History{T,RegularHistory}) where {T} = History(diff(h.vec),htype=RegularHistory)
 
 function Base.diff(h::History{T,PeriodicHistory}) where {T}
