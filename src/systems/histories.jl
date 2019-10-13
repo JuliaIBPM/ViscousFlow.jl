@@ -1,6 +1,7 @@
 # History vectors of system solutions
 
 import Statistics: mean
+import Base: +, -, *, /
 
 export History, HistoryType, PeriodicHistory, RegularHistory, set_first_ghost!, set_last_ghost!
 
@@ -54,6 +55,37 @@ Base.@propagate_inbounds Base.getindex(h::History{T,PeriodicHistory}, i::Int) wh
 Base.@propagate_inbounds Base.getindex(h::History{T,PeriodicHistory}, r::AbstractRange) where {T} = h.vec[mod.(r.-1,length(h.vec)).+1]
 
 Base.push!(h::History,v...) = (h.r = h.r.start:h.r.stop+1; push!(h.vec,v...))
+
+#=
+Basic arithmetic
+=#
+
+function (-)(h_in::History)
+  h = deepcopy(h_in)
+  @. h.vec = -h.vec
+  return h
+end
+
+# Add and subtract the same type
+function (-)(h1::T,h2::T) where {T<:History}
+  return T(h1.vec .- h2.vec)
+end
+
+function (+)(h1::T,h2::T) where {T<:History}
+  return T(h1.vec .+ h2.vec)
+end
+
+# Multiply and divide by a constant
+function (*)(h::T,c::Number) where {T<:History}
+  return T(c*h.vec)
+end
+
+
+function (/)(h::T,c::Number) where {T<:History}
+  return T(h.vec ./ c)
+end
+
+(*)(c::Number,h::T) where {T<:History} = *(h,c)
 
 #=
  mean
