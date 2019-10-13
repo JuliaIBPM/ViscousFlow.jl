@@ -53,7 +53,7 @@ Base.@propagate_inbounds Base.setindex!(h::History{T}, v, i::Int) where {T} = h.
 Base.@propagate_inbounds Base.getindex(h::History{T,PeriodicHistory}, i::Int) where {T} = h.vec[mod(i-1,length(h.vec))+1]
 Base.@propagate_inbounds Base.getindex(h::History{T,PeriodicHistory}, r::AbstractRange) where {T} = h.vec[mod.(r.-1,length(h.vec)).+1]
 
-Base.push!(h::History,v...) = (h.n += 1; push!(h.vec,v...))
+Base.push!(h::History,v...) = (h.r = h.r.start:h.r.stop+1; push!(h.vec,v...))
 
 #=
  mean
