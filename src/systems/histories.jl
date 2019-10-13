@@ -2,7 +2,7 @@
 
 import Statistics: mean
 
-export History, PeriodicHistory, RegularHistory
+export History, PeriodicHistory, RegularHistory, set_first_ghost!, set_last_ghost!
 
 abstract type HistoryType end
 abstract type PeriodicHistory <: HistoryType end
@@ -25,11 +25,12 @@ then the element type `datatype` must be outfitted with basic operations:
 Another constructor is `History(h::History)`, which creates an empty instance of
 a history of the same type as `h`.
 """
-struct History{T,H <: HistoryType} <: AbstractVector{T}
+mutable struct History{T,H <: HistoryType} <: AbstractVector{T}
+  r :: UnitRange  # interior elements of vector
   vec :: Vector{T}
 end
 
-History(::Type{T}; htype::Type{H}=RegularHistory) where {T, H <: HistoryType} = History{T,htype}(T[])
+History(::Type{T}; htype::Type{H}=RegularHistory) where {T, H <: HistoryType} = History{T,htype}(0:0,T[])
 
 History(::T;htype=RegularHistory) where {T} = History(T;htype=htype)
 
@@ -42,7 +43,7 @@ Create a history data vector and fill it with the vector `data`. The history typ
 can be alternatively specified as `RegularHistory` (the default) or `PeriodicHistory`
 with the `htype` optional argument.
 """
-History(data::Vector{T}; htype::Type{H}=RegularHistory) where {T, H <: HistoryType} = History{T,htype}(data)
+History(data::Vector{T}; htype::Type{H}=RegularHistory) where {T, H <: HistoryType} = History{T,htype}(1:length(data),data)
 
 Base.length(h::History) = length(h.vec)
 Base.size(h::History) = size(h.vec)
@@ -52,7 +53,7 @@ Base.@propagate_inbounds Base.setindex!(h::History{T}, v, i::Int) where {T} = h.
 Base.@propagate_inbounds Base.getindex(h::History{T,PeriodicHistory}, i::Int) where {T} = h.vec[mod(i-1,length(h.vec))+1]
 Base.@propagate_inbounds Base.getindex(h::History{T,PeriodicHistory}, r::AbstractRange) where {T} = h.vec[mod.(r.-1,length(h.vec)).+1]
 
-Base.push!(h::History,v...) = push!(h.vec,v...)
+Base.push!(h::History,v...) = (h.n += 1; push!(h.vec,v...))
 
 #=
  mean
@@ -62,7 +63,8 @@ function mean!(h̄::T,h::History{T}) where {T}
     for hi in h
         h̄ .+= hi
     end
-    return h̄/length(h)
+    h̄ /= length(h)
+    return h̄
 end
 
 mean(h::History{T}) where {T} = mean!(T(),h)
@@ -81,4 +83,25 @@ function Base.diff(h::History{T,PeriodicHistory}) where {T}
   return History(Base.unsafe_view(h,r1...) .- Base.unsafe_view(h,r0...), htype=PeriodicHistory)
 end
 
-Base.circshift(h::History{T,H},shift) where {T,H} = History(circshift(h,shift),htype=H)
+Base.circshift(h::History{T,H},shift::Integer) where {T,H} = History(circshift(h,shift),htype=H)
+
+#=
+set ghosts
+=#
+"""
+    set_first_ghost!(h::History,h_pre::History)
+
+Set the first ghost value of history `h` with the last element of history `h_pre`.
+This is only valid if `h` is of type `RegularHistory`.
+"""
+set_first_ghost!(h::History{T,RegularHistory},h_pre::History{T}) where {T} =
+    (h.r = h.r.start+1:h.r.stop+1; pushfirst!(h.vec,h_pre.vec[end]]))
+
+"""
+    set_last_ghost!(h::History,h_post::History)
+
+Set the last ghost value of history `h` with the first element of history `h_post`.
+This is only valid if `h` is of type `RegularHistory`.
+"""
+set_last_ghost!(h::History{T,RegularHistory},h_post::History{T}) where {T} =
+    push!(h.vec,h_post.vec[1]])
