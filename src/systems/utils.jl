@@ -64,7 +64,7 @@ struct StorePlan
     min_t::Float64
     max_t::Float64
     store_Δt::Float64
-    htype::HistoryType
+    htype::Type{HistoryType}
     varlist::Vector{DataType}
     StorePlan(min_t,max_t,store_Δt,varlist...;htype=RegularHistory) = new(min_t,max_t,store_Δt,htype,_get_type(varlist))
 end
