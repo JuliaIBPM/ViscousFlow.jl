@@ -67,22 +67,22 @@ function (-)(h_in::History)
 end
 
 # Add and subtract the same type
-function (-)(h1::T,h2::T) where {T<:History}
-  return T(h1.vec .- h2.vec)
+function (-)(h1::History{T,H},h2::History{T,H}) where {T,H}
+  return History(h1.vec .- h2.vec,htype=H)
 end
 
-function (+)(h1::T,h2::T) where {T<:History}
-  return T(h1.vec .+ h2.vec)
+function (+)(h1::History{T,H},h2::History{T,H}) where {T,H}
+  return History(h1.vec .+ h2.vec,htype=H)
 end
 
 # Multiply and divide by a constant
-function (*)(h::T,c::Number) where {T<:History}
-  return T(c*h.vec)
+function (*)(h::History{T,H},c::Number) where {T,H}
+  return History(c*h.vec,htype=H)
 end
 
 
-function (/)(h::T,c::Number) where {T<:History}
-  return T(h.vec ./ c)
+function (/)(h::History{T,H},c::Number) where {T,H}
+  return History(h.vec ./ c,htype=H)
 end
 
 (*)(c::Number,h::T) where {T<:History} = *(h,c)
