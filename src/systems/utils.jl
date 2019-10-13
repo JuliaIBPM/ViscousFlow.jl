@@ -64,8 +64,9 @@ struct StorePlan
     min_t::Float64
     max_t::Float64
     store_Δt::Float64
+    htype::HistoryType
     varlist::Vector{DataType}
-    StorePlan(min_t,max_t,store_Δt,varlist...) = new(min_t,max_t,store_Δt,_get_type(varlist))
+    StorePlan(min_t,max_t,store_Δt,varlist...;htype=RegularHistory) = new(min_t,max_t,store_Δt,htype,_get_type(varlist))
 end
 
 #function StorePlan(min_t,max_t,store_Δt,v...)
@@ -76,12 +77,12 @@ end
     initialize_storage(S::StorePlan) -> Vector
 
 Initialize a storage data stack for the storage plan `S`. The output is
-an empty vector of vectors.
+an empty vector of `History` vectors.
 """
 function initialize_storage(S::StorePlan)
     data = []
     for v in S.varlist
-        push!(data,v[])
+        push!(data,History(v,S.htype))
     end
     return data
 end
