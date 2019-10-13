@@ -104,4 +104,4 @@ Set the last ghost value of history `h` with the first element of history `h_pos
 This is only valid if `h` is of type `RegularHistory`.
 """
 set_last_ghost!(h::History{T,RegularHistory},h_post::History{T}) where {T} =
-    push!(h.vec,h_post.vec[1]])
+    push!(h.vec,h_post.vec[1])
