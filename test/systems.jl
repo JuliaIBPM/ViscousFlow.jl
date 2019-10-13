@@ -91,7 +91,8 @@ using Compat.LinearAlgebra
     d = Nodes(Dual,(5,5))
     fill!(d,1.0)
     push!(h,deepcopy(d))
-    push!(h,Nodes(Dual,d))
+    fill!(d,0.0)
+    push!(h,deepcopy(d))
     fill!(d,5.0)
     push!(h,deepcopy(d))
 
@@ -116,6 +117,10 @@ using Compat.LinearAlgebra
     hp2 = History(hp[1:2:5],htype=PeriodicHistory)
 
     @test hp2[2][1,1] == 5.0
+
+    hpshift = circshift(hp,1)
+
+    @test hpshift[1][1,1] == 5.0
 
 
   end
