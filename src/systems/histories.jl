@@ -30,7 +30,7 @@ mutable struct History{T,H <: HistoryType} <: AbstractVector{T}
   vec :: Vector{T}
 end
 
-History(::Type{T}; htype::Type{H}=RegularHistory) where {T, H <: HistoryType} = History{T,htype}(0:0,T[])
+History(::Type{T}; htype::Type{H}=RegularHistory) where {T, H <: HistoryType} = History{T,htype}(1:0,T[])
 
 History(::T;htype=RegularHistory) where {T} = History(T;htype=htype)
 
