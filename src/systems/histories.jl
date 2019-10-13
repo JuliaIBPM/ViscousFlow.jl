@@ -2,7 +2,7 @@
 
 import Statistics: mean
 
-export History, PeriodicHistory, RegularHistory, set_first_ghost!, set_last_ghost!
+export History, HistoryType, PeriodicHistory, RegularHistory, set_first_ghost!, set_last_ghost!
 
 abstract type HistoryType end
 abstract type PeriodicHistory <: HistoryType end

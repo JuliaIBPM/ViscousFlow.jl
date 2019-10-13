@@ -47,6 +47,19 @@ YEdges(T, nx::Int, ny::Int) = YEdges(T,(nx,ny))
 Base.similar(::XEdges{T,NX,NY}) where {T,NX,NY} = XEdges(T, (NX, NY))
 Base.similar(::YEdges{T,NX,NY}) where {T,NX,NY} = YEdges(T, (NX, NY))
 
+function Base.show(io::IO, xedges::XEdges{T, NX, NY}) where {T, NX, NY}
+    nodedims = "(nx = $NX, ny = $NY)"
+    dims = "(nx = $(size(xedges,1)), ny = $(size(xedges,2)))"
+    println(io, "$T x-edges in a $nodedims cell grid")
+    print(io, "  Number of $T nodes: $dims")
+end
+
+function Base.show(io::IO, yedges::YEdges{T, NX, NY}) where {T, NX, NY}
+    nodedims = "(nx = $NX, ny = $NY)"
+    dims = "(nx = $(size(yedges,1)), ny = $(size(yedges,2)))"
+    println(io, "$T y-edges in a $nodedims cell grid")
+    print(io, "  Number of $T nodes: $dims")
+end
 
 # VECTOR EDGE DATA
 
