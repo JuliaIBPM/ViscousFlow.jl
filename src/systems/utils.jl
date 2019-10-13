@@ -52,21 +52,23 @@ end
 
 
 """
-    StorePlan(min_t,max_t,store_Δt,v)
+    StorePlan(min_t,max_t,store_Δt,v[;htype=RegularHistory])
 
 Create a plan for storing history data. The storage of data is specified to
 start at time unit `min_t` and to proceed until (and including) `max_t`, and
 is stored every `store_Δt` time units. The list of variables to be stored is
 specified as a list of variables `v`. Tuple-type variables are unwrapped
-into separate storage.
+into separate storage. The optional argument `htype` can be used to set the
+history data to `PeriodicHistory` or `RegularHistory` (the default). In the
+case of `PeriodicHistory`, the data is assumed to repeat with a period equal
+to length(history)+1.
 """
-struct StorePlan
+struct StorePlan{H<:HistoryType}
     min_t::Float64
     max_t::Float64
     store_Δt::Float64
-    htype::Type{HistoryType}
     varlist::Vector{DataType}
-    StorePlan(min_t,max_t,store_Δt,varlist...;htype=RegularHistory) = new(min_t,max_t,store_Δt,htype,_get_type(varlist))
+    StorePlan(min_t,max_t,store_Δt,varlist...;htype=RegularHistory) = new{htype}(min_t,max_t,store_Δt,_get_type(varlist))
 end
 
 #function StorePlan(min_t,max_t,store_Δt,v...)
@@ -79,10 +81,10 @@ end
 Initialize a storage data stack for the storage plan `S`. The output is
 an empty vector of `History` vectors.
 """
-function initialize_storage(S::StorePlan)
+function initialize_storage(S::StorePlan{H}) where {H}
     data = []
     for v in S.varlist
-        push!(data,History(v,S.htype))
+        push!(data,History(v,htype=H))
     end
     return data
 end
