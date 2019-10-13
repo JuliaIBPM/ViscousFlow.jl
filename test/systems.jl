@@ -128,10 +128,10 @@ using Compat.LinearAlgebra
 
     # test setting ghosts on regular history
     h_pre = deepcopy(h)
+    h_post = deepcopy(h)
     set_first_ghost!(h,h_pre)
     @test h[1][1,1] == c
 
-    h_post = deepcopy(h)
     set_last_ghost!(h,h_post)
     @test h[end][1,1] == a
 
