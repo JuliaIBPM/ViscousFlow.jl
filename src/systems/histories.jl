@@ -95,7 +95,7 @@ Set the first ghost value of history `h` with the last element of history `h_pre
 This is only valid if `h` is of type `RegularHistory`.
 """
 set_first_ghost!(h::History{T,RegularHistory},h_pre::History{T}) where {T} =
-    (h.r = h.r.start+1:h.r.stop+1; pushfirst!(h.vec,h_pre.vec[end]]))
+    (h.r = h.r.start+1:h.r.stop+1; pushfirst!(h.vec,h_pre.vec[end]))
 
 """
     set_last_ghost!(h::History,h_post::History)
