@@ -83,7 +83,7 @@ function Base.diff(h::History{T,PeriodicHistory}) where {T}
   return History(Base.unsafe_view(h,r1...) .- Base.unsafe_view(h,r0...), htype=PeriodicHistory)
 end
 
-Base.circshift(h::History{T,H},shift::Integer) where {T,H} = History(circshift(h,shift),htype=H)
+Base.circshift(h::History{T,H},shift::Integer) where {T,H} = History(circshift(h.vec,shift),htype=H)
 
 #=
 set ghosts
