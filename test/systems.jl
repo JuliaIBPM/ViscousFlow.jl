@@ -126,6 +126,19 @@ using Compat.LinearAlgebra
     hpshift = circshift(hp,1)
     @test hpshift[1][1,1] == c
 
+    # testing arithmetic
+    h3 = 3*h
+    @test h3[3][1,1] == 3*c
+
+    h4 = h+h3
+    @test h4[1][1,1] == 4*a
+
+    h5 = -h
+    @test h5[3][1,1] == -c
+
+    h6 = h/2
+    @test h6[1][1,1] == a/2
+
     # test setting ghosts on regular history
     h_pre = deepcopy(h)
     h_post = deepcopy(h)
@@ -139,14 +152,7 @@ using Compat.LinearAlgebra
     @test h.r.start == 2
     @test h.r.stop == 4
 
-    h3 = 3*h
-    @test h3[3][1,1] == 3*c
 
-    h4 = h+h3
-    @test h4[1][1,1] == 4*a
-
-    h5 = -h
-    @test h5[3][1,1] == -c
 
   end
 
