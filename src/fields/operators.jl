@@ -11,6 +11,7 @@ struct Identity end
 include("innerproducts.jl")
 include("convolution.jl")
 include("lgf.jl")
+include("lgf-helmholtz.jl")
 include("ddf.jl")
 include("laplacian.jl")
 include("intfact.jl")
