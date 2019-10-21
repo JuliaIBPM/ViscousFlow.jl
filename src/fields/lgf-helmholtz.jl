@@ -1,7 +1,7 @@
 #using Compat.Serialization
 #using Compat: @info
 
-const GLH_NODES, GLH_WEIGHTS = gausslegendre(100)
+const GLH_NODES, GLH_WEIGHTS = gausslegendre(1000)
 const LGFH_DIR  = joinpath(pwd(), "cache")
 
 alpha_to_string(α::Float64) = string(100000+α*10000)[2:6]
@@ -23,7 +23,7 @@ function build_lgf_helmholtz(N,α)
 
     g = zeros(N, N)
     for y in 0:N-1, x in 0:y
-        g[x+1,y+1] = lgf_helmholtz(x,y)
+        g[x+1,y+1] = lgf_helmholtz(x,y,α)
     end
 
     G = Symmetric(g)
