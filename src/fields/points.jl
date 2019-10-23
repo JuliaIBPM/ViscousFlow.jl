@@ -1,6 +1,6 @@
 import Base: size, show, summary, +, -
 
-abstract type PointData{N} <: AbstractVector{Float64} end
+abstract type PointData{N,T} <: AbstractVector{T} end
 
 """
     ScalarData
@@ -38,8 +38,8 @@ julia> f
  0.0
 ```
 """
-struct ScalarData{N} <: PointData{N}
-    data::Vector{Float64}
+struct ScalarData{N,T} <: PointData{N,T}
+    data::Vector{T}
 end
 
 @wraparray ScalarData data 1
@@ -97,9 +97,9 @@ julia> f
  0.0  0.0
 ```
 """
-struct VectorData{N} <: PointData{N}
-    u::ScalarData{N}
-    v::ScalarData{N}
+struct VectorData{N,T} <: PointData{N,T}
+    u::ScalarData{N,T}
+    v::ScalarData{N,T}
 end
 
 """
@@ -118,53 +118,53 @@ on top of each other.
 # Example
 
 """
-struct TensorData{N} <: PointData{N}
-    dudx::ScalarData{N}
-    dudy::ScalarData{N}
-    dvdx::ScalarData{N}
-    dvdy::ScalarData{N}
+struct TensorData{N,T} <: PointData{N,T}
+    dudx::ScalarData{N,T}
+    dudy::ScalarData{N,T}
+    dvdx::ScalarData{N,T}
+    dvdy::ScalarData{N,T}
 end
 
-function ScalarData(data::Vector{T}) where {T <: Real}
-  ScalarData{length(data)}(convert.(Float64,data))
+function ScalarData(data::Vector{T}) where {T <: Number}
+  ScalarData{length(data),T}(data)
 end
 
-function VectorData(u::Vector{T},v::Vector{T}) where {T <: Real}
+function VectorData(u::Vector{T},v::Vector{T}) where {T <: Number}
   @assert length(u) == length(v)
-  VectorData{length(u)}(ScalarData(u),ScalarData(v))
+  VectorData{length(u),T}(ScalarData(u),ScalarData(v))
 end
 
 function TensorData(dudx::Vector{T},dudy::Vector{T},
-                    dvdx::Vector{T},dvdy::Vector{T}) where {T <: Real}
+                    dvdx::Vector{T},dvdy::Vector{T}) where {T <: Number}
   @assert length(dudx) == length(dudy) == length(dvdx) == length(dvdy)
-  TensorData{length(dudx)}(ScalarData(dudx),ScalarData(dudy),
+  TensorData{length(dudx),T}(ScalarData(dudx),ScalarData(dudy),
                            ScalarData(dvdx),ScalarData(dvdy))
 end
 
-ScalarData(x::ScalarData) = ScalarData(zero(x.data))
-ScalarData(n::Int) = ScalarData(zeros(Float64,n))
-ScalarData(x::VectorData) = ScalarData(zero(x.u))
-ScalarData(x::TensorData) = ScalarData(zero(x.dudx))
-VectorData(x::Tuple{Vector{T},Vector{T}}) where {T <: Real} = VectorData(x[1],x[2])
-VectorData(x::VectorData) = VectorData(zero(x.u),zero(x.v))
-VectorData(n::Int) = VectorData(zeros(Float64,n),zeros(Float64,n))
-VectorData(x::ScalarData) = VectorData(zero(x.data),zero(x.data))
-VectorData(x::TensorData) = VectorData(zero(x.dudx),zero(x.dudy))
-TensorData(x::TensorData) = TensorData(zero(x.dudx),zero(x.dudy),zero(x.dvdx),zero(x.dvdy))
-TensorData(n::Int) = TensorData(zeros(Float64,n),zeros(Float64,n),zeros(Float64,n),zeros(Float64,n))
-TensorData(x::ScalarData) = TensorData(zero(x.data),zero(x.data),zero(x.data),zero(x.data))
-TensorData(x::VectorData) = TensorData(zero(x.u),zero(x.u),zero(x.v),zero(x.v))
+ScalarData(x::PointData{N,T}) where {N,T} = ScalarData(zeros(T,N))
+ScalarData(n::Int;dtype=Float64) = ScalarData(zeros(dtype,n))
+#ScalarData(x::VectorData) = ScalarData(zero(x.u))
+#ScalarData(x::TensorData) = ScalarData(zero(x.dudx))
+VectorData(x::Tuple{Vector{T},Vector{T}}) where {T <: Number} = VectorData(x[1],x[2])
+VectorData(x::PointData{N,T}) where {N,T} = VectorData(zeros(T,N),zeros(T,N))
+VectorData(n::Int;dtype=Float64) = VectorData(zeros(dtype,n),zeros(dtype,n))
+#VectorData(x::ScalarData) = VectorData(zero(x.data),zero(x.data))
+#VectorData(x::TensorData) = VectorData(zero(x.dudx),zero(x.dudy))
+TensorData(x::PointData{N,T}) where {N,T} = TensorData(zeros(T,N),zeros(T,N),zeros(T,N),zeros(T,N))
+TensorData(n::Int;dtype=Float64) = TensorData(zeros(dtype,n),zeros(dtype,n),zeros(dtype,n),zeros(dtype,n))
+#TensorData(x::ScalarData) = TensorData(zero(x.data),zero(x.data),zero(x.data),zero(x.data))
+#TensorData(x::VectorData) = TensorData(zero(x.u),zero(x.u),zero(x.v),zero(x.v))
 
-(::Type{ScalarData{N}})() where {N} = ScalarData(N)
-(::Type{VectorData{N}})() where {N} = VectorData(N)
-(::Type{TensorData{N}})() where {N} = TensorData(N)
+(::Type{ScalarData{N,T}})() where {N,T} = ScalarData(N,dtype=T)
+(::Type{VectorData{N,T}})() where {N,T} = VectorData(N,dtype=T)
+(::Type{TensorData{N,T}})() where {N,T} = TensorData(N,dtype=T)
 
 
-Base.similar(::ScalarData{N}) where {N} = ScalarData(N)
+Base.similar(::ScalarData{N,T}) where {N,T} = ScalarData(N,dtype=T)
 
-Base.similar(::VectorData{N}) where {N} = VectorData(N)
+Base.similar(::VectorData{N,T}) where {N,T} = VectorData(N,dtype=T)
 
-Base.similar(::TensorData{N}) where {N} = TensorData(N)
+Base.similar(::TensorData{N,T}) where {N,T} = TensorData(N,dtype=T)
 
 
 
@@ -176,7 +176,7 @@ Return twice the number of vector data points if `d` is 1 (the sum of the length
 `v` vectors) and 1 if `d` is 2. This is consistent with the interpretation of VectorData as
 a stacked pair of columns, corresponding to the `u` and `v` components, respectively.
 """
-Base.size(::VectorData{N},d::Int) where {N} = d == 1 ? 2*N : 1
+Base.size(::VectorData{N,T},d::Int) where {N,T} = d == 1 ? 2*N : 1
 
 """
     size(A::VectorData) -> Tuple
@@ -184,10 +184,10 @@ Base.size(::VectorData{N},d::Int) where {N} = d == 1 ? 2*N : 1
 Return a tuple of the number of vector data points by the number of dimensions.
 """
 Base.size(A::VectorData) = (size(A,1),)
-@propagate_inbounds Base.getindex(A::VectorData{N},i::Int) where {N} =
+@propagate_inbounds Base.getindex(A::VectorData{N,T},i::Int) where {N,T} =
    i > N ? A.v[i-N] : A.u[i]
-@propagate_inbounds Base.setindex!(A::VectorData{N}, v, i::Int) where {N} =
-   i > N ? A.v[i-N] = convert(Float64, v) : A.u[i] = convert(Float64, v)
+@propagate_inbounds Base.setindex!(A::VectorData{N,T}, v, i::Int) where {N,T} =
+   i > N ? A.v[i-N] = convert(T, v) : A.u[i] = convert(T, v)
 
 """
     size(A::TensorData,d::Int) -> Int
@@ -196,7 +196,7 @@ Return four times the number of tensor data points if `d` is 1 (the sum of the l
 and 1 if `d` is 2. This is consistent with the interpretation of TensorData as
 a stacked set of columns.
 """
-Base.size(::TensorData{N},d::Int) where {N} = d == 1 ? 4*N : 1
+Base.size(::TensorData{N,T},d::Int) where {N,T} = d == 1 ? 4*N : 1
 
 """
     size(A::TensorData) -> Tuple
@@ -205,26 +205,26 @@ Return a tuple of the number of tensor data points by the number of dimensions.
 """
 Base.size(A::TensorData) = (size(A,1),)
 
-@propagate_inbounds Base.getindex(A::TensorData{N},i::Int) where {N} =
+@propagate_inbounds Base.getindex(A::TensorData{N,T},i::Int) where {N,T} =
    i > N ? (i > 2*N ? (i > 3*N ? A.dvdy[i-3*N] : A.dvdx[i-2*N]) : A.dudy[i-N] ) : A.dudx[i]
-@propagate_inbounds Base.setindex!(A::TensorData{N}, v, i::Int) where {N} =
-   i > N ? (i > 2*N ? (i > 3*N ? A.dvdy[i-3*N] = convert(Float64, v) : A.dvdx[i-2*N] = convert(Float64, v) ) : A.dudy[i-N] = convert(Float64, v) ) : A.dudx[i] = convert(Float64, v)
+@propagate_inbounds Base.setindex!(A::TensorData{N,T}, v, i::Int) where {N,T} =
+   i > N ? (i > 2*N ? (i > 3*N ? A.dvdy[i-3*N] = convert(T, v) : A.dvdx[i-2*N] = convert(T, v) ) : A.dudy[i-N] = convert(T, v) ) : A.dudx[i] = convert(T, v)
 
 
 
-function show(io::IO, m::MIME"text/plain", pts::ScalarData{N}) where {N}
-  println(io,"$N points of scalar-valued data")
+function show(io::IO, m::MIME"text/plain", pts::ScalarData{N,T}) where {N,T}
+  println(io,"$N points of scalar-valued $T data")
   show(io,m,pts.data)
 end
 
 
-function show(io::IO, m::MIME"text/plain", pts::VectorData{N}) where {N}
-  println(io,"$N points of vector-valued data")
+function show(io::IO, m::MIME"text/plain", pts::VectorData{N,T}) where {N,T}
+  println(io,"$N points of vector-valued $T data")
   show(io,m,hcat(pts.u,pts.v))
 end
 
-function show(io::IO, m::MIME"text/plain", pts::TensorData{N}) where {N}
-  println(io,"$N points of tensor-valued data dudx, dudy, dvdx, dvdy")
+function show(io::IO, m::MIME"text/plain", pts::TensorData{N,T}) where {N,T}
+  println(io,"$N points of tensor-valued $T data dudx, dudy, dvdx, dvdy")
   show(io,m,hcat(pts.dudx,pts.dudy,pts.dvdx,pts.dvdy))
 end
 

@@ -68,7 +68,7 @@ mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
     # Body coordinate data, if present
     # if a static problem, these coordinates are in inertial coordinates
     # if a non-static problem, in their own coordinate systems
-    X̃::VectorData{N}
+    X̃::VectorData{N,Float64}
 
     # Pre-stored regularization and interpolation matrices (if present)
     Hmat::Union{RegularizationMatrix,Nothing}
@@ -83,7 +83,7 @@ mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
     # Scratch space
 
     ## Pre-allocated space for intermediate values
-    Vb::VectorData{N}
+    Vb::VectorData{N,Float64}
     Fq::Edges{Primal, NX, NY, Float64}
     Ww::Edges{Dual, NX, NY,Float64}
     Qq::Edges{Dual, NX, NY,Float64}
@@ -94,7 +94,7 @@ mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
 end
 
 function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Real}, Δt;
-                       U∞ = (0.0, 0.0), X̃ = VectorData{0}(),
+                       U∞ = (0.0, 0.0), X̃ = VectorData{0,Float64}(),
                        isstore = false,
                        isstatic = true,
                        isasymptotic = false,
