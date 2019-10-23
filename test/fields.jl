@@ -54,6 +54,8 @@ import Base: to_indices, uncolon, tail, _maybetail
   dualfaceyunit = deepcopy(dualfacezero)
   dualfaceyunit.v[i,j] = 1.0
 
+
+
   @testset "Basic array operations" begin
     w = zero(cellunit)
     w .= cellunit
@@ -253,6 +255,98 @@ import Base: to_indices, uncolon, tail, _maybetail
 
 end
 
+@testset "Complex Grid Routines" begin
+
+# size
+nx = 12; ny = 12
+
+# sample point
+i = 5; j = 7
+
+cellzero = Nodes(Dual,(nx,ny),dtype=ComplexF64)
+nodezero = Nodes(Primal,cellzero)
+facezero = Edges(Primal,cellzero)
+dualfacezero = Edges(Dual,cellzero)
+
+# complex
+
+a = 1.0+1.0im
+
+cellunit = deepcopy(cellzero)
+cellunit[i,j] = a
+
+nodeunit = deepcopy(nodezero)
+nodeunit[i,j] = a
+
+facexunit = deepcopy(facezero)
+facexunit.u[i,j] = a
+
+faceyunit = deepcopy(facezero)
+faceyunit.v[i,j] = a
+
+dualfacexunit = deepcopy(dualfacezero)
+dualfacexunit.u[i,j] = a
+
+dualfaceyunit = deepcopy(dualfacezero)
+dualfaceyunit.v[i,j] = a
+
+@testset "Basic array operations" begin
+  w = zero(cellunit)
+  w .= cellunit
+  @test w[i,j] == a
+  q = similar(facexunit)
+  q .= facexunit
+  @test q.u[i,j] == a
+  @test iszero(q.v)
+end
+
+@testset "Inner products and norms" begin
+  w = zero(cellunit)
+  i0, j0 = rand(2:nx-1), rand(2:ny-1)
+  w[i0,j0] = 1.0im
+  @test Fields.norm(w)*sqrt((nx-2)*(ny-2)) == 1.0
+  w .= 1.0im
+  @test Fields.norm(w) == 1.0
+
+  @test 2*w == w*2
+
+  p = Nodes(Primal,w)
+  p .= 1.0im
+  @test Fields.norm(p) == 1.0
+  p2 = deepcopy(p)
+  @test Fields.dot(p,p2) == 1.0
+  @test Fields.norm(p-p2) == 0.0
+
+  q = Edges(Dual,w)
+  q.u .= 1.0im
+  q2 = deepcopy(q)
+  @test Fields.dot(q,q2) == 1.0
+
+  q = Edges(Primal,w)
+  q.u .= 1.0im
+  q2 = deepcopy(q)
+  @test Fields.dot(q,q2) == 1.0
+
+  @test Fields.integrate(w) == 1.0
+
+  @test Fields.integrate(p) == 1.0
+
+  q .= 1.0im
+  @test Fields.norm(2*q) == sqrt(8)
+
+end
+
+@testset "Dual cell center data Laplacian" begin
+  lapcell = laplacian(cellunit)
+  @test lapcell[i,j] == -4.0*a
+  lapcell[i,j] = 0.0
+  @test lapcell[i+1,j] == lapcell[i-1,j] == lapcell[i,j-1] == lapcell[i,j+1] == a
+  lapcell[i+1,j] = lapcell[i-1,j] = lapcell[i,j-1] = lapcell[i,j+1] = 0.0
+  @test iszero(lapcell)
+end
+
+
+end
 
 @testset "Fields" begin
     @testset "Hadamard Product" begin

@@ -36,9 +36,11 @@ function dot(p1::Nodes{Primal,NX,NY},p2::Nodes{Primal,NX,NY}) where {NX,NY}
   tmp += 0.5*dot(p1[2:dims[1]-1,1],      p2[2:dims[1]-1,1])
   tmp += 0.5*dot(p1[2:dims[1]-1,dims[2]],p2[2:dims[1]-1,dims[2]])
 
-  # corners
-  tmp += 0.25*(p1[1,1]*p2[1,1]             + p1[dims[1],1]*p2[dims[1],1] +
-               p1[1,dims[2]]*p2[1,dims[2]] + p1[dims[1],dims[2]]*p2[dims[1],dims[2]])
+  # corners -- use dot to ensure it works for complex types
+  tmp += 0.25*dot([p1[1,1],p1[dims[1],1],p1[1,dims[2]],p1[dims[1],dims[2]]],
+      [p2[1,1],p2[dims[1],1],p2[1,dims[2]],p2[dims[1],dims[2]]])
+  #tmp += 0.25*(p1[1,1]*p2[1,1]             + p1[dims[1],1]*p2[dims[1],1] +
+  #             p1[1,dims[2]]*p2[1,dims[2]] + p1[dims[1],dims[2]]*p2[dims[1],dims[2]])
 
   return tmp/((NX-2)*(NY-2))
 end
