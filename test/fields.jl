@@ -244,9 +244,9 @@ import Base: to_indices, uncolon, tail, _maybetail
     LH(i,j,f::Function,α) = im*α*f(i,j,α)-(f(i-1,j,α)+f(i+1,j,α)+f(i,j+1,α)+f(i,j-1,α)-4*f(i,j,α))
 
     i0, j0 = rand(1:100), rand(0:100)
-    @test abs(LH(i0,j0,Fields.lgf_helmholtz,alpha)) < 10.0*eps()
+    @test abs(LH(i0,j0,Fields.lgf_helmholtz,alpha)) < 100.0*eps()
 
-    @test isapprox(real(LH(0,0,Fields.lgf_helmholtz,alpha)),1.0;atol=10.0*eps())
+    @test isapprox(real(LH(0,0,Fields.lgf_helmholtz,alpha)),1.0;atol=100.0*eps())
 
 
   end
