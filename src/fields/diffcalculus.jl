@@ -80,7 +80,7 @@ v (in grid orientation)
  0.0   0.0  0.0  0.0  0.0  0.0  0.0
 ```
 """
-curl(nodes::Nodes{Dual,NX,NY}) where {NX,NY} = curl!(Edges(Primal, nodes), nodes)
+curl(nodes::Nodes{Dual,NX,NY,T}) where {NX,NY,T} = curl!(Edges(Primal, nodes), nodes)
 
 function curl!(nodes::Nodes{Dual,NX, NY},
                edges::Edges{Primal, NX, NY}) where {NX, NY}
@@ -93,7 +93,7 @@ function curl!(nodes::Nodes{Dual,NX, NY},
 end
 
 function curl(edges::Edges{Primal, NX, NY}) where {NX, NY}
-    curl!(Nodes(Dual,(NX, NY)), edges)
+    curl!(Nodes(Dual,edges), edges)
 end
 
 struct Curl end
@@ -176,7 +176,7 @@ Printing in grid orientation (lower left is (1,1))
 ```
 """
 function divergence(edges::Edges{T, NX, NY}) where {T <: CellType, NX, NY}
-    divergence!(Nodes(T, NX, NY), edges)
+    divergence!(Nodes(T, edges), edges)
 end
 
 """
@@ -293,8 +293,8 @@ v (in grid orientation)
  0.0  0.0   0.0  0.0  0.0  0.0  0.0
 ```
 """
-function grad(p::Nodes{Primal, NX, NY}) where {NX, NY}
-  grad!(Edges(Primal,(NX,NY)),p)
+function grad(p::Nodes{Primal, NX, NY,T}) where {NX, NY,T}
+  grad!(Edges(Primal,p),p)
 end
 
 """
@@ -322,7 +322,7 @@ Evaluate the discrete gradient of dual nodal data `w`. Can also perform this
 operation by creating an object of Grad type and applying it with `*`.
 """
 function grad(p::Nodes{Dual, NX, NY}) where {NX, NY}
-  grad!(Edges(Dual,(NX,NY)),p)
+  grad!(Edges(Dual,p),p)
 end
 
 """
@@ -374,7 +374,7 @@ Evaluate the discrete gradient of primal or dual edge data `q`. Can also perform
 operation by creating an object of Grad type and applying it with `*`.
 """
 function grad(edges::Edges{C, NX, NY}) where {C<:CellType,NX,NY}
-  grad!(EdgeGradient(C,(NX,NY)),edges)
+  grad!(EdgeGradient(C,edges),edges)
 end
 
 struct Grad end

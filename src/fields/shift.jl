@@ -176,7 +176,7 @@ function interpolate!(primal::Edges{Primal, NX, NY},
 end
 
 function interpolate(dual::Edges{Dual, NX, NY}) where {NX, NY}
-    interpolate!(Edges(Primal, (NX, NY)), dual)
+    interpolate!(Edges(Primal, dual), dual)
 end
 
 # 1-d interpolations on which most of above are based.
@@ -185,4 +185,4 @@ include("interpolation1d.jl")
 
 
 # I don't like this one. It is ambiguous what type of nodes are being shifted to.
-nodeshift(edges::Edges{Primal,NX,NY}) where {NX,NY} = interpolate!((Nodes(Dual, (NX,NY)),Nodes(Dual, (NX,NY))),edges)
+nodeshift(edges::Edges{Primal,NX,NY}) where {NX,NY} = interpolate!((Nodes(Dual, edges),Nodes(Dual, edges)),edges)

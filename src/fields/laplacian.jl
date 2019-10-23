@@ -94,11 +94,11 @@ v (in grid orientation)
 ```
 """
 function laplacian(w::Nodes{T,NX,NY}) where {T<:CellType,NX,NY}
-  laplacian!(Nodes(T,(NX,NY)), w)
+  laplacian!(Nodes(T,w), w)
 end
 
 function laplacian(w::Edges{T,NX,NY}) where {T<:CellType,NX,NY}
-  laplacian!(Edges(T,(NX,NY)), w)
+  laplacian!(Edges(T,w), w)
 end
 
 """
