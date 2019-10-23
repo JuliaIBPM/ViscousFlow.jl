@@ -42,7 +42,7 @@ struct ScalarData{N} <: PointData{N}
     data::Vector{Float64}
 end
 
-@wraparray ScalarData data
+@wraparray ScalarData data 1
 
 """
     VectorData

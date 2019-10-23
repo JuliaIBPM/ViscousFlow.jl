@@ -95,22 +95,22 @@ abstract type CellType end
 abstract type Primal <: CellType end
 abstract type Dual <: CellType end
 
-abstract type GridData{NX,NY} <: AbstractMatrix{Float64} end
+abstract type GridData{NX,NY,T} <: AbstractMatrix{T} end
 
-abstract type ScalarGridData{NX,NY} <: GridData{NX,NY} end
+abstract type ScalarGridData{NX,NY,T} <: GridData{NX,NY,T} end
 
-abstract type VectorGridData{NX,NY} <: GridData{NX,NY} end
+abstract type VectorGridData{NX,NY,T} <: GridData{NX,NY,T} end
 
 
-macro wraparray(wrapper, field)
-    T = eval(wrapper)
-    @assert T <: AbstractArray "Wrapped type must be a subtype of AbstractArray"
-    while supertype(T) <: AbstractArray
-        T = supertype(T)
+macro wraparray(wrapper, field, N)
+    S = eval(wrapper)
+    @assert S <: AbstractArray "Wrapped type must be a subtype of AbstractArray"
+    while supertype(S) <: AbstractArray
+        S = supertype(S)
     end
     #T = supertype(eval(wrapper))
     #@assert T <: AbstractArray "Wrapped type must be a subtype of AbstractArray"
-    el_type, N = T.parameters
+    #el_type, N = S.parameters
 
     quote
         Base.parent(A::$wrapper) = A.$field
@@ -130,10 +130,10 @@ macro wraparray(wrapper, field)
         end
 
         @propagate_inbounds Base.getindex(A::$wrapper, i::Int) = A.$field[i]
-        @propagate_inbounds Base.setindex!(A::$wrapper, v, i::Int) = A.$field[i] = convert($el_type, v)
+        @propagate_inbounds Base.setindex!(A::$wrapper, v, i::Int) = A.$field[i] = convert(eltype(A.$field), v)
         if $N > 1
           @propagate_inbounds Base.getindex(A::$wrapper, I::Vararg{Int, $N}) = A.$field[I...]
-          @propagate_inbounds Base.setindex!(A::$wrapper, v, I::Vararg{Int, $N}) = A.$field[I...] = convert($el_type, v)
+          @propagate_inbounds Base.setindex!(A::$wrapper, v, I::Vararg{Int, $N}) = A.$field[I...] = convert(eltype(A.$field), v)
         end
     end
 end
@@ -152,36 +152,36 @@ end
 @othertype CellType CellType
 
 # This macro allows us to access scalar grid data via just the wrapper itself
-@wraparray ScalarGridData data
+@wraparray ScalarGridData data 2
 
 include("fields/nodes.jl")
 include("fields/edges.jl")
 include("fields/collections.jl")
 
 # (ctype,dnx,dny,shiftx,shifty)
-scalarlist = ((:(Nodes{Primal,NX,NY}), 1,1,0.0,0.0),
-              (:(Nodes{Dual,NX,NY}),   0,0,0.5,0.5),
-              (:(XEdges{Primal,NX,NY}),0,1,0.5,0.0),
-              (:(YEdges{Primal,NX,NY}),1,0,0.0,0.5),
-              (:(XEdges{Dual,NX,NY}),  1,0,0.0,0.5),
-              (:(YEdges{Dual,NX,NY}),  0,1,0.5,0.0))
+scalarlist = ((:(Nodes{Primal,NX,NY,T}), 1,1,0.0,0.0),
+              (:(Nodes{Dual,NX,NY,T}),   0,0,0.5,0.5),
+              (:(XEdges{Primal,NX,NY,T}),0,1,0.5,0.0),
+              (:(YEdges{Primal,NX,NY,T}),1,0,0.0,0.5),
+              (:(XEdges{Dual,NX,NY,T}),  1,0,0.0,0.5),
+              (:(YEdges{Dual,NX,NY,T}),  0,1,0.5,0.0))
 
 # (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy)
-vectorlist = ((:(Edges{Primal,NX,NY}),          0,1,1,0,0.5,0.0,0.0,0.5),
-              (:(Edges{Dual,NX,NY}),            1,0,0,1,0.0,0.5,0.5,0.0),
-              (:(NodePair{Dual,Dual,NX,NY}),    0,0,0,0,0.5,0.5,0.5,0.5),
-              (:(NodePair{Primal,Dual,NX,NY}),  1,1,0,0,0.0,0.0,0.5,0.5),
-              (:(NodePair{Dual,Primal,NX,NY}),  0,0,1,1,0.5,0.5,0.0,0.0),
-              (:(NodePair{Primal,Primal,NX,NY}),1,1,1,1,0.0,0.0,0.0,0.0))
+vectorlist = ((:(Edges{Primal,NX,NY,T}),          0,1,1,0,0.5,0.0,0.0,0.5),
+              (:(Edges{Dual,NX,NY,T}),            1,0,0,1,0.0,0.5,0.5,0.0),
+              (:(NodePair{Dual,Dual,NX,NY,T}),    0,0,0,0,0.5,0.5,0.5,0.5),
+              (:(NodePair{Primal,Dual,NX,NY,T}),  1,1,0,0,0.0,0.0,0.5,0.5),
+              (:(NodePair{Dual,Primal,NX,NY,T}),  0,0,1,1,0.5,0.5,0.0,0.0),
+              (:(NodePair{Primal,Primal,NX,NY,T}),1,1,1,1,0.0,0.0,0.0,0.0))
 
-tensorlist = ((:(EdgeGradient{Dual,Primal,NX,NY}), 0,0,1,1,0.5,0.5,0.0,0.0),
-              (:(EdgeGradient{Primal,Dual,NX,NY}), 1,1,0,0,0.0,0.0,0.5,0.5))
+tensorlist = ((:(EdgeGradient{Dual,Primal,NX,NY,T}), 0,0,1,1,0.5,0.5,0.0,0.0),
+              (:(EdgeGradient{Primal,Dual,NX,NY,T}), 1,1,0,0,0.0,0.0,0.5,0.5))
 
 include("fields/basicoperations.jl")
 include("fields/points.jl")
 
 
-CollectedData = Union{EdgeGradient{T,S,NX,NY},NodePair{T,S,NX,NY}} where {T,S,NX,NY}
+CollectedData = Union{EdgeGradient{R,S,NX,NY,T},NodePair{R,S,NX,NY,T}} where {R,S,NX,NY,T}
 
 """
     coordinates(w::GridData;[dx=1.0],[I0=(1,1)])
@@ -207,14 +207,14 @@ julia> xg, yg = coordinates(w,dx=0.1)
 function coordinates end
 
 for (ctype,dnx,dny,shiftx,shifty) in scalarlist
-   @eval coordinates(w::$ctype;dx::Float64=1.0,I0::Tuple{Int,Int}=(1,1)) where {NX,NY} =
+   @eval coordinates(w::$ctype;dx::Float64=1.0,I0::Tuple{Int,Int}=(1,1)) where {NX,NY,T} =
     dx.*((1-I0[1]-$shiftx):(NX-$dnx-I0[1]-$shiftx),
          (1-I0[2]-$shifty):(NY-$dny-I0[2]-$shifty))
 
 end
 
 for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
-   @eval coordinates(w::$ctype;dx::Float64=1.0,I0::Tuple{Int,Int}=(1,1)) where {NX,NY} =
+   @eval coordinates(w::$ctype;dx::Float64=1.0,I0::Tuple{Int,Int}=(1,1)) where {NX,NY,T} =
     dx.*((1-I0[1]-$shiftux):(NX-$dunx-I0[1]-$shiftux),
          (1-I0[2]-$shiftuy):(NY-$duny-I0[2]-$shiftuy),
          (1-I0[1]-$shiftvx):(NX-$dvnx-I0[1]-$shiftvx),

@@ -84,9 +84,9 @@ mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
 
     ## Pre-allocated space for intermediate values
     Vb::VectorData{N}
-    Fq::Edges{Primal, NX, NY}
-    Ww::Edges{Dual, NX, NY}
-    Qq::Edges{Dual, NX, NY}
+    Fq::Edges{Primal, NX, NY, Float64}
+    Ww::Edges{Dual, NX, NY,Float64}
+    Qq::Edges{Dual, NX, NY,Float64}
 
     # Flags
     _isstore :: Bool
@@ -110,9 +110,9 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
     L = plan_laplacian((NX,NY),with_inverse=true)
 
     Vb = VectorData(X̃)
-    Fq = Edges{Primal,NX,NY}()
-    Ww = Edges{Dual, NX, NY}()
-    Qq = Edges{Dual, NX, NY}()
+    Fq = Edges{Primal,NX,NY,Float64}()
+    Ww = Edges{Dual, NX, NY,Float64}()
+    Qq = Edges{Dual, NX, NY,Float64}()
     N = length(X̃)÷2
 
     Hmat = nothing
@@ -195,7 +195,7 @@ Fields.plan_intfact(Δt,w,sys::NavierStokes{NX,NY}) where {NX,NY} =
         Fields.plan_intfact(Δt/(sys.Re*cellsize(sys)^2),w)
 
 # RHS of Navier-Stokes (non-linear convective term)
-function TimeMarching.r₁(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY}) where {NX,NY}
+function TimeMarching.r₁(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY}) where {NX,NY,T}
 
   Ww = sys.Ww
   Qq = sys.Qq
@@ -211,7 +211,7 @@ function TimeMarching.r₁(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY}) wher
 end
 
 # RHS of Navier-Stokes (non-linear convective term)
-function TimeMarching.r₁(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY},U∞::RigidBodyMotions.RigidBodyMotion) where {NX,NY}
+function TimeMarching.r₁(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY},U∞::RigidBodyMotions.RigidBodyMotion) where {NX,NY,T}
 
   Ww = sys.Ww
   Qq = sys.Qq
@@ -230,14 +230,14 @@ end
 # Operators for a system with a body
 
 # RHS of a stationary body with no surface velocity
-function TimeMarching.r₂(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY,N,true}) where {NX,NY,N}
+function TimeMarching.r₂(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,true}) where {NX,NY,N,T}
     ΔV = VectorData(sys.X̃)
     ΔV.u .-= sys.U∞[1]
     ΔV.v .-= sys.U∞[2]
     return ΔV
 end
 
-function TimeMarching.r₂(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY,N,true},U∞::RigidBodyMotions.RigidBodyMotion) where {NX,NY,N}
+function TimeMarching.r₂(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,true},U∞::RigidBodyMotions.RigidBodyMotion) where {NX,NY,N,T}
     ΔV = VectorData(sys.X̃)
     _,ċ,_,_,_,_ = U∞(t)
     ΔV.u .-= real(ċ)
@@ -248,19 +248,19 @@ end
 # Constraint operators, using stored regularization and interpolation operators
 # B₁ᵀ = CᵀEᵀ, B₂ = -ECL⁻¹
 TimeMarching.B₁ᵀ(f::VectorData{N},sys::NavierStokes{NX,NY,N,C}) where {NX,NY,N,C} = Curl()*(sys.Hmat*f)
-TimeMarching.B₂(w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY,N,C}) where {NX,NY,N,C} = -(sys.Emat*(Curl()*(sys.L\w)))
+TimeMarching.B₂(w::Nodes{Dual,NX,NY,T},sys::NavierStokes{NX,NY,N,C}) where {NX,NY,T,N,C} = -(sys.Emat*(Curl()*(sys.L\w)))
 
 # Constraint operators, using non-stored regularization and interpolation operators
 TimeMarching.B₁ᵀ(f::VectorData{N},regop::Regularize,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,N} = Curl()*regop(sys.Fq,f)
-TimeMarching.B₂(w::Nodes{Dual,NX,NY},regop::Regularize,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,N} = -(regop(sys.Vb,Curl()*(sys.L\w)))
+TimeMarching.B₂(w::Nodes{Dual,NX,NY,T},regop::Regularize,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,T,N} = -(regop(sys.Vb,Curl()*(sys.L\w)))
 
 # Constraint operator constructors
 # Constructor using stored operators
-TimeMarching.plan_constraints(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY,N,true}) where {NX,NY,N} =
+TimeMarching.plan_constraints(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,true}) where {NX,NY,T,N} =
                     (f -> TimeMarching.B₁ᵀ(f,sys),w -> TimeMarching.B₂(w,sys))
 
 # Constructor using non-stored operators
-function TimeMarching.plan_constraints(w::Nodes{Dual,NX,NY},t,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,N}
+function TimeMarching.plan_constraints(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,T,N}
   regop = Regularize(sys.X̃,Fields.cellsize(sys);I0=Fields.origin(sys),issymmetric=true)
 
   return f -> TimeMarching.B₁ᵀ(f,regop,sys),w -> TimeMarching.B₂(w,regop,sys)

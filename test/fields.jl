@@ -256,7 +256,7 @@ end
 
 @testset "Fields" begin
     @testset "Hadamard Product" begin
-        edges_p  = Edges{Primal, 30, 40}()
+        edges_p  = Edges(Primal,(30,40))
         edges_p.u .= rand(Float64,size(edges_p.u))
 
         # Should be safe for the output to be the same as the input
@@ -265,12 +265,12 @@ end
         @test edges_p2.u == edges_p.u
         @test edges_p2.v == edges_p.v
 
-        edges_d  = Edges{Dual, 30, 40}()
+        edges_d  = Edges{Dual, 30, 40, Float64}()
         @test_throws MethodError (edges_p ∘ edges_d)
     end
 
     @testset "Discrete Laplacian" begin
-        s = Nodes{Dual, 30, 40}()
+        s = Nodes(Dual,(30,40))
         s[3:end-2, 3:end-2] .= rand(26, 36)
 
         L = plan_laplacian(30, 40)
@@ -289,7 +289,7 @@ end
     end
 
     @testset "Integrating factor" begin
-        s = Nodes{Dual, 30, 40}()
+        s = Nodes(Dual,(30,40))
         s[15,15] = 1.0
 
         E1 = plan_intfact(1,s)
@@ -306,13 +306,13 @@ end
     end
 
     @testset "Discrete Divergence" begin
-        s = Nodes{Dual, 5, 4}()
+        s = Nodes{Dual, 5, 4, Float64}()
         s .= rand(5, 4)
 
         @test iszero(divergence(curl(s)))
 
-        s = Nodes{Primal, 5, 4}()
-        q′ = Edges{Primal, 5, 4}()
+        s = Nodes{Primal, 5, 4, Float64}()
+        q′ = Edges{Primal, 5, 4, Float64}()
         q′.u .= reshape(1:15, 5, 3)
         q′.v .= reshape(1:16, 4, 4)
 
@@ -328,7 +328,7 @@ end
     end
 
     @testset "Discrete Curl" begin
-        s = Nodes{Dual, 5, 4}()
+        s = Nodes{Dual, 5, 4, Float64}()
         s .= reshape(1:20, 4, 5)'
 
         q = curl(s)
@@ -347,10 +347,10 @@ end
 
     @testset "Shifting Primal Edges to Dual Edges" begin
 
-        q = Edges{Primal, 5, 4}()
+        q = Edges{Primal, 5, 4, Float64}()
         q.u .= reshape(1:15, 5, 3)
         q.v .= reshape(1:16, 4, 4)
-        Qq = Edges{Dual, 5, 4}()
+        Qq = Edges{Dual, 5, 4, Float64}()
 
         interpolate!(Qq,q)
         @test Qq.u == [ 0.0  4.0  9.0  0.0
@@ -368,10 +368,10 @@ end
 
     @testset "Shifting Dual Edges to Primal Edges" begin
 
-        q = Edges{Dual, 5, 4}()
+        q = Edges{Dual, 5, 4, Float64}()
         q.u .= reshape(1:16, 4, 4)
         q.v .= reshape(1:15, 5, 3)
-        v = Edges{Primal, 5, 4}()
+        v = Edges{Primal, 5, 4, Float64}()
         interpolate!(v,q)
 
         @test v.u == [ 0.0  0.0   0.0
@@ -389,10 +389,10 @@ end
 
     @testset "Shifting Dual Nodes to Dual Edges" begin
 
-        w = Nodes{Dual, 5, 4}()
+        w = Nodes{Dual, 5, 4, Float64}()
         w .= reshape(1:20, 5, 4)
 
-        Ww = Edges{Dual, 5, 4}()
+        Ww = Edges{Dual, 5, 4, Float64}()
         interpolate!(Ww,w)
 
         @test Ww.u == [ 0.0  6.5  11.5  0.0

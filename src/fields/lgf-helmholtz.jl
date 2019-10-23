@@ -1,7 +1,9 @@
 #using Compat.Serialization
 #using Compat: @info
 
-const GLH_NODES_20, GLH_WEIGHTS_20 = gausslegendre(20)
+# Sets up a variety of different Gauss-Legendre data lengths
+# for resolving different regimes of oscillatory function
+#const GLH_NODES_20, GLH_WEIGHTS_20 = gausslegendre(20)
 const GLH_NODES_100, GLH_WEIGHTS_100 = gausslegendre(100)
 const GLH_NODES_200, GLH_WEIGHTS_200 = gausslegendre(200)
 const GLH_NODES_500, GLH_WEIGHTS_500 = gausslegendre(500)
@@ -10,7 +12,7 @@ const GLH_NODES_2000, GLH_WEIGHTS_2000 = gausslegendre(2000)
 const GLH_NODES_2500, GLH_WEIGHTS_2500 = gausslegendre(2500)
 const GLH_NODES_3500, GLH_WEIGHTS_3500 = gausslegendre(3500)
 const GLH_NODES_10000, GLH_WEIGHTS_10000 = gausslegendre(10000)
-const GLH_N = [20,100,200,500,1000,2000,2500,3500,10000]
+const GLH_N = [100,200,500,1000,2000,2500,3500,10000]
 
 const LGFH_DIR  = joinpath(pwd(), "cache")
 

@@ -15,8 +15,8 @@ and allows the use of [size].
 - `Nodes(C,w)` performs the same construction, but uses existing field data `w`
   of `Nodes` type to determine the size of the grid.
 """
-struct Nodes{C <: CellType, NX, NY} <: ScalarGridData{NX,NY}
-    data::Matrix{Float64}
+struct Nodes{C <: CellType, NX, NY, T <: Number} <: ScalarGridData{NX,NY,T}
+    data::Matrix{T}
 end
 
 # Number of indices
@@ -26,25 +26,24 @@ node_inds(::Type{Primal}, dualnodedims) = (dualnodedims[1]-1, dualnodedims[2]-1)
 
 # Constructors
 
-function Nodes(T::Type{C}, dualnodedims::Tuple{Int, Int}) where {C <: CellType}
+function Nodes(T::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {C <: CellType}
     dims = node_inds(T, dualnodedims)
-    Nodes{T, dualnodedims...}(zeros(dims))
+    Nodes{T, dualnodedims...,dtype}(zeros(dtype,dims))
 end
 
 # This allows easy construction of nodes of either type from existing nodes of either
 # type on the same grid.
-Nodes(T, ::ScalarGridData{NX,NY}) where {NX, NY} = Nodes(T, (NX, NY) )
-Nodes(T, ::VectorGridData{NX,NY}) where {NX, NY} = Nodes(T, (NX, NY) )
+Nodes(C, ::GridData{NX,NY,T}) where {NX, NY,T <: Number} = Nodes(C, (NX, NY),dtype=T )
 
 
-Nodes(T, nx::Int, ny::Int) = Nodes(T,(nx,ny))
-(::Type{Nodes{T,NX,NY}})() where {T,NX,NY} = Nodes(T, (NX, NY))
+Nodes(C, nx::Int, ny::Int;dtype=Float64) = Nodes(C,(nx,ny),dtype=dtype)
+(::Type{Nodes{C,NX,NY,T}})() where {C,NX,NY,T} = Nodes(C, (NX, NY),dtype=T)
 
-Base.similar(::Nodes{T,NX,NY}) where {T,NX,NY} = Nodes(T, (NX, NY))
+Base.similar(::Nodes{C,NX,NY,T}) where {C,NX,NY,T} = Nodes(C, (NX, NY),dtype=T)
 
-function Base.show(io::IO, nodes::Nodes{T, NX, NY}) where {T, NX, NY}
+function Base.show(io::IO, nodes::Nodes{C, NX, NY,T}) where {C, NX, NY, T}
     nodedims = "(nx = $NX, ny = $NY)"
     dims = "(nx = $(size(nodes,1)), ny = $(size(nodes,2)))"
-    println(io, "$T nodes in a $nodedims cell grid")
-    print(io, "  Number of $T nodes: $dims")
+    println(io, "$C nodes in a $nodedims cell grid of type $T data")
+    print(io, "  Number of $C nodes: $dims")
 end

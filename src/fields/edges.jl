@@ -2,12 +2,12 @@ import Base: fill!
 
 # EDGE COMPONENT DATA
 
-struct XEdges{C <: CellType, NX, NY} <: ScalarGridData{NX,NY}
-    data::Matrix{Float64}
+struct XEdges{C <: CellType, NX, NY, T <: Number} <: ScalarGridData{NX,NY,T}
+    data::Matrix{T}
 end
 
-struct YEdges{C <: CellType, NX, NY} <: ScalarGridData{NX,NY}
-    data::Matrix{Float64}
+struct YEdges{C <: CellType, NX, NY, T <: Number} <: ScalarGridData{NX,NY,T}
+    data::Matrix{T}
 end
 
 # Number of indices
@@ -20,45 +20,43 @@ yedge_inds(::Type{Primal}, dualnodedims) = (dualnodedims[1]-1, dualnodedims[2])
 
 # Constructors
 
-function XEdges(T::Type{C}, dualnodedims::Tuple{Int, Int}) where {C <: CellType}
+function XEdges(T::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {C <: CellType}
     dims = xedge_inds(T, dualnodedims)
-    XEdges{T, dualnodedims...}(zeros(dims))
+    XEdges{T, dualnodedims...,dtype}(zeros(dtype,dims))
 end
 
-function YEdges(T::Type{C}, dualnodedims::Tuple{Int, Int}) where {C <: CellType}
+function YEdges(T::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {C <: CellType}
     dims = yedge_inds(T, dualnodedims)
-    YEdges{T, dualnodedims...}(zeros(dims))
+    YEdges{T, dualnodedims...,dtype}(zeros(dtype,dims))
 end
 
-XEdges(T, ::ScalarGridData{NX,NY}) where {NX, NY} = XEdges(T, (NX, NY) )
-XEdges(T, ::VectorGridData{NX,NY}) where {NX, NY} = XEdges(T, (NX, NY) )
+XEdges(C, ::GridData{NX,NY,T}) where {NX, NY, T <: Number} = XEdges(C, (NX, NY), dtype = T )
 
-YEdges(T, ::ScalarGridData{NX,NY}) where {NX, NY} = YEdges(T, (NX, NY) )
-YEdges(T, ::VectorGridData{NX,NY}) where {NX, NY} = YEdges(T, (NX, NY) )
+YEdges(C, ::GridData{NX,NY,T}) where {NX, NY, T <: Number} = YEdges(C, (NX, NY), dtype = T )
 
 
-XEdges(T, nx::Int, ny::Int) = XEdges(T,(nx,ny))
-YEdges(T, nx::Int, ny::Int) = YEdges(T,(nx,ny))
+XEdges(C, nx::Int, ny::Int;dtype=Float64) = XEdges(C,(nx,ny),dtype=dtype)
+YEdges(C, nx::Int, ny::Int;dtype=Float64) = YEdges(C,(nx,ny),dtype=dtype)
 
-(::Type{XEdges{T,NX,NY}})() where {T,NX,NY} = XEdges(T, (NX, NY))
-(::Type{YEdges{T,NX,NY}})() where {T,NX,NY} = YEdges(T, (NX, NY))
+(::Type{XEdges{C,NX,NY,T}})() where {C,NX,NY,T} = XEdges(C, (NX, NY),dtype=T)
+(::Type{YEdges{C,NX,NY,T}})() where {C,NX,NY,T} = YEdges(C, (NX, NY),dtype=T)
 
 
-Base.similar(::XEdges{T,NX,NY}) where {T,NX,NY} = XEdges(T, (NX, NY))
-Base.similar(::YEdges{T,NX,NY}) where {T,NX,NY} = YEdges(T, (NX, NY))
+Base.similar(::XEdges{C,NX,NY,T}) where {C,NX,NY,T} = XEdges(C, (NX, NY),dtype=T)
+Base.similar(::YEdges{C,NX,NY,T}) where {C,NX,NY,T} = YEdges(C, (NX, NY),dtype=T)
 
-function Base.show(io::IO, xedges::XEdges{T, NX, NY}) where {T, NX, NY}
+function Base.show(io::IO, xedges::XEdges{C, NX, NY, T}) where {C, NX, NY, T}
     nodedims = "(nx = $NX, ny = $NY)"
     dims = "(nx = $(size(xedges,1)), ny = $(size(xedges,2)))"
-    println(io, "$T x-edges in a $nodedims cell grid")
-    print(io, "  Number of $T nodes: $dims")
+    println(io, "$C x-edges in a $nodedims cell grid of type $T data")
+    print(io, "  Number of $C nodes: $dims")
 end
 
-function Base.show(io::IO, yedges::YEdges{T, NX, NY}) where {T, NX, NY}
+function Base.show(io::IO, yedges::YEdges{C, NX, NY, T}) where {C, NX, NY, T}
     nodedims = "(nx = $NX, ny = $NY)"
     dims = "(nx = $(size(yedges,1)), ny = $(size(yedges,2)))"
-    println(io, "$T y-edges in a $nodedims cell grid")
-    print(io, "  Number of $T nodes: $dims")
+    println(io, "$C y-edges in a $nodedims cell grid of type $T data")
+    print(io, "  Number of $C nodes: $dims")
 end
 
 # VECTOR EDGE DATA
@@ -79,28 +77,27 @@ and horizontal faces of the corresponding cell.
 - `Edges(C,w)` performs the same construction, but uses existing field data `w`
   of `Nodes` type to determine the size of the grid.
 """
-struct Edges{C <: CellType, NX, NY} <: VectorGridData{NX,NY}
-    u::XEdges{C,NX,NY}
-    v::YEdges{C,NX,NY}
+struct Edges{C <: CellType, NX, NY, T <: Number} <: VectorGridData{NX,NY,T}
+    u::XEdges{C,NX,NY,T}
+    v::YEdges{C,NX,NY,T}
 end
 
 # Based on number of dual nodes, return the number of edges
 edge_inds(T::Type{C},   dualnodedims) where {C <: CellType} =
             xedge_inds(T,dualnodedims), yedge_inds(T,dualnodedims)
 
-function Edges(T::Type{C}, dualnodedims::Tuple{Int, Int}) where {C <: CellType}
+function Edges(T::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {C <: CellType}
     udims, vdims = edge_inds(T, dualnodedims)
-    u = XEdges(T,dualnodedims...)
-    v = YEdges(T,dualnodedims...)
-    Edges{T, dualnodedims...}(u, v)
+    u = XEdges(T,dualnodedims...,dtype=dtype)
+    v = YEdges(T,dualnodedims...,dtype=dtype)
+    Edges{T, dualnodedims...,dtype}(u, v)
 end
 
-Edges(T, nodes::Nodes{S,NX,NY}) where {S <: CellType, NX,NY} = Edges(T, (NX, NY))
-(::Type{Edges{T,NX,NY}})() where {T,NX,NY} = Edges(T, (NX, NY))
+(::Type{Edges{C,NX,NY,T}})() where {C,NX,NY,T} = Edges(C, (NX, NY),dtype=T)
 
-Edges(T, ::GridData{NX,NY}) where {NX, NY} = Edges(T, (NX,NY))
+Edges(C, ::GridData{NX,NY,T}) where {NX, NY,T} = Edges(C, (NX,NY),dtype=T)
 
-Base.similar(::Edges{T,NX,NY}) where {T,NX,NY} = Edges(T, (NX, NY))
+Base.similar(::Edges{C,NX,NY,T}) where {C,NX,NY,T} = Edges(C, (NX, NY),dtype=T)
 
 function fill!(edges::Edges, s::Number)
     fill!(edges.u, s)
@@ -109,21 +106,21 @@ function fill!(edges::Edges, s::Number)
 end
 
 Base.size(A::Edges{C,NX,NY}) where {C,NX,NY} = (length(A.u)+length(A.v),1)
-@propagate_inbounds Base.getindex(A::Edges{C,NX,NY},i::Int) where {C,NX,NY} =
+@propagate_inbounds Base.getindex(A::Edges{C,NX,NY,T},i::Int) where {C,NX,NY,T <: Number} =
    i > length(A.u) ? A.v[i-length(A.u)] : A.u[i]
-@propagate_inbounds Base.setindex!(A::Edges{C,NX,NY}, v, i::Int) where {C,NX,NY} =
-   i > length(A.u) ? A.v[i-length(A.u)] = convert(Float64, v) : A.u[i] = convert(Float64, v)
+@propagate_inbounds Base.setindex!(A::Edges{C,NX,NY,T}, v, i::Int) where {C,NX,NY,T <: Number} =
+   i > length(A.u) ? A.v[i-length(A.u)] = convert(T, v) : A.u[i] = convert(T, v)
 Base.IndexStyle(::Type{<:Edges}) = IndexLinear()
 
 
 
 
 
-function Base.show(io::IO, edges::Edges{T, NX, NY}) where {T, NX, NY}
+function Base.show(io::IO, edges::Edges{C, NX, NY, T}) where {C, NX, NY, T}
     nodedims = "(nx = $NX, ny = $NY)"
     udims = "(nx = $(size(edges.u,1)), ny = $(size(edges.u,2)))"
     vdims = "(nx = $(size(edges.v,1)), ny = $(size(edges.v,2)))"
-    println(io, "$T edges for a $nodedims cell grid")
+    println(io, "$C edges for a $nodedims cell grid of type $T data")
     println(io, "  Internal u-faces: $udims")
     print(io, "  Internal v-faces: $vdims")
 end
