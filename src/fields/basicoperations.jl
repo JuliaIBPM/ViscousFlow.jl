@@ -39,11 +39,11 @@ function product!(out::Nodes{T, NX, NY},
 end
 
 function product(p::Nodes{T, NX, NY}, q::Nodes{T, NX, NY}) where {T, NX, NY}
-    product!(Nodes(T, (NX, NY)), p, q)
+    product!(Nodes(T, p), p, q)
 end
 
 function (∘)(p::Nodes{T, NX, NY}, q::Nodes) where {T, NX, NY}
-    product!(Nodes(T, (NX, NY)), p, q)
+    product!(Nodes(T, p), p, q)
 end
 
 (*)(c::Number,p::T) where {T<:GridData} = *(p,c)
@@ -163,11 +163,11 @@ v (in grid orientation)
 ```
 """
 function product(p::Edges{T, NX, NY}, q::Edges{T, NX, NY}) where {T, NX, NY}
-    product!(Edges(T, (NX, NY)), p, q)
+    product!(Edges(T, p), p, q)
 end
 
 function (∘)(p::Edges{T, NX, NY}, q::Edges) where {T, NX, NY}
-    product!(Edges(T, (NX, NY)), p, q)
+    product!(Edges(T, p), p, q)
 end
 
 ### ON TENSORS ####
