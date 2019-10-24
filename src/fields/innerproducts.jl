@@ -154,5 +154,5 @@ Computes a numerical quadrature of node data.
 function integrate(p::T) where {T<:GridData}
   p2 = T()
   fill!(p2,1) # fill it with ones
-  return dot(p,p2)
+  return dot(p2,p) # order matters for complex types
 end

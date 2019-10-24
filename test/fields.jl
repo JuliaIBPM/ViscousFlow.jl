@@ -255,6 +255,8 @@ import Base: to_indices, uncolon, tail, _maybetail
 
 end
 
+##### COMPLEX GRID #####
+
 @testset "Complex Grid Routines" begin
 
 # size
@@ -327,9 +329,9 @@ end
   q2 = deepcopy(q)
   @test Fields.dot(q,q2) == 1.0
 
-  @test Fields.integrate(w) == 1.0
+  @test Fields.integrate(w) == 1.0im
 
-  @test Fields.integrate(p) == 1.0
+  @test Fields.integrate(p) == 1.0im
 
   q .= 1.0im
   @test Fields.norm(2*q) == sqrt(8)
@@ -345,6 +347,149 @@ end
   @test iszero(lapcell)
 end
 
+@testset "Dual cell center data curl" begin
+  q = curl(cellunit)
+  @test q.u[i,j-1] == 1.0*a && q.u[i,j] == -1.0*a
+  q.u[i,j-1] = q.u[i,j] = 0.0
+  @test iszero(q.u)
+  @test q.v[i-1,j] == -1.0*a && q.v[i,j] == 1.0*a
+  q.v[i-1,j] = q.v[i,j] = 0.0
+  @test iszero(q.v)
+end
+
+@testset "Dual cell node gradient" begin
+  q = grad(nodeunit)
+  @test q.u[i,j] == 1.0*a && q.u[i+1,j] == -1.0*a
+  q.u[i,j] = q.u[i+1,j] = 0.0
+  @test iszero(q.u)
+  @test q.v[i,j] == 1.0*a && q.v[i,j+1] == -1.0*a
+  q.v[i,j] = q.v[i,j+1] = 0.0
+  @test iszero(q.v)
+end
+
+@testset "Face data curl" begin
+  cellcurl = curl(facexunit)
+  @test cellcurl[i,j] == -1.0*a && cellcurl[i,j+1] == 1.0*a
+  cellcurl[i,j] = cellcurl[i,j+1] = 0.0
+  @test iszero(cellcurl)
+  cellcurl = curl(faceyunit)
+  @test cellcurl[i,j] == 1.0*a && cellcurl[i+1,j] == -1.0*a
+  cellcurl[i,j] = cellcurl[i+1,j] = 0.0
+  @test iszero(cellcurl)
+end
+
+@testset "Face data divergence" begin
+  nodediv = divergence(facexunit)
+  @test nodediv[i,j] == -1.0*a && nodediv[i-1,j] == 1.0*a
+  nodediv[i,j] = nodediv[i-1,j] = 0.0
+  @test iszero(nodediv)
+  nodediv = divergence(faceyunit)
+  @test nodediv[i,j] == -1.0*a && nodediv[i,j-1] == 1.0*a
+  nodediv[i,j] = nodediv[i,j-1] = 0.0
+  @test iszero(nodediv)
+end
+
+@testset "Face data Laplacian" begin
+  lap = laplacian(facexunit)
+  @test lap.u[i,j] == -4.0*a
+  lap.u[i,j] = 0.0
+  @test lap.u[i+1,j] == lap.u[i-1,j] == lap.u[i,j-1] == lap.u[i,j+1] == 1.0*a
+  lap.u[i+1,j] = lap.u[i-1,j] = lap.u[i,j-1] = lap.u[i,j+1] = 0.0
+  @test iszero(lap.u)
+  @test iszero(lap.v)
+
+  lap = laplacian(faceyunit)
+  @test lap.v[i,j] == -4.0*a
+  lap.v[i,j] = 0.0
+  @test lap.v[i+1,j] == lap.v[i-1,j] == lap.v[i,j-1] == lap.v[i,j+1] == 1.0*a
+  lap.v[i+1,j] = lap.v[i-1,j] = lap.v[i,j-1] = lap.v[i,j+1] = 0.0
+  @test iszero(lap.u)
+  @test iszero(lap.v)
+end
+
+@testset "Dual face data divergence" begin
+  celldiv = divergence(dualfacexunit)
+  @test celldiv[i,j] == 1.0*a && celldiv[i+1,j] == -1.0*a
+  celldiv[i,j] = celldiv[i+1,j] = 0.0
+  @test iszero(celldiv)
+  celldiv = divergence(dualfaceyunit)
+  @test celldiv[i,j] == 1.0*a && celldiv[i,j+1] == -1.0*a
+  celldiv[i,j] = celldiv[i,j+1] = 0.0
+  @test iszero(celldiv)
+end
+
+@testset "Face data shift to dual face" begin
+  shiftx = Edges(Dual,cellzero)
+  interpolate!(shiftx,facexunit)
+  @test shiftx.u[i,j] == shiftx.u[i-1,j] == shiftx.u[i,j+1] == shiftx.u[i-1,j+1] == 0.25*a
+  shiftx.u[i,j] = shiftx.u[i-1,j] = shiftx.u[i,j+1] = shiftx.u[i-1,j+1] = 0.0
+  @test iszero(shiftx.u)
+  @test iszero(shiftx.v)
+  shifty = Edges(Dual,cellzero)
+  interpolate!(shifty,faceyunit)
+  @test shifty.v[i,j] == shifty.v[i,j-1] == shifty.v[i+1,j] == shifty.v[i+1,j-1] == 0.25*a
+  shifty.v[i,j] = shifty.v[i,j-1] = shifty.v[i+1,j] = shifty.v[i+1,j-1] = 0.0
+  @test iszero(shifty.u)
+  @test iszero(shifty.v)
+end
+
+@testset "Dual cell center data shift to dual face" begin
+  w = Edges(Dual,cellzero)
+  interpolate!(w,cellunit)
+  @test w.u[i,j] == w.u[i-1,j] == 0.5*a
+  w.u[i,j] = w.u[i-1,j] = 0.0
+  @test iszero(w.u)
+  @test w.v[i,j] == w.v[i,j-1] == 0.5*a
+  w.v[i,j] = w.v[i,j-1] = 0.0
+  @test iszero(w.v)
+end
+
+@testset "Face data shift to dual cell center" begin
+  cellx = Nodes(Dual,cellzero)
+  celly = Nodes(Dual,cellzero)
+  interpolate!((cellx,celly),facexunit)
+  @test cellx[i,j] == 0.5*a && cellx[i,j+1] == 0.5*a
+  cellx[i,j] = cellx[i,j+1] = 0.0
+  @test iszero(cellx)
+  @test iszero(celly)
+
+  cellx = Nodes(Dual,cellzero)
+  celly = Nodes(Dual,cellzero)
+  interpolate!((cellx,celly),faceyunit)
+  @test celly[i,j] == 0.5*a && celly[i+1,j] == 0.5*a
+  celly[i,j] = celly[i+1,j] = 0.0
+  @test iszero(cellx)
+  @test iszero(celly)
+end
+
+@testset "div curl" begin
+  @test iszero(divergence(curl(cellunit)))
+  @test iszero(curl(grad(nodeunit)))
+end
+
+L = plan_laplacian(nx,ny;with_inverse=true)
+
+#=
+@testset "Laplacian of the LGF" begin
+  ψ = L\cellunit
+  lapψ = L*ψ
+  @test lapψ[i,j]≈1.0*a
+  @test isapprox(maximum(abs.(lapψ[Not(i),:])),0.0;atol=10.0*eps()) &&
+          isapprox(maximum(abs.(lapψ[:,Not(j)])),0.0;atol=10.0*eps())
+end
+
+@testset "LGF for Helmholtz equation" begin
+  alpha = 0.02
+  LH(i,j,f::Function,α) = im*α*f(i,j,α)-(f(i-1,j,α)+f(i+1,j,α)+f(i,j+1,α)+f(i,j-1,α)-4*f(i,j,α))
+
+  i0, j0 = rand(1:100), rand(0:100)
+  @test abs(LH(i0,j0,Fields.lgf_helmholtz,alpha)) < 100.0*eps()
+
+  @test isapprox(real(LH(0,0,Fields.lgf_helmholtz,alpha)),1.0;atol=100.0*eps())
+
+
+end
+=#
 
 end
 
