@@ -1,9 +1,9 @@
 import Base: *
 
 """
-    CircularConvolution{M, N}
+    CircularConvolution{M, N, T}
 
-A preplanned, circular convolution operator on an M × N matrix.
+A preplanned, circular convolution operator on an M × N matrix of data of type T
 
 # Fields
 - `Ĝ`: DFT coefficients of the convolution kernel
@@ -14,7 +14,7 @@ A preplanned, circular convolution operator on an M × N matrix.
 
 # Constructors:
 
-- `CircularConvolution(G::Matrix{Float64})`
+- `CircularConvolution(G::Matrix{T})`
 
 # Example:
 ```jldoctest
@@ -34,40 +34,50 @@ julia> C*reshape(1:12, 3, 4)
  148  148  148  148
 ```
 """
-struct CircularConvolution{M, N, K, KI}
+struct CircularConvolution{M, N, T, K, KI}
     Ĝ::Matrix{ComplexF64}
     F::K
     F⁻¹::KI
 
-    paddedSpace::Matrix{Float64}
+    paddedSpace::Matrix{T}
     Â::Matrix{ComplexF64}
 end
 
-function Base.show(io::IO, c::CircularConvolution{M, N}) where {M, N}
-    print(io, "Circular convolution on a $M × $N matrix")
+function Base.show(io::IO, c::CircularConvolution{M, N, T}) where {M, N, T}
+    print(io, "Circular convolution on a $M × $N matrix of data type $T")
 end
 
-function CircularConvolution(G::AbstractMatrix{Float64}, fftw_flags = FFTW.ESTIMATE)
+function CircularConvolution(G::AbstractMatrix{Float64},fftw_flags = FFTW.ESTIMATE; dtype = Float64)
     FFTW.set_num_threads(2)
 
     M, N = size(G)
     #paddedSpace = Matrix{Float64}(undef, 2M-1, 2N-1)
-    paddedSpace = Matrix{Float64}(undef, 2M, 2N)
+    paddedSpace = Matrix{dtype}(undef, 2M, 2N)
 
-    F = FFTW.plan_rfft(paddedSpace, flags = fftw_flags)
+    if dtype == ComplexF64
+      F = FFTW.plan_fft(paddedSpace, flags = fftw_flags)
+    else
+      F = FFTW.plan_rfft(paddedSpace, flags = fftw_flags)
+    end
+
 
     mirror!(paddedSpace, G)
     Ĝ = F * paddedSpace
 
     Â = similar(Ĝ)
     #F⁻¹ = FFTW.plan_irfft(Â, 2M - 1, flags = fftw_flags)
-    F⁻¹ = FFTW.plan_irfft(Â, 2M, flags = fftw_flags)
+    if dtype == ComplexF64
+      F⁻¹ = FFTW.plan_ifft(Â, flags = fftw_flags)
+    else
+      F⁻¹ = FFTW.plan_irfft(Â, 2M, flags = fftw_flags)
+    end
 
-
-    CircularConvolution{M, N, typeof(F), typeof(F⁻¹)}(Ĝ, F, F⁻¹, paddedSpace, Â)
+    CircularConvolution{M, N, dtype, typeof(F), typeof(F⁻¹)}(Ĝ, F, F⁻¹, paddedSpace, Â)
 end
 
-function mul!(out, C::CircularConvolution{M, N}, B) where {M, N}
+# For real-valued data
+
+function mul!(out, C::CircularConvolution{M, N, T}, B) where {M, N, T}
     FFTW.set_num_threads(2)
     @assert size(out) == size(B) == (M, N)
 
@@ -84,6 +94,29 @@ function mul!(out, C::CircularConvolution{M, N}, B) where {M, N}
     copyto!(out, inds, C.paddedSpace, CartesianIndices((M+1:2M,N+1:2N)))
 
 end
+
+# For complex-valued data
+
+
+#=
+function mul!(out, C::CircularConvolution{M, N, ComplexF64}, B) where {M, N}
+    FFTW.set_num_threads(2)
+    @assert size(out) == size(B) == (M, N)
+
+    inds = CartesianIndices((M,N))
+    fill!(C.paddedSpace, complex(0))
+    copyto!(C.paddedSpace, inds, B, inds)
+    mul!(C.Â, C.F, C.paddedSpace)
+
+    C.Â .*= C.Ĝ
+
+    mul!(C.paddedSpace, C.F⁻¹, C.Â)
+
+    #copyto!(out, inds, C.paddedSpace, CartesianIndices((M:2M-1,N:2N-1)))
+    copyto!(out, inds, C.paddedSpace, CartesianIndices((M+1:2M,N+1:2N)))
+
+end
+=#
 
 C::CircularConvolution * B = mul!(similar(B), C, B)
 

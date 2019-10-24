@@ -270,8 +270,6 @@ nodezero = Nodes(Primal,cellzero)
 facezero = Edges(Primal,cellzero)
 dualfacezero = Edges(Dual,cellzero)
 
-# complex
-
 a = 1.0+1.0im
 
 cellunit = deepcopy(cellzero)
@@ -467,9 +465,8 @@ end
   @test iszero(curl(grad(nodeunit)))
 end
 
-L = plan_laplacian(nx,ny;with_inverse=true)
+L = plan_laplacian(nx,ny;with_inverse=true,dtype=ComplexF64)
 
-#=
 @testset "Laplacian of the LGF" begin
   ψ = L\cellunit
   lapψ = L*ψ
@@ -478,6 +475,7 @@ L = plan_laplacian(nx,ny;with_inverse=true)
           isapprox(maximum(abs.(lapψ[:,Not(j)])),0.0;atol=10.0*eps())
 end
 
+#=
 @testset "LGF for Helmholtz equation" begin
   alpha = 0.02
   LH(i,j,f::Function,α) = im*α*f(i,j,α)-(f(i-1,j,α)+f(i+1,j,α)+f(i,j+1,α)+f(i,j-1,α)-4*f(i,j,α))
