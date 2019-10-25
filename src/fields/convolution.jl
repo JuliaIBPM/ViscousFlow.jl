@@ -47,7 +47,7 @@ function Base.show(io::IO, c::CircularConvolution{M, N, T}) where {M, N, T}
     print(io, "Circular convolution on a $M × $N matrix of data type $T")
 end
 
-function CircularConvolution(G::AbstractMatrix{Float64},fftw_flags = FFTW.ESTIMATE; dtype = Float64)
+function CircularConvolution(G::AbstractMatrix{T},fftw_flags = FFTW.ESTIMATE; dtype = Float64) where {T}
     FFTW.set_num_threads(2)
 
     M, N = size(G)
