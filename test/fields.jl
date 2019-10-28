@@ -475,19 +475,16 @@ L = plan_laplacian(nx,ny;with_inverse=true,dtype=ComplexF64)
           isapprox(maximum(abs.(lapψ[:,Not(j)])),0.0;atol=10.0*eps())
 end
 
-#=
-@testset "LGF for Helmholtz equation" begin
-  alpha = 0.02
-  LH(i,j,f::Function,α) = im*α*f(i,j,α)-(f(i-1,j,α)+f(i+1,j,α)+f(i,j+1,α)+f(i,j-1,α)-4*f(i,j,α))
+α = 0.07
+LH = plan_helmholtz(nx,ny,α;with_inverse=true)
 
-  i0, j0 = rand(1:100), rand(0:100)
-  @test abs(LH(i0,j0,Fields.lgf_helmholtz,alpha)) < 100.0*eps()
-
-  @test isapprox(real(LH(0,0,Fields.lgf_helmholtz,alpha)),1.0;atol=100.0*eps())
-
-
+@testset "Helmholtz of the LGF" begin
+  ψ = LH\cellunit
+  helmψ = LH*ψ
+  @test helmψ[i,j]≈1.0*a
+  @test isapprox(maximum(abs.(helmψ[Not(i),:])),0.0;atol=10.0*eps()) &&
+          isapprox(maximum(abs.(helmψ[:,Not(j)])),0.0;atol=10.0*eps())
 end
-=#
 
 end
 

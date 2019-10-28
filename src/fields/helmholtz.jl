@@ -101,7 +101,7 @@ for (lf,inplace) in ((:plan_helmholtz,false),
         if !with_inverse
             return Helmholtz{NX, NY, false, dx, $inplace}(nothing)
         end
-        lgfh_table = load_lgf_helmholtz(2NX,α)
+        lgfh_table = load_lgf_helmholtz(NX+1,α)
         G = view(lgfh_table, 1:NX, 1:NY)
         Helmholtz{NX, NY, true, dx, $inplace}(α,CircularConvolution(G, fftw_flags,dtype=ComplexF64))
     end
@@ -123,7 +123,7 @@ function Base.show(io::IO, L::Helmholtz{NX, NY, R, DX, inplace}) where {NX, NY, 
     nodedims = "(nx = $NX, ny = $NY)"
     inverse = R ? " (and inverse)" : ""
     isinplace = inplace ? " in-place" : ""
-    print(io, "Discrete$isinplace Helmholtz$inverse on a $nodedims grid with spacing $DX")
+    print(io, "Discrete$isinplace Helmholtz operator$inverse on a $nodedims grid with spacing $DX")
 end
 
 mul!(out::Nodes{C,NX,NY,T}, L::Helmholtz, s::Nodes{C,NX,NY,T}) where {C<:CellType,NX,NY,T<:ComplexF64} = helmholtz!(out, s, L.α)
