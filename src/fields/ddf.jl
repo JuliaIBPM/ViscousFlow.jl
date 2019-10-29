@@ -37,13 +37,13 @@ julia> ddf.([-1,0,1])
  0.16666666666666666
 ```
 """
-function DDF(;dx::Real=1.0,ddftype=Roma)
+function DDF(;dx::Real=1.0,ddftype=Yang3)
   DDF{ddftype,1.0/dx}()
 end
 
 struct GradDDF{C <: Fields.DDFType,OVERDX,D} <: AbstractDDF end
 
-function GradDDF(dir::Int;dx::Real=1.0,ddftype=Roma)
+function GradDDF(dir::Int;dx::Real=1.0,ddftype=Yang3)
   GradDDF{ddftype,1.0/dx,dir}()
 end
 

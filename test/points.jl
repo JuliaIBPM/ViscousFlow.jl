@@ -331,5 +331,33 @@ using Compat.LinearAlgebra
 
   end
 
+### COMPLEX ROUTINES
+
+@testset "Complex point data" begin
+
+  f = ScalarData(10)
+  f .= rand(10)
+
+  fc = ScalarData(f,dtype=ComplexF64)
+  ftc = TensorData(f,dtype=ComplexF64)
+
+  a = 1.0 + 2.0im
+  fc[5] = a
+
+  @test fc[5] == a
+
+  fvc = VectorData(f,dtype=ComplexF64)
+  b = (-2.0+0im,5.0im)
+  gvc = fvc + b
+  @test gvc.u[5] == b[1]
+  @test gvc.v[5] == b[2]
+
+  gvc *= 2im
+  @test gvc.u[5] == 2im*b[1]
+  @test gvc.v[5] == 2im*b[2]
+
+
+end
+
 
 end
