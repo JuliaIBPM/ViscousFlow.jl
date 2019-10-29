@@ -161,17 +161,8 @@ function Regularize(x::AbstractVector{T},y::AbstractVector{T},dx::T;
     ddf = GradDDF(graddir,ddftype=ddftype,dx=1.0)
   end
 
-  # Determine the radius of the ddf
-  v = 1.0
-  r = 0.0
-  dr = 0.01
-  while (v = abs(baseddf(r))) > eps()
-    r += dr
-  end
-  ddf_radius = r
-
   Regularize{length(x),filter}(x/dx.+I0[1],y/dx.+I0[2],1.0/(dx*dx),
-                      wtvec,ddf,ddf_radius,_issymmetric)
+                      wtvec,ddf,_get_regularization_radius(baseddf),_issymmetric)
 end
 
 Regularize(x::T,y::T,a...;b...) where {T<:Real} = Regularize([x],[y],a...;b...)
@@ -186,6 +177,17 @@ function Base.show(io::IO, H::Regularize{N,F}) where {N,F}
     println(io, "  DDF type $ddftype")
     println(io, "  $N points in grid with cell area $(sprint(show,1.0/H.overdv;context=:compact => true))")
 end
+
+function _get_regularization_radius(ddf::DDF)
+  v = 1.0
+  r = 0.0
+  dr = 0.01
+  while (v = abs(ddf(r))) > eps()
+    r += dr
+  end
+  return r
+end
+
 
 """
     RegularizationMatrix(H::Regularize,f::PointData,u::CellData) -> Hmat
