@@ -1,4 +1,4 @@
-import Base: -, +, *, /, ∘, zero
+import Base: -, +, *, /, ∘, zero, conj
 
 ### On scalar grid data ####
 
@@ -200,3 +200,14 @@ end
 #### ON ALL TYPES ####
 
 zero(::Type{T}) where {T <: GridData} = T()
+
+#### ON COMPLEX GRID DATA
+
+for f in (:conj, :real, :imag)
+    @eval import Base:$f
+    @eval function $f(A::GridData{NX,NY,T}) where {NX,NY,T <: ComplexF64}
+        Acopy = deepcopy(A)
+        Acopy .= broadcast($f,Acopy)
+        return Acopy
+    end
+end

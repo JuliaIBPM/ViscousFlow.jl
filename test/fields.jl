@@ -270,7 +270,7 @@ nodezero = Nodes(Primal,cellzero)
 facezero = Edges(Primal,cellzero)
 dualfacezero = Edges(Dual,cellzero)
 
-a = 1.0+1.0im
+a = 1.0+2.0im
 
 cellunit = deepcopy(cellzero)
 cellunit[i,j] = a
@@ -298,6 +298,19 @@ dualfaceyunit.v[i,j] = a
   q .= facexunit
   @test q.u[i,j] == a
   @test iszero(q.v)
+end
+
+@testset "Basic complex operations" begin
+  w = conj(cellunit)
+  @test typeof(w) == typeof(cellunit)
+  @test w[i,j] == conj(a)
+
+  w = real(cellunit)
+  @test real(w[i,j]) == real(a) && imag(w[i,j]) == 0.0
+
+  w = imag(cellunit)
+  @test real(w[i,j]) == imag(a) && imag(w[i,j]) == 0.0
+
 end
 
 @testset "Inner products and norms" begin
@@ -471,8 +484,8 @@ L = plan_laplacian(nx,ny;with_inverse=true,dtype=ComplexF64)
   ψ = L\cellunit
   lapψ = L*ψ
   @test lapψ[i,j]≈1.0*a
-  @test isapprox(maximum(abs.(lapψ[Not(i),:])),0.0;atol=10.0*eps()) &&
-          isapprox(maximum(abs.(lapψ[:,Not(j)])),0.0;atol=10.0*eps())
+  @test isapprox(maximum(abs.(lapψ[Not(i),:])),0.0;atol=100.0*eps()) &&
+          isapprox(maximum(abs.(lapψ[:,Not(j)])),0.0;atol=100.0*eps())
 end
 
 α = 0.07
@@ -482,8 +495,8 @@ LH = plan_helmholtz(nx,ny,α;with_inverse=true)
   ψ = LH\cellunit
   helmψ = LH*ψ
   @test helmψ[i,j]≈1.0*a
-  @test isapprox(maximum(abs.(helmψ[Not(i),:])),0.0;atol=10.0*eps()) &&
-          isapprox(maximum(abs.(helmψ[:,Not(j)])),0.0;atol=10.0*eps())
+  @test isapprox(maximum(abs.(helmψ[Not(i),:])),0.0;atol=100.0*eps()) &&
+          isapprox(maximum(abs.(helmψ[:,Not(j)])),0.0;atol=100.0*eps())
 end
 
 end
