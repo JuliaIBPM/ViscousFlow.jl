@@ -141,28 +141,14 @@ function TensorData(dudx::Vector{T},dudy::Vector{T},
                            ScalarData(dvdx),ScalarData(dvdy))
 end
 
-#ScalarData(::PointData{N,T}) where {N,T} = ScalarData(zeros(T,N))
 
 ScalarData(n::Int;dtype=Float64) = ScalarData(zeros(dtype,n))
-#ScalarData(::PointData{N,T};dtype=T) where {N,T} = ScalarData(N,dtype=dtype)
 
-#ScalarData(x::VectorData) = ScalarData(zero(x.u))
-#ScalarData(x::TensorData) = ScalarData(zero(x.dudx))
 VectorData(x::Tuple{Vector{T},Vector{T}}) where {T <: Number} = VectorData(x[1],x[2])
-#VectorData(::PointData{N,T}) where {N,T} = VectorData(zeros(T,N),zeros(T,N))
-
 VectorData(n::Int;dtype=Float64) = VectorData(zeros(dtype,n),zeros(dtype,n))
-#VectorData(::PointData{N,T};dtype=T) where {N,T} = VectorData(N,dtype=dtype)
 
-#VectorData(x::ScalarData) = VectorData(zero(x.data),zero(x.data))
-#VectorData(x::TensorData) = VectorData(zero(x.dudx),zero(x.dudy))
-#TensorData(x::PointData{N,T}) where {N,T} = TensorData(zeros(T,N),zeros(T,N),zeros(T,N),zeros(T,N))
-
+TensorData(x::NTuple{4,Vector{T}}) where {T <: Number} = TensorData(x[1],x[2],x[3],x[4])
 TensorData(n::Int;dtype=Float64) = TensorData(zeros(dtype,n),zeros(dtype,n),zeros(dtype,n),zeros(dtype,n))
-#TensorData(::PointData{N,T};dtype=T) where {N,T} = TensorData(N,dtype=dtype)
-
-#TensorData(x::ScalarData) = TensorData(zero(x.data),zero(x.data),zero(x.data),zero(x.data))
-#TensorData(x::VectorData) = TensorData(zero(x.u),zero(x.u),zero(x.v),zero(x.v))
 
 for f in (:ScalarData,:VectorData,:TensorData)
   @eval (::Type{$f{N,T}})() where {N,T} = $f(N,dtype=T)
@@ -170,20 +156,7 @@ for f in (:ScalarData,:VectorData,:TensorData)
   @eval Base.similar(::$f{N,T}) where {N,T} = $f(N,dtype=T)
 end
 
-#(::Type{ScalarData{N,T}})() where {N,T} = ScalarData(N,dtype=T)
-#(::Type{VectorData{N,T}})() where {N,T} = VectorData(N,dtype=T)
-#(::Type{TensorData{N,T}})() where {N,T} = TensorData(N,dtype=T)
 
-
-#Base.similar(::ScalarData{N,T}) where {N,T} = ScalarData(N,dtype=T)
-
-#Base.similar(::VectorData{N,T}) where {N,T} = VectorData(N,dtype=T)
-
-#Base.similar(::TensorData{N,T}) where {N,T} = TensorData(N,dtype=T)
-
-
-
-#Base.size(A::VectorData) = size(A.u).+size(A.v)
 """
     size(A::VectorData,d::Int) -> Int
 

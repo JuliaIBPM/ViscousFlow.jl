@@ -33,13 +33,13 @@ end
 
 # This allows easy construction of nodes of either type from existing nodes of either
 # type on the same grid.
-Nodes(C, ::GridData{NX,NY,T}) where {NX, NY,T <: Number} = Nodes(C, (NX, NY),dtype=T )
+Nodes(C, ::GridData{NX,NY,T};dtype=T) where {NX, NY,T <: Number} = Nodes(C, (NX, NY),dtype=dtype )
 
 
 Nodes(C, nx::Int, ny::Int;dtype=Float64) = Nodes(C,(nx,ny),dtype=dtype)
 (::Type{Nodes{C,NX,NY,T}})() where {C,NX,NY,T} = Nodes(C, (NX, NY),dtype=T)
 
-Base.similar(::Nodes{C,NX,NY,T}) where {C,NX,NY,T} = Nodes(C, (NX, NY),dtype=T)
+Base.similar(::Nodes{C,NX,NY,T};element_type=T) where {C,NX,NY,T} = Nodes(C, (NX, NY),dtype=element_type)
 
 function Base.show(io::IO, nodes::Nodes{C, NX, NY,T}) where {C, NX, NY, T}
     nodedims = "(nx = $NX, ny = $NY)"

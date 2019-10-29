@@ -19,7 +19,10 @@ end
 
 (::Type{EdgeGradient{R,S,NX,NY,T}})() where {R<:CellType,S<:CellType,NX,NY,T} = EdgeGradient(R, (NX, NY),dtype=T)
 
-EdgeGradient(C, ::GridData{NX,NY,T}) where {NX, NY,T} = EdgeGradient(C, (NX,NY),dtype=T)
+EdgeGradient(C, ::GridData{NX,NY,T}; dtype=T) where {NX, NY,T} = EdgeGradient(C, (NX,NY),dtype=dtype)
+
+Base.similar(::EdgeGradient{R,S,NX,NY,T};element_type=T) where {R,S,NX,NY,T} = EdgeGradient(R, (NX, NY),dtype=element_type)
+
 
 function Base.fill!(g::EdgeGradient, s::Number)
     fill!(g.dudx, s)
@@ -66,10 +69,12 @@ NodePair(R::Type{C},dualnodedims::Tuple{Int,Int};dtype=Float64) where {C <: Cell
 
 NodePair(R::Type{C}, nodes::Nodes{S,NX,NY,T}) where {C <: CellType, S <: CellType, NX,NY,T} = NodePair(R, (NX, NY),dtype=T)
 
-
 (::Type{NodePair{R,S,NX,NY,T}})() where {R<:CellType,S<:CellType,NX,NY,T} = NodePair(R, S, (NX, NY),dtype=T)
 
-NodePair(R, S, ::GridData{NX,NY,T}) where {NX, NY,T} = NodePair(R, S, (NX,NY),dtype=T)
+NodePair(R, S, ::GridData{NX,NY,T};dtype=T) where {NX, NY,T} = NodePair(R, S, (NX,NY),dtype=dtype)
+
+Base.similar(::NodePair{R,S,NX,NY,T};element_type=T) where {R<:CellType,S<:CellType,NX,NY,T} = NodePair(R, S, (NX, NY),dtype=element_type)
+
 
 function Base.show(io::IO, nodes::NodePair{R, S, NX, NY, T}) where {R, S, NX, NY, T}
     nodedims = "(nx = $NX, ny = $NY)"

@@ -30,9 +30,9 @@ function YEdges(T::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {
     YEdges{T, dualnodedims...,dtype}(zeros(dtype,dims))
 end
 
-XEdges(C, ::GridData{NX,NY,T}) where {NX, NY, T <: Number} = XEdges(C, (NX, NY), dtype = T )
+XEdges(C, ::GridData{NX,NY,T};dtype=T) where {NX, NY, T <: Number} = XEdges(C, (NX, NY), dtype = dtype )
 
-YEdges(C, ::GridData{NX,NY,T}) where {NX, NY, T <: Number} = YEdges(C, (NX, NY), dtype = T )
+YEdges(C, ::GridData{NX,NY,T};dtype=T) where {NX, NY, T <: Number} = YEdges(C, (NX, NY), dtype = dtype )
 
 
 XEdges(C, nx::Int, ny::Int;dtype=Float64) = XEdges(C,(nx,ny),dtype=dtype)
@@ -42,8 +42,8 @@ YEdges(C, nx::Int, ny::Int;dtype=Float64) = YEdges(C,(nx,ny),dtype=dtype)
 (::Type{YEdges{C,NX,NY,T}})() where {C,NX,NY,T} = YEdges(C, (NX, NY),dtype=T)
 
 
-Base.similar(::XEdges{C,NX,NY,T}) where {C,NX,NY,T} = XEdges(C, (NX, NY),dtype=T)
-Base.similar(::YEdges{C,NX,NY,T}) where {C,NX,NY,T} = YEdges(C, (NX, NY),dtype=T)
+Base.similar(::XEdges{C,NX,NY,T};element_type=T) where {C,NX,NY,T} = XEdges(C, (NX, NY),dtype=element_type)
+Base.similar(::YEdges{C,NX,NY,T};element_type=T) where {C,NX,NY,T} = YEdges(C, (NX, NY),dtype=element_type)
 
 function Base.show(io::IO, xedges::XEdges{C, NX, NY, T}) where {C, NX, NY, T}
     nodedims = "(nx = $NX, ny = $NY)"
@@ -95,9 +95,9 @@ end
 
 (::Type{Edges{C,NX,NY,T}})() where {C,NX,NY,T} = Edges(C, (NX, NY),dtype=T)
 
-Edges(C, ::GridData{NX,NY,T}) where {NX, NY,T} = Edges(C, (NX,NY),dtype=T)
+Edges(C, ::GridData{NX,NY,T};dtype=T) where {NX, NY,T} = Edges(C, (NX,NY),dtype=dtype)
 
-Base.similar(::Edges{C,NX,NY,T}) where {C,NX,NY,T} = Edges(C, (NX, NY),dtype=T)
+Base.similar(::Edges{C,NX,NY,T};element_type=T) where {C,NX,NY,T} = Edges(C, (NX, NY),dtype=element_type)
 
 function fill!(edges::Edges, s::Number)
     fill!(edges.u, s)
