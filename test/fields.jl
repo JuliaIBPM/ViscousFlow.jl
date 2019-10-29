@@ -306,9 +306,11 @@ end
   @test w[i,j] == conj(a)
 
   w = real(cellunit)
+  @test typeof(w) <: Nodes{Dual,nx,ny,Float64}
   @test real(w[i,j]) == real(a) && imag(w[i,j]) == 0.0
 
   w = imag(cellunit)
+  @test typeof(w) <: Nodes{Dual,nx,ny,Float64}
   @test real(w[i,j]) == imag(a) && imag(w[i,j]) == 0.0
 
 end

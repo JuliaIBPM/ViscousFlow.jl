@@ -38,6 +38,8 @@ function collect(bl::BodyList)
     return xtmp,ytmp
 end
 
+collect(body::Body) = collect(BodyList([body]))
+
 """
     getrange(bl::BodyList,i::Int) -> Range
 
