@@ -1,7 +1,7 @@
-using Compat.Test
-using Compat
+#using Compat.Test
+#using Compat
 
-#using Test
+using Test
 ##using TestSetExtensions
 
 using ViscousFlow
