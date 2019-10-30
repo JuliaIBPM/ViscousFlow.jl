@@ -1,18 +1,13 @@
 module SaddlePointSystems
 
-using Compat
-using Compat.LinearAlgebra
+using LinearAlgebra
 using LinearMaps
 using IterativeSolvers
 #using ..Fields
 
 import Base: *, \
-@static if VERSION < v"0.7-"
-  ldiv!(x,B,y) = A_ldiv_B!(x,B,y)
-  export ldiv!
-else
-  import LinearAlgebra: ldiv!
-end
+import LinearAlgebra: ldiv!
+
 
 export SaddleSystem
 

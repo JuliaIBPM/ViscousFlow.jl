@@ -6,9 +6,6 @@ using DocStringExtensions
 import ForwardDiff
 import Base: +, *, -, >>, <<, show
 
-using Compat
-using Compat: round
-
 """
 An abstract type for types that takes in time and returns `(c, ċ, c̈, α, α̇, α̈)`.
 """

@@ -2,8 +2,8 @@ using RecipesBase
 using ColorTypes
 import PlotUtils: cgrad
 
-using Compat
-using Compat: range
+#using Compat
+#using Compat: range
 
 const mygreen = RGBA{Float64}(151/255,180/255,118/255,1)
 const mygreen2 = RGBA{Float64}(113/255,161/255,103/255,1)

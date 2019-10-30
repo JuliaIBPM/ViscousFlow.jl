@@ -11,9 +11,8 @@ using ..Bodies
 #import ViscousFlow: r₁
 #import ViscousFlow: plan_intfact
 
-using Compat
-using Compat.LinearAlgebra
-using Compat.SparseArrays
+using LinearAlgebra
+using SparseArrays
 
 """
     assign_velocity!(V::VectorData,X::VectorData,

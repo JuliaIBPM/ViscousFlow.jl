@@ -2,16 +2,12 @@ module TimeMarching
 
 import ViscousFlow:@get
 
-using Compat
-using Compat: hasmethod
+#using Compat
+#using Compat: hasmethod
 
-using Compat.LinearAlgebra
+using LinearAlgebra
 
-@static if VERSION < v"0.7-"
-  ldiv!(x,B,y) = A_ldiv_B!(x,B,y)
-else
-  import LinearAlgebra: ldiv!
-end
+import LinearAlgebra: ldiv!
 
 export System, Constrained, Unconstrained, RK, IFRK, IFHERK, r₁, r₂, B₂, B₁ᵀ,
           plan_constraints

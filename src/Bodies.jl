@@ -2,9 +2,7 @@ module Bodies
 
 import Base:diff,length,push!,vec
 
-using Compat
-using Compat.Statistics: mean
-using Compat: range, reverse
+using Statistics: mean
 
 export Body,RigidTransform
 

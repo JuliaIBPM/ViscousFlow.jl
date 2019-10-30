@@ -50,29 +50,17 @@ module Fields
 
 import Base: @propagate_inbounds, show, summary
 
-using Compat
+#using Compat
 using FFTW
 using SpecialFunctions
 using Statistics
-using Compat.LinearAlgebra
-using Compat.SparseArrays
-using Compat: copyto!, reverse
 
-@static if VERSION < v"0.7-"
-  import Base: A_mul_B!, A_ldiv_B!, scale!, parentindexes
-  import Base.LinAlg: cross, ×, dot, ⋅
-  mul!(x,B,y) = A_mul_B!(x,B,y)
-  rmul!(B,x) = scale!(B,x)
-  ldiv!(x,B,y) = A_ldiv_B!(x,B,y)
-  parentindices(A) = parentindexes(A)
-  CartesianIndices(R) = CartesianRange(R)
-  const GAMMA = γ
-  export mul!, ldiv!, rmul!, parentindices
-else
-  import LinearAlgebra: mul!, ldiv!, cross, ×, dot, ⋅
-  import Base: parentindices
-  const GAMMA = MathConstants.γ
-end
+using LinearAlgebra
+using SparseArrays
+
+import LinearAlgebra: mul!, ldiv!, cross, ×, dot, ⋅
+import Base: parentindices
+const GAMMA = MathConstants.γ
 
 export Primal, Dual, ScalarGridData, VectorGridData, GridData,
        Edges, Nodes, XEdges, YEdges,
