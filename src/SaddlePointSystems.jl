@@ -158,7 +158,7 @@ Output `state`, a tuple (u,f), is updated. Note that `sys` is also mutated:
 its scratch space `sys.B₂A⁻¹r₁` and `sys.A⁻¹B₁ᵀf` hold the intermediate results
 of the solution.
 
-A shorthand can be used for this operation: `state = sys\rhs`
+A shorthand can be used for this operation: `state = sys\\rhs`
 """
 function ldiv!(state::Tuple{TU,TF},
                     sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,T,N,false},

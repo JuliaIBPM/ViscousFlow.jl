@@ -230,22 +230,22 @@ of ODEs.
 ## Other field operations
 
 Other field operations shift the data, by local averaging, from one data type to
-another. These operations are all called `cellshift!`, and they require that the
-target data be preallocated. For example, to shift dual node data to the dual edges,
+another. These operations are all called `interpolate!`, and they require that the
+target data be preallocated. For example, to interpolate dual node data to the dual edges,
 
 ```@repl create
 w = Nodes(Dual,(5,4));
 w .= reshape(1:20,5,4)
 Ww = Edges(Dual,w);
-cellshift!(Ww,w)
+interpolate!(Ww,w)
 ```
 Note that the edges in the ghost cells are 0; these edges are not assigned any
-values in the shift operation.
+values in the interpolate operation.
 
-We can then shift this to primal edges:
+We can then interpolate this to primal edges:
 ```@repl create
 q = Edges(Primal,w);
-cellshift!(q,Ww)
+interpolate!(q,Ww)
 ```
 
 We can also compute the Hadamard (i.e. element by element) product of any data
@@ -482,6 +482,10 @@ of each other, but it is essential for the method dispatch that they are
 given separate types.
 
 ## Other operations with point-type data
+
+```@setup vector
+using ViscousFlow
+```
 
 We have seen point-type data structures, `ScalarData` and `VectorData`; there is also a tensor type of data, `TensorData`, which holds the four components of a 2x2 tensor. One can regularize and interpolate with this tensor data, as well; its companion grid data structure is the `EdgeGradient` type, which is a wrapper for four `Nodes` structures: two `Dual`, and two `Primal`, where the four tensor components are naturally held on the grid.
 
