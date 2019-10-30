@@ -48,17 +48,17 @@ resulting solution is somewhat noiser, too.
 - `B₂` : operator evaluating the influence of state vector on constraints,
             acting on `u` and returning type `f`
 """
-struct SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,Storage}
+struct SaddleSystem{FA,FAB,FBA,FP,TU,TF,T,N,Storage}
     A⁻¹B₁ᵀf :: TU
     B₂A⁻¹r₁ :: TF
-    tmpvec :: Vector{Float64}
-    tmpvecout :: Vector{Float64}
+    tmpvec :: Vector{T}
+    tmpvecout :: Vector{T}
     A⁻¹ :: FA
     A⁻¹B₁ᵀ :: FAB
     B₂A⁻¹ :: FBA
     P :: FP
     S  :: LinearMap
-    S⁻¹ :: Union{Factorization{Float64},Nothing}
+    S⁻¹ :: Union{Factorization{T},Nothing}
     tol :: Float64
     _issymmetric :: Bool
     _isposdef :: Bool
@@ -76,6 +76,7 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
     optypes = (TU,TF,TU)
     opnames = ("A⁻¹","B₁ᵀ","B₂")
     ops = []
+    T = eltype(TU)
 
     # check for methods
     for (i,typ) in enumerate(optypes)
@@ -93,11 +94,11 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
     ubuffer = deepcopy(u)
     fbuffer = deepcopy(f)
     N = length(f)
-    tmpvec = zeros(N)
-    tmpvecout = zeros(N)
+    tmpvec = zeros(T,N)
+    tmpvecout = zeros(T,N)
 
     # Schur complement
-    function Schur!(fout::AbstractVector{Float64},fin::AbstractVector{Float64})
+    function Schur!(fout::AbstractVector{T},fin::AbstractVector{T}) where {T<:Number}
        fbuffer .= fin
        fbuffer .= (B₂∘A⁻¹∘B₁ᵀ)(fbuffer)
        fout .= -fbuffer
@@ -107,7 +108,7 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
 
 
     if store && N > 0
-      Smat = zeros(N,N)
+      Smat = zeros(T,N,N)
       fill!(f,0.0)
       for i = 1:N
         f[i] = 1.0
@@ -126,7 +127,7 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
 
     B₂A⁻¹(w::TU) = (B₂∘A⁻¹)(w)
 
-    saddlesys = SaddleSystem{typeof(A⁻¹),typeof(A⁻¹B₁ᵀ),typeof(B₂A⁻¹),typeof(conditioner),TU,TF,N,store}(
+    saddlesys = SaddleSystem{typeof(A⁻¹),typeof(A⁻¹B₁ᵀ),typeof(B₂A⁻¹),typeof(conditioner),TU,TF,T,N,store}(
                                 ubuffer,fbuffer,tmpvec,tmpvecout,
                                 A⁻¹,A⁻¹B₁ᵀ,B₂A⁻¹,conditioner,S,S⁻¹,
                                 tol,issymmetric,isposdef)
@@ -142,7 +143,7 @@ end
 (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Array{Any,2};kwarg...) where {TU,TF} =
             SaddleSystem(state,(sys[1,1],sys[1,2],sys[2,1]);kwarg...)
 
-function Base.show(io::IO, S::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,Storage}) where {FA,FAB,FBA,FP,TU,TF,N,Storage}
+function Base.show(io::IO, S::SaddleSystem{FA,FAB,FBA,FP,TU,TF,T,N,Storage}) where {FA,FAB,FBA,FP,TU,TF,T,N,Storage}
     println(io, "Saddle system with $N constraints and")
     println(io, "   State of type $TU")
     println(io, "   Force of type $TF")
@@ -160,8 +161,8 @@ of the solution.
 A shorthand can be used for this operation: `state = sys\rhs`
 """
 function ldiv!(state::Tuple{TU,TF},
-                    sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,false},
-                    rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,FP,N}
+                    sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,T,N,false},
+                    rhs::Tuple{TU,TF}) where {TU,TF,T,FA,FAB,FBA,FP,N}
   # non-stored matrix
 
   ru, rf = rhs
@@ -183,8 +184,8 @@ end
 
 # stored matrix
 function ldiv!(state::Tuple{TU,TF},
-                    sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,true},
-                    rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,FP,N}
+                    sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,T,N,true},
+                    rhs::Tuple{TU,TF}) where {TU,TF,T,FA,FAB,FBA,FP,N}
 
   ru, rf = rhs
   u, f = state
@@ -203,7 +204,7 @@ function ldiv!(state::Tuple{TU,TF},
 end
 
 
-\(sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,N,Storage},rhs::Tuple{TU,TF}) where {TU,TF,FA,FAB,FBA,FP,N,Storage} =
+\(sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,T,N,Storage},rhs::Tuple{TU,TF}) where {TU,TF,T,FA,FAB,FBA,FP,N,Storage} =
       ldiv!(similar.(rhs),sys,rhs)
 
 
