@@ -16,7 +16,7 @@ julia> v = deepcopy(w);
 julia> w[4,3] = 1.0;
 
 julia> laplacian!(v,w)
-Nodes{Dual,8,6} data
+Nodes{Dual,8,6,Float64} data
 Printing in grid orientation (lower left is (1,1))
 6×8 Array{Float64,2}:
  0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
@@ -75,7 +75,7 @@ julia> q = Edges(Primal,(8,6));
 julia> q.u[2,2] = 1.0;
 
 julia> laplacian(q)
-Edges{Primal,8,6} data
+Edges{Primal,8,6,Float64} data
 u (in grid orientation)
 5×8 Array{Float64,2}:
  0.0   0.0  0.0  0.0  0.0  0.0  0.0  0.0
@@ -153,10 +153,10 @@ julia> w = Nodes(Dual,(5,5));
 julia> w[3,3] = 1.0;
 
 julia> L = plan_laplacian(5,5;with_inverse=true)
-Discrete Laplacian (and inverse) on a (nx = 5, ny = 5) grid with spacing 1.0
+Discrete Laplacian (and inverse) on a (nx = 5, ny = 5) grid acting on Float64 data with spacing 1.0
 
 julia> s = L\\w
-Nodes{Dual,5,5} data
+Nodes{Dual,5,5,Float64} data
 Printing in grid orientation (lower left is (1,1))
 5×5 Array{Float64,2}:
  0.16707    0.129276     0.106037     0.129276    0.16707

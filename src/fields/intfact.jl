@@ -28,7 +28,7 @@ julia> E = plan_intfact(1.0,(6,6))
 Integrating factor with parameter 1.0 on a (nx = 6, ny = 6) grid
 
 julia> E*w
-Nodes{Dual,6,6} data
+Nodes{Dual,6,6,Float64} data
 Printing in grid orientation (lower left is (1,1))
 6×6 Array{Float64,2}:
  0.00268447   0.00869352  0.0200715   0.028765    0.0200715   0.00869352

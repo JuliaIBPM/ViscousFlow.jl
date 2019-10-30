@@ -25,7 +25,7 @@ julia> G = repeat(1.0:3,1,4)
  3.0  3.0  3.0  3.0
 
 julia> C = CircularConvolution(G)
-Circular convolution on a 3 × 4 matrix
+Circular convolution on a 3 × 4 matrix of data type Float64
 
 julia> C*reshape(1:12, 3, 4)
 3×4 Array{Int64,2}:
@@ -75,8 +75,6 @@ function CircularConvolution(G::AbstractMatrix{T},fftw_flags = FFTW.ESTIMATE; dt
     CircularConvolution{M, N, dtype, typeof(F), typeof(F⁻¹)}(Ĝ, F, F⁻¹, paddedSpace, Â)
 end
 
-# For real-valued data
-
 function mul!(out, C::CircularConvolution{M, N, T}, B) where {M, N, T}
     FFTW.set_num_threads(2)
     @assert size(out) == size(B) == (M, N)
@@ -94,29 +92,6 @@ function mul!(out, C::CircularConvolution{M, N, T}, B) where {M, N, T}
     copyto!(out, inds, C.paddedSpace, CartesianIndices((M+1:2M,N+1:2N)))
 
 end
-
-# For complex-valued data
-
-
-#=
-function mul!(out, C::CircularConvolution{M, N, ComplexF64}, B) where {M, N}
-    FFTW.set_num_threads(2)
-    @assert size(out) == size(B) == (M, N)
-
-    inds = CartesianIndices((M,N))
-    fill!(C.paddedSpace, complex(0))
-    copyto!(C.paddedSpace, inds, B, inds)
-    mul!(C.Â, C.F, C.paddedSpace)
-
-    C.Â .*= C.Ĝ
-
-    mul!(C.paddedSpace, C.F⁻¹, C.Â)
-
-    #copyto!(out, inds, C.paddedSpace, CartesianIndices((M:2M-1,N:2N-1)))
-    copyto!(out, inds, C.paddedSpace, CartesianIndices((M+1:2M,N+1:2N)))
-
-end
-=#
 
 C::CircularConvolution * B = mul!(similar(B), C, B)
 

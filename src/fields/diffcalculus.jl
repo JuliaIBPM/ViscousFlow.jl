@@ -15,7 +15,7 @@ julia> w[3,4] = 1.0;
 julia> q = Edges(Primal,w);
 
 julia> curl!(q,w)
-Edges{Primal,8,6} data
+Edges{Primal,8,6,Float64} data
 u (in grid orientation)
 5×8 Array{Float64,2}:
  0.0  0.0   0.0  0.0  0.0  0.0  0.0  0.0
@@ -62,7 +62,7 @@ julia> w = Nodes(Dual,(8,6));
 julia> w[3,4] = 1.0;
 
 julia> C*w
-Edges{Primal,8,6} data
+Edges{Primal,8,6,Float64} data
 u (in grid orientation)
 5×8 Array{Float64,2}:
  0.0  0.0   0.0  0.0  0.0  0.0  0.0  0.0
@@ -117,7 +117,7 @@ julia> q.u[3,2] = 1.0;
 julia> w = Nodes(Primal,(8,6));
 
 julia> divergence!(w,q)
-Nodes{Primal,8,6} data
+Nodes{Primal,8,6,Float64} data
 Printing in grid orientation (lower left is (1,1))
 5×7 Array{Float64,2}:
  0.0  0.0   0.0  0.0  0.0  0.0  0.0
@@ -165,7 +165,7 @@ julia> q = Edges(Primal,(8,6));
 julia> q.u[3,2] = 1.0;
 
 julia> D*q
-Nodes{Primal,8,6} data
+Nodes{Primal,8,6,Float64} data
 Printing in grid orientation (lower left is (1,1))
 5×7 Array{Float64,2}:
  0.0  0.0   0.0  0.0  0.0  0.0  0.0
@@ -229,7 +229,7 @@ julia> w[3,4] = 1.0;
 julia> q = Edges(Primal,(8,6));
 
 julia> grad!(q,w)
-Edges{Primal,8,6} data
+Edges{Primal,8,6,Float64} data
 u (in grid orientation)
 5×8 Array{Float64,2}:
  0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0
@@ -275,7 +275,7 @@ julia> w[3,4] = 1.0;
 julia> G = Grad();
 
 julia> G*w
-Edges{Primal,8,6} data
+Edges{Primal,8,6,Float64} data
 u (in grid orientation)
 5×8 Array{Float64,2}:
  0.0  0.0  0.0   0.0  0.0  0.0  0.0  0.0

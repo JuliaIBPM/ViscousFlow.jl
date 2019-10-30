@@ -17,7 +17,7 @@ julia> w[3,4] = 1.0;
 julia> q = Edges(Dual,w);
 
 julia> interpolate!(q,w)
-Edges{Dual,8,6} data
+Edges{Dual,8,6,Float64} data
 u (in grid orientation)
 6×7 Array{Float64,2}:
  0.0  0.0  0.0  0.0  0.0  0.0  0.0
@@ -66,7 +66,7 @@ julia> wx = Nodes(Dual,(8,6)); wy = deepcopy(wx);
 julia> Fields.interpolate!((wx,wy),q);
 
 julia> wx
-Nodes{Dual,8,6} data
+Nodes{Dual,8,6,Float64} data
 Printing in grid orientation (lower left is (1,1))
 6×8 Array{Float64,2}:
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
@@ -77,7 +77,7 @@ Printing in grid orientation (lower left is (1,1))
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
 
 julia> wy
-Nodes{Dual,8,6} data
+Nodes{Dual,8,6,Float64} data
 Printing in grid orientation (lower left is (1,1))
 6×8 Array{Float64,2}:
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
@@ -125,7 +125,7 @@ julia> q.u[3,2] = 1.0;
 julia> v = Edges(Dual,(8,6));
 
 julia> Fields.interpolate!(v,q)
-Edges{Dual,8,6} data
+Edges{Dual,8,6,Float64} data
 u (in grid orientation)
 6×7 Array{Float64,2}:
  0.0  0.0   0.0   0.0  0.0  0.0  0.0

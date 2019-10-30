@@ -93,7 +93,7 @@ julia> q.u[3,2] = 0.3;
 julia> p.u[3,2] = 0.2;
 
 julia> product!(out,p,q)
-Edges{Dual,8,6} data
+Edges{Dual,8,6,Float64} data
 u (in grid orientation)
 6×7 Array{Float64,2}:
  0.0  0.0  0.0   0.0  0.0  0.0  0.0
@@ -144,7 +144,7 @@ julia> q.u[3,2] = 0.3;
 julia> p.u[3,2] = 0.2;
 
 julia> p∘q
-Edges{Dual,8,6} data
+Edges{Dual,8,6,Float64} data
 u (in grid orientation)
 6×7 Array{Float64,2}:
  0.0  0.0  0.0   0.0  0.0  0.0  0.0

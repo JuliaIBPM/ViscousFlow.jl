@@ -70,7 +70,7 @@ converted to Float64. Can also switch the arguments.
 julia> f = VectorData(5);
 
 julia> f + (2,3)
-5 points of vector-valued data
+5 points of vector-valued Float64 data
 5×2 Array{Float64,2}:
  2.0  3.0
  2.0  3.0

@@ -14,7 +14,8 @@ makedocs(
                      ]
         #"Internals" => [ "internals/properties.md"]
     ],
-    Documenter.HTML(
+    #format = Documenter.HTML(assets = ["assets/custom.css"])
+    format = Documenter.HTML(
         prettyurls = get(ENV, "CI", nothing) == "true"
     )
     #assets = ["assets/custom.css"],

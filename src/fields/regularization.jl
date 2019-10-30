@@ -39,7 +39,7 @@ coordinates.
 
 The operations of regularization and interpolation are carried out with a discrete
 delta function (ddf), which defaults to the type `Yang3`. Others are also possible,
-such as `Goza` or `M3`. The optional argument `graddir`, if set to 1 or 2, will
+such as `Roma`, `Goza` or `M3`. The optional argument `graddir`, if set to 1 or 2, will
 generate an interpolation operator that evaluates the negative of the
 respective component of the gradient of a grid field at the immersed points. The
 default value of this argument is 0, which simply interpolates. Note that the
@@ -77,7 +77,7 @@ In the example below, we set up a 12 x 12 grid. Using the default value for `I0`
 and setting `dx = 0.1`, the physical dimensions of the non-ghost part of the grid
 are 1.0 x 1.0. Three points are set up in the interior, and a vector field is assigned
 to them, with the x component of each of them set to 1.0. These data are regularized
-to a field of primal edges on the grid.
+to a field of primal edges on the grid, using the Roma DDF kernel.
 
 ```jldoctest
 julia> x = [0.25,0.75,0.25]; y = [0.75,0.25,0.25];
@@ -88,8 +88,9 @@ julia> q = Edges(Primal,(12,12));
 
 julia> dx = 0.1;
 
-julia> H = Regularize(x,y,dx)
+julia> H = Regularize(x,y,dx;ddftype=Fields.Roma)
 Regularization/interpolation operator with non-filtered interpolation
+  DDF type ViscousFlow.Fields.Roma
   3 points in grid with cell area 0.01
 
 julia> f = VectorData(X);

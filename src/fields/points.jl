@@ -3,18 +3,19 @@ import Base: size, show, summary, +, -
 abstract type PointData{N,T} <: AbstractVector{T} end
 
 """
-    ScalarData
+    ScalarData <: PointData
 
 A wrapper for a one-dimensional array of scalar-valued data. The resulting wrapper
 can be indexed in the same way as the array itself.
 
 # Constructors
-- `ScalarData(d)` constructs a wrapper for the one-dimensional array of data `d`
+- `ScalarData(d[,dtype=Float64])` constructs a wrapper for the one-dimensional array of data `d`
 - `ScalarData(n::Int)` constructs a wrapper for an array of zeros of length `n`.
-- `ScalarData(x::ScalarData)` constructs a wrapper for an array of zeros of the
+- `ScalarData(x::PointData)` constructs a wrapper for an array of zeros of the
    same length as that wrapped by `x`.
-- `ScalarData(x::VectorData)` constructs a wrapper for an array of zeros of the
-    same length as that wrapped by `x`.
+- `ScalarData(n::Int,dtype=ComplexF64)` constructs a wrapper for complex-valued data.
+- `ScalarData(x::PointData,dtype=ComplexF64)` constructs a wrapper for an array of
+   complex zeros of the same length as that wrapped by `x`.
 
 # Example
 
@@ -24,7 +25,7 @@ julia> f = ScalarData(10);
 julia> f[5] = 1.0;
 
 julia> f
-10 points of scalar-valued data
+10 points of scalar-valued Float64 data
 10-element Array{Float64,1}:
  0.0
  0.0
@@ -45,7 +46,7 @@ end
 @wraparray ScalarData data 1
 
 """
-    VectorData
+    VectorData <: GridData
 
 A wrapper for a one-dimensional array of two-component vector-valued data. The
 resulting wrapper can be indexed as though the first component and second
@@ -54,10 +55,10 @@ component are stacked on top of each other.
 # Constructors
 - `VectorData(u,v)` constructs a wrapper for the vector components data `u` and `v`.
 - `VectorData(n::Int)` constructs a wrapper with zeros of length `n` for both components.
-- `VectorData(x::ScalarData)` constructs a wrapper for zero components of the
+- `VectorData(x::GridData)` constructs a wrapper for zero components of the
    same length as that wrapped by `x`.
-- `VectorData(x::VectorData)` constructs a wrapper for zero components of the
-    same length as that wrapped by `x`.
+- `VectorData(n::Int,dtype=ComplexF64)` constructs a wrapper with complex-valued zeros
+   of length `n` for both components.
 
 # Example
 
@@ -67,34 +68,34 @@ julia> f = VectorData(10);
 julia> f.v[1:5] = 1:5;
 
 julia> f
-10 points of vector-valued data
-10×2 Array{Float64,2}:
- 0.0  1.0
- 0.0  2.0
- 0.0  3.0
- 0.0  4.0
- 0.0  5.0
- 0.0  0.0
- 0.0  0.0
- 0.0  0.0
- 0.0  0.0
- 0.0  0.0
+10 points of vector-valued Complex{Float64} data
+10×2 Array{Complex{Float64},2}:
+ 0.0+0.0im  1.0+0.0im
+ 0.0+0.0im  2.0+0.0im
+ 0.0+0.0im  3.0+0.0im
+ 0.0+0.0im  4.0+0.0im
+ 0.0+0.0im  5.0+0.0im
+ 0.0+0.0im  0.0+0.0im
+ 0.0+0.0im  0.0+0.0im
+ 0.0+0.0im  0.0+0.0im
+ 0.0+0.0im  0.0+0.0im
+ 0.0+0.0im  0.0+0.0im
 
-julia> f[7] = 1; f[18] = 0.2;
+julia> f[7] = 1im; f[18] = 0.2;
 
 julia> f
-10 points of vector-valued data
-10×2 Array{Float64,2}:
- 0.0  1.0
- 0.0  2.0
- 0.0  3.0
- 0.0  4.0
- 0.0  5.0
- 0.0  0.0
- 1.0  0.0
- 0.0  0.2
- 0.0  0.0
- 0.0  0.0
+10 points of vector-valued Complex{Float64} data
+10×2 Array{Complex{Float64},2}:
+ 0.0+0.0im  1.0+0.0im
+ 0.0+0.0im  2.0+0.0im
+ 0.0+0.0im  3.0+0.0im
+ 0.0+0.0im  4.0+0.0im
+ 0.0+0.0im  5.0+0.0im
+ 0.0+0.0im  0.0+0.0im
+ 0.0+1.0im  0.0+0.0im
+ 0.0+0.0im  0.2+0.0im
+ 0.0+0.0im  0.0+0.0im
+ 0.0+0.0im  0.0+0.0im
 ```
 """
 struct VectorData{N,T} <: PointData{N,T}
