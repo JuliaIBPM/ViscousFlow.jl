@@ -98,7 +98,7 @@ julia> f = VectorData(X);
 julia> fill!(f.u,1.0);
 
 julia> H(q,f)
-Edges{Primal,12,12} data
+Edges{Primal,12,12,Float64} data
 u (in grid orientation)
 11×12 Array{Float64,2}:
  0.0  0.0  0.0       0.0     0.0      …  0.0       0.0     0.0      0.0  0.0

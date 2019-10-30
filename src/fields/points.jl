@@ -63,7 +63,7 @@ component are stacked on top of each other.
 # Example
 
 ```jldoctest
-julia> f = VectorData(10);
+julia> f = VectorData(10,dtype=ComplexF64);
 
 julia> f.v[1:5] = 1:5;
 
