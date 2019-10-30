@@ -1,7 +1,6 @@
 import ViscousFlow: Systems
 
-using Compat
-using Compat.LinearAlgebra
+using LinearAlgebra
 
 @testset "Navier-Stokes" begin
 

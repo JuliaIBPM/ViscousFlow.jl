@@ -1,8 +1,6 @@
 import ViscousFlow: Fields, SaddlePointSystems
 
-using Compat
-using Compat.LinearAlgebra
-using Compat: range
+using LinearAlgebra
 
 @testset "Saddle-Point Systems" begin
 

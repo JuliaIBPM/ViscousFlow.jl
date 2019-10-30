@@ -1,6 +1,5 @@
 import ViscousFlow: Fields
-using Compat
-using Compat.LinearAlgebra
+using LinearAlgebra
 
 #if VERSION < v"0.7-"
 #  import Base: A_mul_B!

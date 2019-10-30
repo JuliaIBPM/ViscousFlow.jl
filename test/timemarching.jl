@@ -1,8 +1,7 @@
 import ViscousFlow: Fields, TimeMarching
 import ViscousFlow.TimeMarching:RK31
 
-using Compat
-using Compat.LinearAlgebra
+using LinearAlgebra
 
 @testset "Time Marching" begin
 
