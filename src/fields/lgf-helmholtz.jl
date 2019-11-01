@@ -42,9 +42,22 @@ end
 function build_lgf_helmholtz(N,α)
     @info "Building and caching Helmholtz LGF table for α = "*string(α)
 
+
+    asymptotic_radius = _get_lgf_switch(α)
+    @info "Switch to asymptotic formula at i = "*string(asymptotic_radius)
+
+    lgf_support = _get_lgf_support(α)
+    @info "Support radius = "*string(lgf_support)
+
+
     g = zeros(ComplexF64,N, N)
     @showprogress for y in 0:N-1, x in 0:y
+      ir = _index_radius(x,y)
+      if ir < asymptotic_radius
         g[x+1,y+1] = lgf_helmholtz(x,y,α)
+      elseif ir < lgf_support
+        g[x+1,y+1] = lgf_helmholtz_asymptotic(x,y,α)
+      end
     end
 
     G = Symmetric(g)
@@ -80,3 +93,24 @@ function lgf_helmholtz(i :: Integer, j :: Integer, α::Real)
   end
 
 end
+
+lgf_helmholtz_asymptotic(i :: Integer, j :: Integer, α::Real) =
+      conj(im*0.25*hankelh1(0,exp(im*π/4)*sqrt(α)*sqrt(i^2+j^2)))
+
+function _get_lgf_support(α::Number;tol=eps(Float64))
+  i = 0
+  while abs(lgf_helmholtz(i,0,α)) > tol
+     i += 1
+  end
+  return i
+end
+
+function _get_lgf_switch(α::Number;tol=1e-9)
+  i = 1
+  while abs(lgf_helmholtz(i,0,α)-lgf_helmholtz_asymptotic(i,0,α)) > tol
+     i += 1
+  end
+  return i
+end
+
+_index_radius(i::Int,j::Int) = ceil(Int,sqrt(i^2+j^2))
