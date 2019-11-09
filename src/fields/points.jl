@@ -153,7 +153,7 @@ TensorData(n::Int;dtype=Float64) = TensorData(zeros(dtype,n),zeros(dtype,n),zero
 for f in (:ScalarData,:VectorData,:TensorData)
   @eval (::Type{$f{N,T}})() where {N,T} = $f(N,dtype=T)
   @eval $f(::PointData{N,T};dtype=T) where {N,T} = $f(N,dtype=dtype)
-  @eval similar(::$f{N,T}) where {N,T} = $f(N,dtype=T)
+  @eval similar(::$f{N,T};element_type=T) where {N,T} = $f(N,dtype=element_type)
 end
 
 
