@@ -49,6 +49,28 @@ using LinearAlgebra
 
   end
 
+  @testset "Hadamard products" begin
+
+    fcs = ScalarData(5,dtype=ComplexF64)
+    fill!(fcs,2im)
+    fcs .= rand(5)*im
+
+    a = 2.0
+    frs = TensorData(fcs,dtype=Float64)
+    fill!(frs,a)
+
+    out = similar(frs,element_type=ComplexF64)
+
+    product!(out,frs,fcs)
+
+    @test out[3] == frs[3]*fcs[3]
+
+    out = frs ∘ fcs
+
+    @test out[2] == frs[2]*fcs[2]
+
+  end
+
   n = 10
   x = 0.5 .+ 0.2*rand(n)
   y = 0.5 .+ 0.2*rand(n)

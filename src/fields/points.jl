@@ -1,4 +1,4 @@
-import Base: size, show, summary, +, -
+import Base: size, show, summary, similar
 
 abstract type PointData{N,T} <: AbstractVector{T} end
 
@@ -142,7 +142,6 @@ function TensorData(dudx::Vector{T},dudy::Vector{T},
                            ScalarData(dvdx),ScalarData(dvdy))
 end
 
-
 ScalarData(n::Int;dtype=Float64) = ScalarData(zeros(dtype,n))
 
 VectorData(x::Tuple{Vector{T},Vector{T}}) where {T <: Number} = VectorData(x[1],x[2])
@@ -154,7 +153,7 @@ TensorData(n::Int;dtype=Float64) = TensorData(zeros(dtype,n),zeros(dtype,n),zero
 for f in (:ScalarData,:VectorData,:TensorData)
   @eval (::Type{$f{N,T}})() where {N,T} = $f(N,dtype=T)
   @eval $f(::PointData{N,T};dtype=T) where {N,T} = $f(N,dtype=dtype)
-  @eval Base.similar(::$f{N,T}) where {N,T} = $f(N,dtype=T)
+  @eval similar(::$f{N,T}) where {N,T} = $f(N,dtype=T)
 end
 
 
