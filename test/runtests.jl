@@ -10,6 +10,7 @@ using Test
 
 include("fields.jl")
 include("points.jl")
+include("layers.jl")
 include("timemarching.jl")
 include("saddle.jl")
 include("systems.jl")

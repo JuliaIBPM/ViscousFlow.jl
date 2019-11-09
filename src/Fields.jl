@@ -66,6 +66,7 @@ export Primal, Dual, ScalarGridData, VectorGridData, GridData,
        Edges, Nodes, XEdges, YEdges,
        EdgeGradient, NodePair,
        Points, ScalarData, VectorData, TensorData,
+       celltype,
        diff!,interpolate!,
        curl, curl!, Curl, divergence, divergence!, Divergence,
        grad, grad!, Grad,
@@ -126,6 +127,8 @@ macro wraparray(wrapper, field, N)
         end
     end
 end
+
+celltype(w::GridData) = typeof(w).parameters[1]
 
 function othertype end
 
