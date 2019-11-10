@@ -7,7 +7,7 @@ module Layers
 using ..Fields
 using ..Bodies
 
-export DoubleLayer, SingleLayer, mask
+export DoubleLayer, SingleLayer, Mask, ComplementaryMask
 
 abstract type LayerType{N,NX,NY} end
 
@@ -73,21 +73,33 @@ function Base.show(io::IO, H::SingleLayer{N,NX,NY,G,DT}) where {N,NX,NY,G,DT}
     println(io, "  to a $NX x $NY grid of $G nodal data")
 end
 
-"""
-    mask(b::Body,reg::Regularize,w::GridData) -> GridData
+abstract type MaskType end
 
-Returns a mask that sets every grid point equal to 1 if it lies inside the body
+struct Mask{N,NX,NY,G} <: MaskType
+  data :: Nodes{G,NX,NY}
+end
+
+struct ComplementaryMask{N,NX,NY,G} <: MaskType
+  mask :: Mask{N,NX,NY,G}
+end
+
+"""
+    Mask(b::Body,reg::Regularize,w::GridData)
+
+Returns a `Nodes` mask that sets every grid point equal to 1 if it lies inside the body
 `b` and 0 outside. Returns grid data of the same type as `w`. Uses regularization
 defined by `reg`.
 """
-function mask(body::Body{N},dlayer::DoubleLayer{N,NX,NY,G,DT}) where {N,NX,NY,G,DT}
+function Mask(body::Body{N},dlayer::DoubleLayer{N,NX,NY,G,DT}) where {N,NX,NY,G,DT}
   L = plan_laplacian(NX,NY,with_inverse=true,dtype=DT)
-  return L\dlayer(1)
+  return Mask{N,NX,NY,G}(L\dlayer(1))
 end
 
-mask(body::Body{N},regop::Regularize{N},w::GridData{NX,NY,T}) where {N,NX,NY,T} =
-    mask(body,DoubleLayer(body,regop,w))
+Mask(body::Body{N},regop::Regularize{N},w::GridData{NX,NY,T}) where {N,NX,NY,T} =
+    Mask(body,DoubleLayer(body,regop,w))
 
+(m::Mask{N,NX,NY,G})(w::Nodes{G,NX,NY,DT}) where {N,NX,NY,G,DT} = m.data ∘ w
 
+(m::ComplementaryMask{N,NX,NY,G})(w::Nodes{G,NX,NY,DT}) where {N,NX,NY,G,DT} = w - m.mask(w)
 
 end

@@ -47,8 +47,12 @@ end
 
 @testset "Masks" begin
 
-  wmask = mask(body,regop,w)
+  inner = Mask(body,regop,w)
 
-  @test abs(sum(wmask) - π*radius^2) < 1e-3
+  fill!(w,1)
+
+  @test abs(sum(inner(w)) - π*radius^2) < 1e-3
+
+  outer = ComplementaryMask(inner)
 
 end
