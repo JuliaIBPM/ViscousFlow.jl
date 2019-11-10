@@ -21,7 +21,7 @@ Hs, Es = RegularizationMatrix(regop,ϕ,w)
 
 @testset "Double Layer" begin
 
-  dlayer = DoubleLayer(body,Hv)
+  dlayer = DoubleLayer(body,Hv,weight=1/Δx)
   ϕ .= rand(length(ϕ))
 
   @test abs(sum(dlayer(ϕ))) < 100*eps(1.0)
@@ -42,5 +42,13 @@ end
   slayer2 = SingleLayer(body,regop,w)
 
   @test slayer2(ϕ) == slayer(ϕ)
+
+end
+
+@testset "Masks" begin
+
+  wmask = mask(body,regop,w)
+
+  @test abs(sum(wmask) - π*radius^2) < 1e-3
 
 end

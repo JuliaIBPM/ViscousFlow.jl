@@ -226,9 +226,9 @@ function (*)(L::Laplacian{MX,MY,T,R,DX,true}, s::Nodes{C,NX,NY}) where {MX,MY,T,
 end
 
 
-function ldiv!(out::Nodes{C,NX, NY},
+function ldiv!(out::Nodes{C,NX, NY,T},
                    L::Laplacian{MX, MY, T, true, DX, inplace},
-                   s::Nodes{C, NX, NY}) where {C <: CellType, NX, NY, MX, MY, T, DX, inplace}
+                   s::Nodes{C, NX, NY,T}) where {C <: CellType, NX, NY, MX, MY, T, DX, inplace}
 
     mul!(out.data, L.conv, s.data)
 
