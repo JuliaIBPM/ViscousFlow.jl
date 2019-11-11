@@ -4,7 +4,7 @@ import Base:diff,length,push!,vec
 
 using Statistics: mean
 
-export Body,RigidTransform
+export Body,RigidTransform,midpoints,dlength,normal,dlengthmid,centraldiff,normalmid
 
 abstract type Body{N} end
 
@@ -137,14 +137,7 @@ corresponds to the face between points 1 and 2, for example.
 If `body` is a `BodyList`, then it computes the differences separately on each
 constituent body.
 """
-function diff(b::Body{N}) where {N}
-  # need to modify this for thin flat plates
-
-  ip1(i) = 1+mod(i,N)
-  dxtmp = [b.x[ip1(i)] - b.x[i] for i = 1:N]
-  dytmp = [b.y[ip1(i)] - b.y[i] for i = 1:N]
-  return dxtmp,dytmp
-end
+diff(b::Body{N}) where {N} = _diff(b.x,b.y)
 
 function diff(bl::BodyList)
     dx = Float64[]
@@ -157,6 +150,81 @@ function diff(bl::BodyList)
     return dx, dy
 end
 
+function _diff(x::Vector{Float64},y::Vector{Float64})
+  N = length(x)
+  @assert N == length(y)
+
+  ip1(i) = 1+mod(i,N)
+  dxtmp = [x[ip1(i)] - x[i] for i = 1:N]
+  dytmp = [y[ip1(i)] - y[i] for i = 1:N]
+
+  return dxtmp, dytmp
+
+end
+
+"""
+    midpoints(body::Body/BodyList) -> Tuple{Vector{Float64},Vector{Float64}}
+
+Compute the x and y midpoints of the faces on the perimeter of body `body`, whose ends
+are at the current `x` and `y` coordinates (in inertial space) of the body. Face 1
+corresponds to the face between points 1 and 2, for example.
+
+If `body` is a `BodyList`, then it computes the differences separately on each
+constituent body.
+"""
+midpoints(b::Body{N}) where {N} = _midpoints(b.x,b.y)
+
+function midpoints(bl::BodyList)
+    xc = Float64[]
+    yc = Float64[]
+    for b in bl
+        xcb, ycb = midpoints(b)
+        append!(xc,xcb)
+        append!(yc,ycb)
+    end
+    return xc, yc
+end
+
+function _midpoints(x::Vector{Float64},y::Vector{Float64})
+
+  N = length(x)
+  @assert N == length(y)
+
+  ip1(i) = 1+mod(i,N)
+  xc = 0.5*[x[ip1(i)] + x[i] for i = 1:N]
+  yc = 0.5*[y[ip1(i)] + y[i] for i = 1:N]
+
+  return xc, yc
+
+end
+
+"""
+    centraldiff(body::Body/BodyList) -> Tuple{Vector{Float64},Vector{Float64}}
+
+Compute the circular central differences of coordinates on body `body` (or
+on each body in list `body`).
+"""
+function centraldiff(b::Body{N})
+  ip1(i) = 1+mod(i,N)
+  xc, yc = midpoints(b)
+  xc .= circshift(xc,1)
+  yc .= circshift(yc,1)
+
+  return _diff(xc,yc)
+end
+
+function centraldiff(bl::BodyList)
+    dx = Float64[]
+    dy = Float64[]
+    for b in bl
+        dxb, dyb = centraldiff(b)
+        append!(dx,dxb)
+        append!(dy,dyb)
+    end
+    return dx, dy
+end
+
+
 """
     dlength(body::Body/BodyList) -> Vector{Float64}
 
@@ -165,6 +233,20 @@ are at the current `x` and `y` coordinates (in inertial space) of the body. Face
 corresponds to the face between points 1 and 2, for example.
 """
 dlength(b::Union{Body,BodyList}) = sqrt.(diff(b)[1].^2+diff(b)[2].^2)
+
+
+"""
+    dlengthmid(body::Body/BodyList) -> Vector{Float64}
+
+Compute the lengths of the faces formed between the face midpoints on the
+perimeter of body `body`. The indexing of these midpoint faces is consistent
+with that of the regular vertex points adjacent to both midpoints.
+Midpoint face 2 corresponds to the face between midpoints 1 and 2, for example.
+"""
+function dlengthmid(b::Union{Body,BodyList})
+  dx, dy = centraldiff(b)
+  return sqrt.(dx.^2+dy.^2)
+end
 
 """
     normal(body::Body/BodyList) -> Tuple{Vector{Float64},Vector{Float64}}
@@ -176,6 +258,18 @@ of the body. Face 1 corresponds to the face between points 1 and 2, for example.
 function normal(b::Union{Body,BodyList})
   dx, dy = diff(b)
   ds = dlength(b)
+  return -dy./ds, dx./ds
+end
+
+"""
+    normalmid(body::Body/BodyList) -> Tuple{Vector{Float64},Vector{Float64}}
+
+Compute the current normals (in inertial components) of the faces formed between
+midpoints on the perimeter of body `body` (or each body in list `body`).
+"""
+function normalmid(b::Union{Body,BodyList})
+  dx, dy = centraldiff(b)
+  ds = dlengthmid(b)
   return -dy./ds, dx./ds
 end
 
