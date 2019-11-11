@@ -7,7 +7,7 @@ module Layers
 using ..Fields
 using ..Bodies
 
-export DoubleLayer, SingleLayer, Mask, ComplementaryMask
+export DoubleLayer, SingleLayer, MaskType, Mask, ComplementaryMask
 
 abstract type LayerType{N,NX,NY} end
 

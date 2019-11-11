@@ -99,8 +99,7 @@ function (::Type{SaddleSystem})(state::Tuple{TU,TF},sys::Tuple{FA,FB1,FB2};
        fout .= -fbuffer
        return fout
     end
-    S = LinearMap(Schur!,N;ismutating=true,issymmetric=issymmetric,isposdef=isposdef)
-
+    S = LinearMap{T}(Schur!,N;ismutating=true,issymmetric=issymmetric,isposdef=isposdef)
 
     if store && N > 0
       Smat = zeros(T,N,N)

@@ -264,7 +264,7 @@ and return the result as scalar data (treated as an out-of-plane
 component of a vector).
 """
 function cross(A::VectorData{N},B::VectorData{N}) where N
-    C = ScalarData(N)
+    C = ScalarData(N,dtype=promote_type(eltype(A),eltype(B)))
     @. C = A.u*B.v - A.v*B.u
     return C
 end
