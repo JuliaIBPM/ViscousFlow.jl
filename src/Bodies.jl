@@ -204,7 +204,7 @@ end
 Compute the circular central differences of coordinates on body `body` (or
 on each body in list `body`).
 """
-function centraldiff(b::Body{N})
+function centraldiff(b::Body{N}) where {N}
   ip1(i) = 1+mod(i,N)
   xc, yc = midpoints(b)
   xc .= circshift(xc,1)
@@ -232,7 +232,10 @@ Compute the lengths of the faces on the perimeter of body `body`, whose ends
 are at the current `x` and `y` coordinates (in inertial space) of the body. Face 1
 corresponds to the face between points 1 and 2, for example.
 """
-dlength(b::Union{Body,BodyList}) = sqrt.(diff(b)[1].^2+diff(b)[2].^2)
+function dlength(b::Union{Body,BodyList})
+  dx, dy = diff(b)
+  return sqrt.(dx.^2+dy.^2)
+end
 
 
 """
