@@ -17,8 +17,8 @@ struct DoubleLayer{N,NX,NY,G,DT} <: LayerType{N,NX,NY}
 end
 
 function DoubleLayer(body::Union{Body,BodyList},H::RegularizationMatrix;weight::Float64 = 1.0)
-  ds = ScalarData(Bodies.dlength(body))*weight
-  normals = VectorData(Bodies.normal(body))
+  ds = ScalarData(dlengthmid(body))*weight
+  normals = VectorData(normalmid(body))
   return DoubleLayer(normals∘ds,H)
 end
 
@@ -48,7 +48,7 @@ struct SingleLayer{N,NX,NY,G,DT} <: LayerType{N,NX,NY}
 end
 
 function SingleLayer(body::Union{Body,BodyList},H::RegularizationMatrix)
-  ds = ScalarData(Bodies.dlength(body))
+  ds = ScalarData(dlengthmid(body))
   return SingleLayer(ds,H)
 end
 
