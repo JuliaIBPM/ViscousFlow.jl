@@ -128,11 +128,14 @@ Return the number of points on the body perimeter
 length(::Body{N}) where {N} = N
 
 """
-    diff(body::Body) -> Tuple{Vector{Float64},Vector{Float64}}
+    diff(body::Body/BodyList) -> Tuple{Vector{Float64},Vector{Float64}}
 
 Compute the x and y differences of the faces on the perimeter of body `body`, whose ends
 are at the current `x` and `y` coordinates (in inertial space) of the body. Face 1
 corresponds to the face between points 1 and 2, for example.
+
+If `body` is a `BodyList`, then it computes the differences separately on each
+constituent body.
 """
 function diff(b::Body{N}) where {N}
   # need to modify this for thin flat plates
@@ -143,25 +146,36 @@ function diff(b::Body{N}) where {N}
   return dxtmp,dytmp
 end
 
+function diff(bl::BodyList)
+    dx = Float64[]
+    dy = Float64[]
+    for b in bl
+        dxb, dyb = diff(b)
+        append!(dx,dxb)
+        append!(dy,dyb)
+    end
+    return dx, dy
+end
+
 """
-    dlength(body::Body) -> Vector{Float64}
+    dlength(body::Body/BodyList) -> Vector{Float64}
 
 Compute the lengths of the faces on the perimeter of body `body`, whose ends
 are at the current `x` and `y` coordinates (in inertial space) of the body. Face 1
 corresponds to the face between points 1 and 2, for example.
 """
-dlength(b::Body{N}) where {N} = sqrt.(diff(b)[1].^2+diff(b)[2].^2)
+dlength(b::Union{Body,BodyList}) = sqrt.(diff(b)[1].^2+diff(b)[2].^2)
 
 """
-    normal(body::Body) -> Tuple{Vector{Float64},Vector{Float64}}
+    normal(body::Body/BodyList) -> Tuple{Vector{Float64},Vector{Float64}}
 
 Compute the current normals (in inertial components) of the faces on the perimeter
 of body `body`, whose ends are at the current `x` and `y` coordinates (in inertial space)
 of the body. Face 1 corresponds to the face between points 1 and 2, for example.
 """
-function normal(body::Body{N}) where {N}
-  dx, dy = diff(body)
-  ds = dlength(body)
+function normal(b::Union{Body,BodyList})
+  dx, dy = diff(b)
+  ds = dlength(b)
   return -dy./ds, dx./ds
 end
 
