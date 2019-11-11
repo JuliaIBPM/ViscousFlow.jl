@@ -20,6 +20,8 @@ size(A::BodyList) = size(A.list)
 length(A::BodyList) = length(A.list)
 numpts(A::BodyList) = mapreduce(b -> length(b.x),+,A)
 
+numpts(A::Body{N}) where {N} = N
+
 push!(bl::BodyList,b::Body) = push!(bl.list,b)
 
 """

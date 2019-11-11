@@ -16,13 +16,13 @@ struct DoubleLayer{N,NX,NY,G,DT} <: LayerType{N,NX,NY}
     H :: RegularizationMatrix{Edges{G,NX,NY,DT},VectorData{N,DT}}
 end
 
-function DoubleLayer(body::Body,H::RegularizationMatrix;weight::Float64 = 1.0)
+function DoubleLayer(body::Union{Body,BodyList},H::RegularizationMatrix;weight::Float64 = 1.0)
   ds = ScalarData(Bodies.dlength(body))*weight
   normals = VectorData(Bodies.normal(body))
   return DoubleLayer(normals∘ds,H)
 end
 
-function DoubleLayer(body::Body{N},reg::Regularize{N},w::GridData{NX,NY,T}) where {N,NX,NY,T}
+function DoubleLayer(body::Union{Body,BodyList},reg::Regularize{N},w::GridData{NX,NY,T}) where {N,NX,NY,T}
 
   out = RegularizationMatrix(reg,VectorData(N,dtype=T),Edges(celltype(w),w,dtype=T))
   return DoubleLayer(body,reg._issymmetric ? out[1] : out, weight = sqrt(reg.overdv))
@@ -47,12 +47,12 @@ struct SingleLayer{N,NX,NY,G,DT} <: LayerType{N,NX,NY}
     H :: RegularizationMatrix{Nodes{G,NX,NY,DT},ScalarData{N,DT}}
 end
 
-function SingleLayer(body::Body,H::RegularizationMatrix)
+function SingleLayer(body::Union{Body,BodyList},H::RegularizationMatrix)
   ds = ScalarData(Bodies.dlength(body))
   return SingleLayer(ds,H)
 end
 
-function SingleLayer(body::Body{N},reg::Regularize{N},w::GridData{NX,NY,T}) where {N,NX,NY,T}
+function SingleLayer(body::Union{Body,BodyList},reg::Regularize{N},w::GridData{NX,NY,T}) where {N,NX,NY,T}
 
   out = RegularizationMatrix(reg,ScalarData(N,dtype=T),Nodes(celltype(w),w,dtype=T))
   return SingleLayer(body,reg._issymmetric ? out[1] : out)
@@ -90,13 +90,13 @@ Returns a `Nodes` mask that sets every grid point equal to 1 if it lies inside t
 `b` and 0 outside. Returns grid data of the same type as `w`. Uses regularization
 defined by `reg`.
 """
-function Mask(body::Body{N},dlayer::DoubleLayer{N,NX,NY,G,DT}) where {N,NX,NY,G,DT}
+function Mask(dlayer::DoubleLayer{N,NX,NY,G,DT}) where {N,NX,NY,G,DT}
   L = plan_laplacian(NX,NY,with_inverse=true,dtype=DT)
   return Mask{N,NX,NY,G}(L\dlayer(1))
 end
 
-Mask(body::Body{N},regop::Regularize{N},w::GridData{NX,NY,T}) where {N,NX,NY,T} =
-    Mask(body,DoubleLayer(body,regop,w))
+Mask(body::Union{Body,BodyList},regop::Regularize{N},w::GridData{NX,NY,T}) where {N,NX,NY,T} =
+    Mask(DoubleLayer(body,regop,w))
 
 (m::Mask{N,NX,NY,G})(w::Nodes{G,NX,NY,DT}) where {N,NX,NY,G,DT} = m.data ∘ w
 
