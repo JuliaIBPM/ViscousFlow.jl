@@ -15,7 +15,7 @@ f = VectorData(X)
 ϕ = ScalarData(f)
 fill!(ϕ,1.0)
 
-regop = Regularize(X,Δx,I0=origin(g),issymmetric=true,ddftype=Fields.Yang)
+regop = Regularize(X,Δx,I0=origin(g),issymmetric=true,ddftype=Fields.Yang3)
 Hv, Ev = RegularizationMatrix(regop,f,dq)
 Hs, Es = RegularizationMatrix(regop,ϕ,w)
 
