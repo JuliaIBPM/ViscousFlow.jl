@@ -8,12 +8,12 @@ using Test
 
 #@test isempty(detect_ambiguities(ViscousFlow))
 
-include("fields.jl")
-include("points.jl")
+#include("fields.jl")
+#include("points.jl")
 include("layers.jl")
-include("timemarching.jl")
-include("saddle.jl")
-include("systems.jl")
+#include("timemarching.jl")
+#include("saddle.jl")
+#include("systems.jl")
 
 
 #@testset ExtendedTestSet "All tests" begin
