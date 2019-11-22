@@ -9,7 +9,7 @@ const mygreen = RGBA{Float64}(151/255,180/255,118/255,1)
 const mygreen2 = RGBA{Float64}(113/255,161/255,103/255,1)
 const myblue = RGBA{Float64}(74/255,144/255,226/255,1)
 
-@recipe function plot(w::Fields.Nodes{T,NX,NY}) where {T,NX,NY}
+@recipe function plot(w::ScalarGridData{NX,NY,T}) where {NX,NY, T<:Real}
   grid --> :none
   ratio := 1
   linewidth --> 1
@@ -22,7 +22,7 @@ const myblue = RGBA{Float64}(74/255,144/255,226/255,1)
   end
 end
 
-@recipe function plot(x::AbstractArray{S,1},y::AbstractArray{S,1},w::Fields.Nodes{T,NX,NY};trim=0) where {S,T,NX,NY}
+@recipe function plot(x::AbstractArray{S,1},y::AbstractArray{S,1},w::ScalarGridData{NX,NY,T};trim=0) where {S,NX,NY,T<:Real}
       grid --> :none
       ratio := 1
       linewidth --> 1
