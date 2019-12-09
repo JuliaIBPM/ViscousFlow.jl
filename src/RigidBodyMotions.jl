@@ -142,7 +142,8 @@ function Pitchup(U₀, a, K, α₀, t₀, Δα, ramp)
     p = ConstantProfile(α₀) + 2K*((ramp >> t₀) - (ramp >> (t₀ + Δt)))
     ṗ = d_dt(p)
     p̈ = d_dt(ṗ)
-    Pitchup(U₀, a, K, α₀, t₀, Δα, c, ċ, c̈, p, ṗ, p̈)
+
+    Pitchup(U₀, a, K, α₀, t₀, Δα, p, ṗ, p̈)
 end
 
 function (p::Pitchup)(t)
