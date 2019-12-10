@@ -2,7 +2,7 @@ module Systems
 
 using DocStringExtensions
 
-export NavierStokes, PointForce, vorticity, velocity, streamfunction, nl
+export NavierStokes, PointForce, SpatialGauss, Gaussian!, Gaussian, vorticity, velocity, streamfunction, nl
 
 using ..Fields
 using ..TimeMarching
