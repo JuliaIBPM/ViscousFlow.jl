@@ -270,10 +270,24 @@ function cross(A::VectorData{N},B::VectorData{N}) where N
 end
 
 """
-    dot(v::Tuple{T,T},B::TensorData) where {T<:Number} -> VectorData
-    ⋅(v::Tuple{T,T},B::TensorData) where {T<:Number} -> VectorData
+    dot(A::Tuple{T,T},B::VectorData) where {T<:Number} -> ScalarData
+    ⋅(A::Tuple{T,T},B::VectorData) where {T<:Number} -> ScalarData
 
 Computes the dot product between the tuple `v` and the elements of a tensor `B` on
+a set of points and returns scalar data on the same set of points.
+"""
+function dot(A::Tuple{T,T},B::VectorData) where {T<:Number}
+    C = ScalarData(B)
+    x, y = A
+    @. C.data = x*B.u + y*B.v
+    return C
+end
+
+"""
+    dot(A::Tuple{T,T},B::TensorData) where {T<:Number} -> VectorData
+    ⋅(A::Tuple{T,T},B::TensorData) where {T<:Number} -> VectorData
+
+Computes the dot product between the tuple `A` and the elements of a tensor `B` on
 a set of points and returns vector data on the same set of points.
 """
 function dot(A::Tuple{T,T},B::TensorData) where {T<:Number}
