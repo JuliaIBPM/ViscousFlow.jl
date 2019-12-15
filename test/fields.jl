@@ -1,5 +1,6 @@
 import ViscousFlow: Fields
 using FFTW
+using Interpolations
 
 struct Not{T}
   idx::T

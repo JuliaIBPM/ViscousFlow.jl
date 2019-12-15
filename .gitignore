@@ -6,3 +6,7 @@ examples/.ipynb_checkpoints
 cache
 .#*
 *.mem
+Manifest.toml
+.ipynb_checkpoints
+*.ipynb
+todo
