@@ -57,6 +57,7 @@ using Statistics
 
 using LinearAlgebra
 using SparseArrays
+using Interpolations
 
 import LinearAlgebra: mul!, ldiv!, cross, ×, dot, ⋅
 import Base: parentindices
