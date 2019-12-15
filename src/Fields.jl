@@ -60,7 +60,6 @@ using SparseArrays
 using Interpolations
 
 import LinearAlgebra: mul!, ldiv!, cross, ×, dot, ⋅
-import Interpolations: interpolate!
 
 import Base: parentindices
 const GAMMA = MathConstants.γ
@@ -70,7 +69,7 @@ export Primal, Dual, ScalarGridData, VectorGridData, GridData,
        EdgeGradient, NodePair,
        Points, ScalarData, VectorData, TensorData,
        celltype,
-       diff!,
+       diff!,grid_interpolate!,
        curl, curl!, Curl, divergence, divergence!, Divergence,
        grad, grad!, Grad,
        laplacian, laplacian!, laplacian_symm!, plan_laplacian, plan_laplacian!,

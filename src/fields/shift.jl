@@ -1,8 +1,8 @@
-# Interpolation operations
+# Grid interpolation operations
 
 
 """
-    interpolate!(q::Edges{Dual},w::Nodes{Dual})
+    grid_interpolate!(q::Edges{Dual},w::Nodes{Dual})
 
 Interpolate the dual nodal data `w` to the edges of the dual
 cells, and return the result in `q`.
@@ -16,7 +16,7 @@ julia> w[3,4] = 1.0;
 
 julia> q = Edges(Dual,w);
 
-julia> interpolate!(q,w)
+julia> grid_interpolate!(q,w)
 Edges{Dual,8,6,Float64} data
 u (in grid orientation)
 6×7 Array{Float64,2}:
@@ -35,20 +35,20 @@ v (in grid orientation)
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
 ```
 """
-function interpolate!(q::Edges{Dual, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
-    interpolate!(q.u,w)
-    interpolate!(q.v,w)
+function grid_interpolate!(q::Edges{Dual, NX, NY}, w::Nodes{Dual,NX, NY}) where {NX, NY}
+    grid_interpolate!(q.u,w)
+    grid_interpolate!(q.v,w)
     q
 end
 
 # This operation is not necessarily desirable, since its meaning is ambiguous
-interpolate(nodes::Nodes{Dual,NX,NY}) where {NX,NY} = interpolate!(Edges(Dual, nodes), nodes)
+grid_interpolate(nodes::Nodes{Dual,NX,NY}) where {NX,NY} = grid_interpolate!(Edges(Dual, nodes), nodes)
 
 
 
 
 """
-    interpolate!((wx::Nodes,wy::Nodes),q::Edges)
+    grid_interpolate!((wx::Nodes,wy::Nodes),q::Edges)
 
 Interpolate the edge data `q` (of either dual or primal
 type) to the dual or primal nodes, and return the result in `wx` and `wy`. `wx`
@@ -63,7 +63,7 @@ julia> q.u[3,2] = 1.0;
 
 julia> wx = Nodes(Dual,(8,6)); wy = deepcopy(wx);
 
-julia> Fields.interpolate!((wx,wy),q);
+julia> Fields.grid_interpolate!((wx,wy),q);
 
 julia> wx
 Nodes{Dual,8,6,Float64} data
@@ -88,21 +88,21 @@ Printing in grid orientation (lower left is (1,1))
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
 ```
 """
-function interpolate!(out::Tuple{Nodes{C, NX, NY},Nodes{C, NX, NY}}, q::Edges{D,NX, NY}) where {C<:CellType, D<:CellType, NX, NY}
-    interpolate!(out[1],q.u)
-    interpolate!(out[2],q.v)
+function grid_interpolate!(out::Tuple{Nodes{C, NX, NY},Nodes{C, NX, NY}}, q::Edges{D,NX, NY}) where {C<:CellType, D<:CellType, NX, NY}
+    grid_interpolate!(out[1],q.u)
+    grid_interpolate!(out[2],q.v)
     out
 end
 
 """
-    interpolate!(q::Edges{Primal},w::Nodes{Primal})
+    grid_interpolate!(q::Edges{Primal},w::Nodes{Primal})
 
 Interpolate the primal nodal data `w` to the edges of the primal cells,
 and return the result in `q`.
 """
-function interpolate!(q::Edges{Primal, NX, NY}, w::Nodes{Primal,NX, NY}) where {NX, NY}
-    interpolate!(q.u,w)
-    interpolate!(q.v,w)
+function grid_interpolate!(q::Edges{Primal, NX, NY}, w::Nodes{Primal,NX, NY}) where {NX, NY}
+    grid_interpolate!(q.u,w)
+    grid_interpolate!(q.v,w)
     q
 end
 
@@ -110,7 +110,7 @@ end
 # since they lead to broadened stencils.
 
 """
-    interpolate!(v::Edges{Dual/Primal},q::Edges{Primal/Dual})
+    grid_interpolate!(v::Edges{Dual/Primal},q::Edges{Primal/Dual})
 
 Interpolate the primal (resp. dual) edge data `q` to the
 edges of the dual (resp. primal) cells, and return the result in `v`.
@@ -124,7 +124,7 @@ julia> q.u[3,2] = 1.0;
 
 julia> v = Edges(Dual,(8,6));
 
-julia> Fields.interpolate!(v,q)
+julia> Fields.grid_interpolate!(v,q)
 Edges{Dual,8,6,Float64} data
 u (in grid orientation)
 6×7 Array{Float64,2}:
@@ -143,7 +143,7 @@ v (in grid orientation)
  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
 ```
 """
-function interpolate!(dual::Edges{Dual, NX, NY},
+function grid_interpolate!(dual::Edges{Dual, NX, NY},
                 primal::Edges{Primal, NX, NY}) where {NX, NY}
     uₚ = primal.u
     @inbounds for y in 2:NY-1, x in 1:NX-1
@@ -157,11 +157,11 @@ function interpolate!(dual::Edges{Dual, NX, NY},
     dual
 end
 
-function interpolate(primal::Edges{Primal, NX, NY}) where {NX, NY}
-    interpolate!(Edges(Dual, (NX, NY)), primal)
+function grid_interpolate(primal::Edges{Primal, NX, NY}) where {NX, NY}
+    grid_interpolate!(Edges(Dual, (NX, NY)), primal)
 end
 
-function interpolate!(primal::Edges{Primal, NX, NY},
+function grid_interpolate!(primal::Edges{Primal, NX, NY},
                 dual::Edges{Dual, NX, NY}) where {NX, NY}
     uₚ = dual.u
     @inbounds for y in 1:NY-1, x in 2:NX-1
@@ -175,8 +175,8 @@ function interpolate!(primal::Edges{Primal, NX, NY},
     primal
 end
 
-function interpolate(dual::Edges{Dual, NX, NY}) where {NX, NY}
-    interpolate!(Edges(Primal, dual), dual)
+function grid_interpolate(dual::Edges{Dual, NX, NY}) where {NX, NY}
+    grid_interpolate!(Edges(Primal, dual), dual)
 end
 
 # 1-d interpolations on which most of above are based.
@@ -185,4 +185,4 @@ include("interpolation1d.jl")
 
 
 # I don't like this one. It is ambiguous what type of nodes are being shifted to.
-nodeshift(edges::Edges{Primal,NX,NY}) where {NX,NY} = interpolate!((Nodes(Dual, edges),Nodes(Dual, edges)),edges)
+nodeshift(edges::Edges{Primal,NX,NY}) where {NX,NY} = grid_interpolate!((Nodes(Dual, edges),Nodes(Dual, edges)),edges)

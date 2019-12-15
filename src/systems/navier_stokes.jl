@@ -202,11 +202,11 @@ function TimeMarching.r₁(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY}) wh
   L = sys.L
   Δx⁻¹ = 1/cellsize(sys)
 
-  interpolate!(Qq,curl(L\w)) # -velocity, on dual edges
+  grid_interpolate!(Qq,curl(L\w)) # -velocity, on dual edges
   Qq.u .-= sys.U∞[1]
   Qq.v .-= sys.U∞[2]
 
-  return rmul!(divergence(Qq∘interpolate!(Ww,w)),Δx⁻¹) # -∇⋅(wu)
+  return rmul!(divergence(Qq∘grid_interpolate!(Ww,w)),Δx⁻¹) # -∇⋅(wu)
 
 end
 
@@ -218,12 +218,12 @@ function TimeMarching.r₁(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY},U�
   L = sys.L
   Δx⁻¹ = 1/cellsize(sys)
 
-  interpolate!(Qq,curl(L\w)) # -velocity, on dual edges
+  grid_interpolate!(Qq,curl(L\w)) # -velocity, on dual edges
   _,ċ,_,_,_,_ = U∞(t)
   Qq.u .-= real(ċ)
   Qq.v .-= imag(ċ)
 
-  return rmul!(divergence(Qq∘interpolate!(Ww,w)),Δx⁻¹) # -∇⋅(wu)
+  return rmul!(divergence(Qq∘grid_interpolate!(Ww,w)),Δx⁻¹) # -∇⋅(wu)
 
 end
 

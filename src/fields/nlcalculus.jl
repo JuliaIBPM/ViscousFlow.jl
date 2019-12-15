@@ -17,21 +17,21 @@ function directional_derivative!(out::Edges{C},f::Edges{C},q::Edges{C}) where {C
     grad!(df,f)
 
     # compute qy*(dfx/dy) after first transforming q.v to dual nodes and then transforming product to primal x-edges
-    interpolate!(outx,interpolate!(q_dual,q.v) ∘ df.dudy)
+    grid_interpolate!(outx,grid_interpolate!(q_dual,q.v) ∘ df.dudy)
     out.u .= outx
 
     # compute qx*(dfx/dx) after first transforming q.u to primal nodes
     # and then interpolating product to primal x-edges
-    interpolate!(outx,interpolate!(q_primal,q.u) ∘ df.dudx)
+    grid_interpolate!(outx,grid_interpolate!(q_primal,q.u) ∘ df.dudx)
     out.u .+= outx
 
     # compute qx*(dfy/dx) after first transforming qx to dual nodes and then transforming product to primal y-edges
-    interpolate!(outy,interpolate!(q_dual,q.u) ∘ df.dvdx)
+    grid_interpolate!(outy,grid_interpolate!(q_dual,q.u) ∘ df.dvdx)
     out.v .= outy
 
     # compute qy*(dfy/dy) after first transforming qy to primal nodes
     # and then interpolating product to primal y-edges
-    interpolate!(outy,interpolate!(q_primal,q.v) ∘ df.dvdy)
+    grid_interpolate!(outy,grid_interpolate!(q_primal,q.v) ∘ df.dvdy)
     out.v .+= outy
 
     return out
@@ -56,10 +56,10 @@ function directional_derivative_conserve!(out::Edges{C},f::Edges{C},q::Edges{C})
     qfnode = NodePair(C,othertype(C),f)
 
     # interpolate both fx and qx to primal nodes, multiply element by element, assign to NodePair.u
-    interpolate!(qfnode.u,qf.u)
+    grid_interpolate!(qfnode.u,qf.u)
 
     # interpolate both f.u and q.v to dual nodes, multiply element by element, assign to NodePair.v
-    qfnode.v .= interpolate!(q_dual,q.v) .* interpolate!(f_dual,f.u)
+    qfnode.v .= grid_interpolate!(q_dual,q.v) .* grid_interpolate!(f_dual,f.u)
 
     # take divergence and assign to out.u
     divergence!(out.u,qfnode)
@@ -67,10 +67,10 @@ function directional_derivative_conserve!(out::Edges{C},f::Edges{C},q::Edges{C})
     qfnode = NodePair(othertype(C),C,f)
 
     # interpolate both fy and qx to dual nodes, multiply element by element, assign to NodePair.u
-    qfnode.u .= interpolate!(q_dual,q.u) .* interpolate!(f_dual,f.v)
+    qfnode.u .= grid_interpolate!(q_dual,q.u) .* grid_interpolate!(f_dual,f.v)
 
     # interpolate both fy and qy to primal nodes, multiply element by element, assign to NodePair.v
-    interpolate!(qfnode.v,qf.v)
+    grid_interpolate!(qfnode.v,qf.v)
 
     # take divergence and assign to out.v
     divergence!(out.v,qfnode)
@@ -97,8 +97,8 @@ function curl_cross!(out::Edges{C},a::Edges{C},b::Edges{C}) where {C <: CellType
 
     acrossb = Nodes(othertype(C),a)
 
-    interpolate!((ax_dual,ay_dual),a)
-    interpolate!((bx_dual,by_dual),b)
+    grid_interpolate!((ax_dual,ay_dual),a)
+    grid_interpolate!((bx_dual,by_dual),b)
 
     acrossb .= ax_dual.*by_dual - ay_dual.*bx_dual
     curl!(out,acrossb)
@@ -131,14 +131,14 @@ function convective_derivative_rot!(out::Edges{C},q::Edges{C}) where {C<:CellTyp
     qy_primal = Nodes(C,q)
     ω = curl(q)
 
-    interpolate!((qx_primal,qy_primal),q)
+    grid_interpolate!((qx_primal,qy_primal),q)
     grad!(out,qx_primal ∘ qx_primal + qy_primal ∘ qy_primal)
     out .*= 0.5
 
     q_dual = Nodes(othertype(C),q)
     qcrossω = Edges(C,q)
-    interpolate!(qcrossω.u,interpolate!(q_dual, q.v) ∘ ω)
-    interpolate!(qcrossω.v,interpolate!(q_dual,-q.u) ∘ ω)
+    grid_interpolate!(qcrossω.u,grid_interpolate!(q_dual, q.v) ∘ ω)
+    grid_interpolate!(qcrossω.v,grid_interpolate!(q_dual,-q.u) ∘ ω)
 
     out .-= qcrossω
 

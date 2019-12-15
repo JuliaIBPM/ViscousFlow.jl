@@ -1,6 +1,5 @@
 import ViscousFlow: Fields
 using FFTW
-using Interpolations
 
 struct Not{T}
   idx::T
@@ -185,13 +184,13 @@ import Base: to_indices, uncolon, tail, _maybetail
 
   @testset "Face data shift to dual face" begin
     shiftx = Edges(Dual,cellzero)
-    interpolate!(shiftx,facexunit)
+    grid_interpolate!(shiftx,facexunit)
     @test shiftx.u[i,j] == shiftx.u[i-1,j] == shiftx.u[i,j+1] == shiftx.u[i-1,j+1] == 0.25
     shiftx.u[i,j] = shiftx.u[i-1,j] = shiftx.u[i,j+1] = shiftx.u[i-1,j+1] = 0.0
     @test iszero(shiftx.u)
     @test iszero(shiftx.v)
     shifty = Edges(Dual,cellzero)
-    interpolate!(shifty,faceyunit)
+    grid_interpolate!(shifty,faceyunit)
     @test shifty.v[i,j] == shifty.v[i,j-1] == shifty.v[i+1,j] == shifty.v[i+1,j-1] == 0.25
     shifty.v[i,j] = shifty.v[i,j-1] = shifty.v[i+1,j] = shifty.v[i+1,j-1] = 0.0
     @test iszero(shifty.u)
@@ -200,7 +199,7 @@ import Base: to_indices, uncolon, tail, _maybetail
 
   @testset "Dual cell center data shift to dual face" begin
     w = Edges(Dual,cellzero)
-    interpolate!(w,cellunit)
+    grid_interpolate!(w,cellunit)
     @test w.u[i,j] == w.u[i-1,j] == 0.5
     w.u[i,j] = w.u[i-1,j] = 0.0
     @test iszero(w.u)
@@ -212,7 +211,7 @@ import Base: to_indices, uncolon, tail, _maybetail
   @testset "Face data shift to dual cell center" begin
     cellx = Nodes(Dual,cellzero)
     celly = Nodes(Dual,cellzero)
-    interpolate!((cellx,celly),facexunit)
+    grid_interpolate!((cellx,celly),facexunit)
     @test cellx[i,j] == 0.5 && cellx[i,j+1] == 0.5
     cellx[i,j] = cellx[i,j+1] = 0.0
     @test iszero(cellx)
@@ -220,7 +219,7 @@ import Base: to_indices, uncolon, tail, _maybetail
 
     cellx = Nodes(Dual,cellzero)
     celly = Nodes(Dual,cellzero)
-    interpolate!((cellx,celly),faceyunit)
+    grid_interpolate!((cellx,celly),faceyunit)
     @test celly[i,j] == 0.5 && celly[i+1,j] == 0.5
     celly[i,j] = celly[i+1,j] = 0.0
     @test iszero(cellx)
@@ -434,13 +433,13 @@ end
 
 @testset "Face data shift to dual face" begin
   shiftx = Edges(Dual,cellzero)
-  interpolate!(shiftx,facexunit)
+  grid_interpolate!(shiftx,facexunit)
   @test shiftx.u[i,j] == shiftx.u[i-1,j] == shiftx.u[i,j+1] == shiftx.u[i-1,j+1] == 0.25*a
   shiftx.u[i,j] = shiftx.u[i-1,j] = shiftx.u[i,j+1] = shiftx.u[i-1,j+1] = 0.0
   @test iszero(shiftx.u)
   @test iszero(shiftx.v)
   shifty = Edges(Dual,cellzero)
-  interpolate!(shifty,faceyunit)
+  grid_interpolate!(shifty,faceyunit)
   @test shifty.v[i,j] == shifty.v[i,j-1] == shifty.v[i+1,j] == shifty.v[i+1,j-1] == 0.25*a
   shifty.v[i,j] = shifty.v[i,j-1] = shifty.v[i+1,j] = shifty.v[i+1,j-1] = 0.0
   @test iszero(shifty.u)
@@ -449,7 +448,7 @@ end
 
 @testset "Dual cell center data shift to dual face" begin
   w = Edges(Dual,cellzero)
-  interpolate!(w,cellunit)
+  grid_interpolate!(w,cellunit)
   @test w.u[i,j] == w.u[i-1,j] == 0.5*a
   w.u[i,j] = w.u[i-1,j] = 0.0
   @test iszero(w.u)
@@ -461,7 +460,7 @@ end
 @testset "Face data shift to dual cell center" begin
   cellx = Nodes(Dual,cellzero)
   celly = Nodes(Dual,cellzero)
-  interpolate!((cellx,celly),facexunit)
+  grid_interpolate!((cellx,celly),facexunit)
   @test cellx[i,j] == 0.5*a && cellx[i,j+1] == 0.5*a
   cellx[i,j] = cellx[i,j+1] = 0.0
   @test iszero(cellx)
@@ -469,7 +468,7 @@ end
 
   cellx = Nodes(Dual,cellzero)
   celly = Nodes(Dual,cellzero)
-  interpolate!((cellx,celly),faceyunit)
+  grid_interpolate!((cellx,celly),faceyunit)
   @test celly[i,j] == 0.5*a && celly[i+1,j] == 0.5*a
   celly[i,j] = celly[i+1,j] = 0.0
   @test iszero(cellx)
@@ -602,7 +601,7 @@ end
         q.v .= reshape(1:16, 4, 4)
         Qq = Edges{Dual, 5, 4, Float64}()
 
-        interpolate!(Qq,q)
+        grid_interpolate!(Qq,q)
         @test Qq.u == [ 0.0  4.0  9.0  0.0
                         0.0  5.0  10.0 0.0
                         0.0  6.0  11.0 0.0
@@ -622,7 +621,7 @@ end
         q.u .= reshape(1:16, 4, 4)
         q.v .= reshape(1:15, 5, 3)
         v = Edges{Primal, 5, 4, Float64}()
-        interpolate!(v,q)
+        grid_interpolate!(v,q)
 
         @test v.u == [ 0.0  0.0   0.0
                        3.5  7.5  11.5
@@ -643,7 +642,7 @@ end
         w .= reshape(1:20, 5, 4)
 
         Ww = Edges{Dual, 5, 4, Float64}()
-        interpolate!(Ww,w)
+        grid_interpolate!(Ww,w)
 
         @test Ww.u == [ 0.0  6.5  11.5  0.0
                         0.0  7.5  12.5  0.0
