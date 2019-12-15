@@ -1,4 +1,3 @@
-import Interpolations: interpolate!
 
 # These routines interpolate only within the grid, from cell centers to cell
 # edges.

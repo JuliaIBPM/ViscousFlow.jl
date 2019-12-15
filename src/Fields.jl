@@ -60,6 +60,8 @@ using SparseArrays
 using Interpolations
 
 import LinearAlgebra: mul!, ldiv!, cross, ×, dot, ⋅
+import Interpolations: interpolate!
+
 import Base: parentindices
 const GAMMA = MathConstants.γ
 
