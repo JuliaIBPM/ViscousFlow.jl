@@ -1,3 +1,8 @@
+import Interpolations: interpolate!
+
+# These routines interpolate only within the grid, from cell centers to cell
+# edges.
+
 # Interpolations in one direction only, C -> E or E -> C
 
 """
