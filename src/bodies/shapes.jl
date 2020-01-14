@@ -1,4 +1,4 @@
-export Ellipse,Circle,Plate,NACA4
+export Ellipse,Circle,Rectangle,Square,Plate,NACA4
 
 
 """
@@ -45,6 +45,69 @@ function Base.show(io::IO, body::Ellipse{N}) where {N}
       println(io, "Circular body with $N points and radius $(body.a)")
     else
       println(io, "Elliptical body with $N points and semi-axes ($(body.a),$(body.b))")
+    end
+    println(io, "   Current position: ($(body.cent[1]),$(body.cent[2]))")
+    println(io, "   Current angle (rad): $(body.α)")
+end
+
+"""
+    Rectangle(a,b,na) <: Body
+
+Construct a rectangular body with x̃ side half-length `a` and ỹ side half-length `b`,
+with `na` points distributed on the x̃ side (including both corners). The centroid
+of the rectangle is placed at the origin (so that the lower left corner is at (-a,-b)).
+"""
+mutable struct Rectangle{N} <: ViscousFlow.Body{N}
+  a :: Float64
+  b :: Float64
+  cent :: Tuple{Float64,Float64}
+  α :: Float64
+
+  x̃ :: Vector{Float64}
+  ỹ :: Vector{Float64}
+
+  x :: Vector{Float64}
+  y :: Vector{Float64}
+
+end
+
+function Rectangle(a::Real,b::Real,na::Int)
+    Δsa = 2a/(na-1)
+    nb = ceil(Int,2b/Δsa)+1
+    Δsb = 2b/(nb-1)
+
+    N = 2(na-1)+2(nb-1)
+    x̃ = zeros(N)
+    ỹ = zeros(N)
+
+    @. x̃[1:na-1] = -a + Δsa*(0:na-2)
+    @. ỹ[1:na-1] = -b
+
+    @. x̃[na:na+nb-2] =  a
+    @. ỹ[na:na+nb-2] = -b + Δsb*(0:nb-2)
+
+    @. x̃[(na+nb-1):(2na+nb-3)] = -a + Δsa*(na-1:-1:1)
+    @. ỹ[(na+nb-1):(2na+nb-3)] = b
+
+    @. x̃[(2na+nb-2):(2na+2nb-4)] = -a
+    @. ỹ[(2na+nb-2):(2na+2nb-4)] =  -b + Δsb*(nb-1:-1:1)
+
+    Rectangle{N}(a,b,(0.0,0.0),0.0,x̃,ỹ,x̃,ỹ)
+end
+
+"""
+    Square(a,na) <: Body
+
+Construct a square body with side half-length `a`
+and with `na` points distributed on each side (including both corners).
+"""
+Square(a::Real,na::Int) = Rectangle(a,a,na)
+
+function Base.show(io::IO, body::Rectangle{N}) where {N}
+    if body.a == body.b
+      println(io, "Square body with $N points and side half-length $(body.a)")
+    else
+      println(io, "Rectangular body with $N points and half-lengths ($(body.a),$(body.b))")
     end
     println(io, "   Current position: ($(body.cent[1]),$(body.cent[2]))")
     println(io, "   Current angle (rad): $(body.α)")
