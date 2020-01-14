@@ -57,7 +57,7 @@ Construct a rectangular body with x̃ side half-length `a` and ỹ side half-len
 with `na` points distributed on the x̃ side (including both corners). The centroid
 of the rectangle is placed at the origin (so that the lower left corner is at (-a,-b)).
 """
-mutable struct Rectangle{N} <: ViscousFlow.Body{N}
+mutable struct Rectangle{N} <: Body{N}
   a :: Float64
   b :: Float64
   cent :: Tuple{Float64,Float64}
