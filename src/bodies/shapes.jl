@@ -1,5 +1,28 @@
-export Ellipse,Circle,Rectangle,Square,Plate,NACA4
+export BasicBody,Ellipse,Circle,Rectangle,Square,Plate,NACA4
 
+"""
+    BasicBody(x,y) <: Body
+
+Construct a body by simply passing in the `x` and `y` coordinate vectors. The last
+point will be automatically connected to the first point. The coordinate vectors
+are assumed to be expressed in the body-fixed coordinate system.
+"""
+mutable struct BasicBody{N} <: Body{N}
+  cent :: Tuple{Float64,Float64}
+  α :: Float64
+
+  x̃ :: Vector{Float64}
+  ỹ :: Vector{Float64}
+
+  x :: Vector{Float64}
+  y :: Vector{Float64}
+
+end
+
+function BasicBody(x::Vector{T},b::Vector{T}) where {T <: Real}
+    @assert length(x) == length(y)
+    BasicBody{length(x)}((0.0,0.0),0.0,x,y,x,y)
+end
 
 """
     Ellipse(a,b,n) <: Body
