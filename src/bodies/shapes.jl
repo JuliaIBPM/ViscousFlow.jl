@@ -1,4 +1,4 @@
-export BasicBody,Ellipse,Circle,Rectangle,Square,Plate,NACA4
+export BasicBody,Ellipse,Circle,Rectangle,Square,Plate,SplinedBody,NACA4
 
 """
     BasicBody(x,y) <: Body
