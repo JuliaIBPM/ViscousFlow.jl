@@ -1,3 +1,5 @@
+using Dierckx
+
 export BasicBody,Ellipse,Circle,Rectangle,Square,Plate,SplinedBody,NACA4
 
 """
