@@ -231,6 +231,33 @@ function Base.show(io::IO, body::Plate{N}) where {N}
 end
 
 """
+    SplinedBody(X,Δx) -> BasicBody
+
+Using control points in `X` (assumed to be N x 2, where N is the number of points), create a set of points
+that are uniformly spaced (with spacing `Δx`) on a curve that passes through the control points. A cubic
+parametric spline algorithm is used.
+"""
+function SplinedBody(Xpts_raw::Array{Float64,2},Δx::Float64)
+    # Assume Xpts are in the form N x 2
+    Xpts = copy(Xpts_raw)
+    if Xpts[1,:] != Xpts[end,:]
+        Xpts = vcat(Xpts,Xpts[1,:]')
+    end
+
+    spl = ParametricSpline(Xpts',periodic=true)
+    tfine = range(0,1,length=1001)
+    dX = derivative(spl,tfine)
+
+    np = ceil(Int,sqrt(sum(dX.^2)*(tfine[2]-tfine[1]))/Δx)
+
+    tsamp = range(0,1,length=np)
+    x = [X[1] for X in spl.(tsamp[1:end-1])]
+    y = [X[2] for X in spl.(tsamp[1:end-1])]
+
+    return BasicBody(x,y)
+end
+
+"""
     NACA4(cam,pos,thick[;np=20][,Xc=(0.0,0.0)][,len=1.0]) <: Body{N}
 
 Generates points in the shape of a NACA 4-digit airfoil of chord length 1. The

@@ -5,6 +5,7 @@ version = "0.1.9"
 
 [deps]
 ColorTypes = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
+Dierckx = "39dd38d3-220a-591b-8e3c-4c3a8c710a94"
 DiffRules = "b552c78f-8df3-52c6-915a-8e097449b14b"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
