@@ -19,7 +19,7 @@ mutable struct BasicBody{N} <: Body{N}
 
 end
 
-function BasicBody(x::Vector{T},b::Vector{T}) where {T <: Real}
+function BasicBody(x::Vector{T},y::Vector{T}) where {T <: Real}
     @assert length(x) == length(y)
     BasicBody{length(x)}((0.0,0.0),0.0,x,y,x,y)
 end
