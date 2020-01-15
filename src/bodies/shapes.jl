@@ -24,6 +24,12 @@ function BasicBody(x::Vector{T},y::Vector{T}) where {T <: Real}
     BasicBody{length(x)}((0.0,0.0),0.0,x,y,x,y)
 end
 
+function Base.show(io::IO, body::BasicBody{N}) where {N}
+    println(io, "Basic pointwise-specified body with $N points")
+    println(io, "   Current position: ($(body.cent[1]),$(body.cent[2]))")
+    println(io, "   Current angle (rad): $(body.α)")
+end
+
 """
     Ellipse(a,b,n) <: Body
 
