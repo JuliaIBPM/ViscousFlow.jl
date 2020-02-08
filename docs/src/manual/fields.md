@@ -230,14 +230,14 @@ of ODEs.
 ## Other field operations
 
 Other field operations shift the data, by local averaging, from one data type to
-another. These operations are all called `interpolate!`, and they require that the
+another. These operations are all called `grid_interpolate!`, and they require that the
 target data be preallocated. For example, to interpolate dual node data to the dual edges,
 
 ```@repl create
 w = Nodes(Dual,(5,4));
 w .= reshape(1:20,5,4)
 Ww = Edges(Dual,w);
-interpolate!(Ww,w)
+grid_interpolate!(Ww,w)
 ```
 Note that the edges in the ghost cells are 0; these edges are not assigned any
 values in the interpolate operation.
@@ -245,7 +245,7 @@ values in the interpolate operation.
 We can then interpolate this to primal edges:
 ```@repl create
 q = Edges(Primal,w);
-interpolate!(q,Ww)
+grid_interpolate!(q,Ww)
 ```
 
 We can also compute the Hadamard (i.e. element by element) product of any data

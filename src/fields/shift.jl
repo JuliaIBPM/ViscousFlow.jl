@@ -1,5 +1,8 @@
 # Grid interpolation operations
 
+# Load the 1-d interpolations on which most of below are based.
+include("interpolation1d.jl")
+
 
 """
     grid_interpolate!(q::Edges{Dual},w::Nodes{Dual})
@@ -179,8 +182,6 @@ function grid_interpolate(dual::Edges{Dual, NX, NY}) where {NX, NY}
     grid_interpolate!(Edges(Primal, dual), dual)
 end
 
-# 1-d interpolations on which most of above are based.
-include("interpolation1d.jl")
 
 
 
