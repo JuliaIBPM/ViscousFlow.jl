@@ -10,3 +10,13 @@ Manifest.toml
 .ipynb_checkpoints
 *.ipynb
 todo
+
+# Documentation
+docs/build/
+# Mac temporaries
+*.DS_Store
+# package logo
+!docs/src/assets/*.png
+# vim swap files
+*.swp
+
