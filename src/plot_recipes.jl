@@ -1,5 +1,6 @@
 using RecipesBase
 using ColorTypes
+using LaTeXStrings
 import PlotUtils: cgrad
 
 #using Compat
@@ -75,6 +76,41 @@ end
     x := x
     y := y
     ()
+end
+
+@recipe function f(m::RigidBodyMotion;tmax=10)
+
+    t = 0.0:0.01:tmax
+    ux = map(ti -> real(m(ti)[2]),t)
+    uy = map(ti -> imag(m(ti)[2]),t)
+    adot = map(ti -> m(ti)[5],t)
+    xlim --> (0,tmax)
+  layout := 3
+  grid --> :none
+  linewidth --> 1
+  legend --> :none
+  framestyle --> :frame
+  xlabel --> L"t"
+  ulim = min(minimum(ux),minimum(uy)),max(maximum(ux),maximum(uy))
+  alim = extrema(adot)
+  @series begin
+      subplot := 1
+      ylim --> ulim
+      ylabel --> L"u"
+      t, ux
+    end
+  @series begin
+      subplot := 2
+      ylim --> ulim
+      ylabel --> L"v"
+      t, uy
+    end
+   @series begin
+      subplot := 3
+      ylim --> alim
+      ylabel --> L"\dot{\alpha}"
+      t, adot
+    end
 end
 
 function RecipesBase.RecipesBase.apply_recipe(plotattributes::Dict{Symbol, Any}, bl::BodyList)
