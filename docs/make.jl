@@ -16,8 +16,14 @@ makedocs(
     ],
     #format = Documenter.HTML(assets = ["assets/custom.css"])
     format = Documenter.HTML(
-        prettyurls = get(ENV, "CI", nothing) == "true"
-    )
+        prettyurls = get(ENV, "CI", nothing) == "true",
+        mathengine = MathJax(Dict(
+            :TeX => Dict(
+                :equationNumbers => Dict(:autoNumber => "AMS"),
+                :Macros => Dict()
+            )
+        ))
+    ),
     #assets = ["assets/custom.css"],
     #strict = true
 )
