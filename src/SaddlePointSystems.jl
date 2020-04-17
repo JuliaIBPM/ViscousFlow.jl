@@ -162,9 +162,9 @@ function ldiv!(state::Tuple{TU,TF},
   ru, rf = rhs
   u, f = state
   sys.B₂A⁻¹r₁ .= sys.B₂A⁻¹(ru)
-  rf .-= sys.B₂A⁻¹r₁
+  sys.tmpvec .= rf
+  sys.tmpvec .-= sys.B₂A⁻¹r₁
   if N > 0
-    sys.tmpvec .= rf
     sys.tmpvecout .= f
     cg!(sys.tmpvecout,sys.S,sys.tmpvec,tol=sys.tol)
     f .= sys.tmpvecout
@@ -184,9 +184,9 @@ function ldiv!(state::Tuple{TU,TF},
   ru, rf = rhs
   u, f = state
   sys.B₂A⁻¹r₁ .= sys.B₂A⁻¹(ru)
-  rf .-= sys.B₂A⁻¹r₁
+  sys.tmpvec .= rf
+  sys.tmpvec .-= sys.B₂A⁻¹r₁
   if N > 0
-    sys.tmpvec .= rf
     ldiv!(sys.S⁻¹,sys.tmpvec)
     f .= sys.tmpvec
     f .= sys.P(f)
