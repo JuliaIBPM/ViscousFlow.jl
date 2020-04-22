@@ -31,7 +31,7 @@ _linear_map(A,input,output,eltype,::Val{0},::Val{0}) =
 
 # input is 0 length, output is not
 _linear_map(A,input,output,eltype,::Val{0},::Val{M}) where {M} =
-      LinearMap{eltype}(x -> vec(typeof(output)()),length(output),0)
+      LinearMap{eltype}(x -> _unwrap_vec(typeof(output)()),length(output),0)
 
 # output is 0 length, input is not
 _linear_map(A,input,output,eltype,::Val{N},::Val{0}) where {N} =
@@ -53,9 +53,9 @@ function _create_fcn(A,input)
     return fcn
 end
 
-_create_vec_multiplication(A,u::TU) where {TU} = (x -> vec(A*_wrap_vec(x,u)))
-_create_vec_function(A,u::TU) where {TU} = (x -> vec(A(_wrap_vec(x,u))))
-_create_vec_backslash(A,u::TU) where {TU} = (x -> vec(A\_wrap_vec(x,u)))
+_create_vec_multiplication(A,u::TU) where {TU} = (x -> _unwrap_vec(A*_wrap_vec(x,u)))
+_create_vec_function(A,u::TU) where {TU} = (x -> _unwrap_vec(A(_wrap_vec(x,u))))
+_create_vec_backslash(A,u::TU) where {TU} = (x -> _unwrap_vec(A\_wrap_vec(x,u)))
 
 # wrap the vector x in type u, unless u is already a subtype of AbstractVector
 _wrap_vec(x::AbstractVector{T},u::TU) where {T,TU} = TU(reshape(x,size(u)...))
