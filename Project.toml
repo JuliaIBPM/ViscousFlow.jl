@@ -1,6 +1,7 @@
 name = "ViscousFlow"
 uuid = "103da179-b3e4-57c1-99a4-586354eb2c5a"
 authors = ["Jeff Eldredge <jdeldre@g.ucla.edu>"]
+repo = "https://github.com/JuliaIBPM/ViscousFlow.jl.git"
 version = "0.2.0"
 
 [deps]
