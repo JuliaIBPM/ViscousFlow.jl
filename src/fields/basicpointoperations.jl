@@ -9,13 +9,13 @@ end
 
 # Add and subtract the same type
 function (-)(p1::T,p2::T) where {T<:PointData}
-  q = similar(p1)
+  q = similar(p1,element_type=promote_type(eltype(p1),eltype(p2)))
   @. q.data = p1.data - p2.data
   return q
 end
 
 function (+)(p1::T,p2::T) where {T<:PointData}
-  q = similar(p1)
+  q = similar(p1,element_type=promote_type(eltype(p1),eltype(p2)))
   @. q.data = p1.data + p2.data
   return q
 end
@@ -23,14 +23,14 @@ end
 
 # Multiply and divide by a constant
 function (*)(p::T,c::Number) where {T<:PointData}
-  q = similar(p)
+  q = similar(p,element_type=promote_type(typeof(c),eltype(p)))
   @. q.data = c*p.data
   return q
 end
 
 
 function (/)(p::T,c::Number) where {T<:PointData}
-  q = similar(p)
+  q = similar(p,element_type=promote_type(typeof(c),eltype(p)))
   @. q.data = p.data/c
   return q
 end
@@ -39,7 +39,7 @@ end
 
 
 function (*)(p1::T,p2::T) where {T<:PointData}
-  q = similar(p)
+  q = similar(p1,element_type=promote_type(eltype(p1),eltype(p2)))
   @. q.data = p1.data * p2.data
   return q
 end
@@ -68,7 +68,7 @@ julia> f + (2,3)
 ```
 """
 function (+)(A::VectorData,a::Tuple{T,T}) where {T <: Number}
-   B = deepcopy(A)
+    B = similar(A,element_type=promote_type(T,eltype(A)))
     u, v = a
     B.u .+= u
     B.v .+= v
@@ -76,7 +76,7 @@ function (+)(A::VectorData,a::Tuple{T,T}) where {T <: Number}
 end
 
 function (-)(A::VectorData,a::Tuple{T,T}) where {T <: Number}
-   B = deepcopy(A)
+  B = similar(A,element_type=promote_type(T,eltype(A)))
     u, v = a
     B.u .-= u
     B.v .-= v
@@ -233,7 +233,7 @@ Compute the cross product between the scalar `a` (treated as an out-of-plane com
 and the planar vector data `A`.
 """
 function cross(a::Union{Number,ScalarData},A::VectorData)
-    B = deepcopy(A)
+    B = similar(A)
     @. B.u = -a*A.v
     @. B.v = a*A.u
     return B

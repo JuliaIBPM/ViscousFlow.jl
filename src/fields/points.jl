@@ -11,7 +11,7 @@ A wrapper for a one-dimensional array of scalar-valued data. The resulting wrapp
 can be indexed in the same way as the array itself.
 
 # Constructors
-- `ScalarData(d[,dtype=Float64])` constructs a wrapper for the one-dimensional array of data `d`
+- `ScalarData(d::AbstractVector[,dtype=Float64])` constructs a wrapper for the one-dimensional array of data `d`
 - `ScalarData(n::Int)` constructs a wrapper for an array of zeros of length `n`.
 - `ScalarData(x::PointData)` constructs a wrapper for an array of zeros of the
    same length as that wrapped by `x`.
@@ -56,16 +56,17 @@ ScalarData(n::Int;dtype=Float64) = ScalarData(zeros(dtype,n))
 
 
 """
-    VectorData <: GridData
+    VectorData <: PointData
 
 A wrapper for a one-dimensional array of two-component vector-valued data. The
 resulting wrapper can be indexed as though the first component and second
 component are stacked on top of each other.
 
 # Constructors
-- `VectorData(u,v)` constructs a wrapper for the vector components data `u` and `v`.
+- `VectorData(d::AbstractVector[,dtype=Float64])` constructs a wrapper for the one-dimensional array of data `d`, splitting `d` into the `u` and `v` components evenly.
+- `VectorData(u::AbstractVector,v::AbstractVector)` constructs a wrapper for the vector components data `u` and `v`.
 - `VectorData(n::Int)` constructs a wrapper with zeros of length `n` for both components.
-- `VectorData(x::GridData)` constructs a wrapper for zero components of the
+- `VectorData(x::PointData)` constructs a wrapper for zero components of the
    same length as that wrapped by `x`.
 - `VectorData(n::Int,dtype=ComplexF64)` constructs a wrapper with complex-valued zeros
    of length `n` for both components.
@@ -132,16 +133,17 @@ VectorData(x::Tuple{AbstractVector{T},AbstractVector{T}}) where {T <: Number} = 
 VectorData(n::Int;dtype=Float64) = VectorData(zeros(dtype,NDIM*n))
 
 """
-    TensorData
+    TensorData <: PointData
 
 A wrapper for a one-dimensional array of 2x2 tensor-valued data, with fields
 `dudx`, `dudy`, `dvdx`, `dvdy`. The resulting wrapper can be indexed as though these four components are stacked
 on top of each other.
 
 # Constructors
-- `TensorData(dudx,dudy,dvdx,dvdy)` constructs a wrapper for the tensor components data.
+- `TensorData(d::AbstractVector[,dtype=Float64])` constructs a wrapper for the one-dimensional array of data `d`, splitting `d` into the four components evenly.
+- `TensorData(dudx,dudy,dvdx,dvdy)` constructs a wrapper for the tensor components data, each of type `AbstractVector`
 - `TensorData(n::Int)` constructs a wrapper with zeros of length `n` for all components.
-- `TensorData(x::ScalarData/VectorData/TensorData)` constructs a wrapper for zero components of the
+- `TensorData(x::PointData[,dtype=Float64])` constructs a wrapper for zero components of the
    same length as that wrapped by `x`.
 
 # Example
@@ -221,12 +223,6 @@ Return a tuple of the number of tensor data points by the number of dimensions.
 """
 Base.size(A::TensorData) = (size(A,1),)
 
-#@propagate_inbounds Base.getindex(A::TensorData{N,T},i::Int) where {N,T} =
-#   i > N ? (i > 2*N ? (i > 3*N ? A.dvdy[i-3*N] : A.dvdx[i-2*N]) : A.dudy[i-N] ) : A.dudx[i]
-#@propagate_inbounds Base.setindex!(A::TensorData{N,T}, v, i::Int) where {N,T} =
-#   i > N ? (i > 2*N ? (i > 3*N ? A.dvdy[i-3*N] = convert(T, v) : A.dvdx[i-2*N] = convert(T, v) ) : A.dudy[i-N] = convert(T, v) ) : A.dudx[i] = convert(T, v)
-
-
 
 function show(io::IO, m::MIME"text/plain", pts::ScalarData{N,T}) where {N,T}
   println(io,"$N points of scalar-valued $T data")
@@ -243,15 +239,5 @@ function show(io::IO, m::MIME"text/plain", pts::TensorData{N,T}) where {N,T}
   show(io,m,pts.data)
 end
 
-
-# function show(io::IO, m::MIME"text/plain", pts::VectorData{N,T}) where {N,T}
-#   println(io,"$N points of vector-valued $T data")
-#   show(io,m,hcat(pts.u,pts.v))
-# end
-#
-# function show(io::IO, m::MIME"text/plain", pts::TensorData{N,T}) where {N,T}
-#   println(io,"$N points of tensor-valued $T data dudx, dudy, dvdx, dvdy")
-#   show(io,m,hcat(pts.dudx,pts.dudy,pts.dvdx,pts.dvdy))
-# end
 
 include("basicpointoperations.jl")
