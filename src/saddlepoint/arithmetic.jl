@@ -68,10 +68,10 @@ function ldiv!(sol::Tuple{TU,TF},sys::SaddleSystem,rhs::Tuple{TU,TF}) where {T,N
     return ldiv!((_unwrap_vec(u),_unwrap_vec(f)),sys,(_unwrap_vec(r₁),_unwrap_vec(r₂)))
 end
 
-function (\)(sys::SaddleSystem,input::Tuple) where {T,Ns,Nc}
-    u, f = input
+function (\)(sys::SaddleSystem,rhs::Tuple) where {T,Ns,Nc}
+    u, f = rhs
     sol = (similar(u),similar(f))
-    ldiv!(sol,sys,input)
+    ldiv!(sol,sys,rhs)
     return sol
 end
 
@@ -81,9 +81,22 @@ function ldiv!(sol::AbstractVector{T},sys::SaddleSystem{T,Ns,Nc},rhs::AbstractVe
     return sol
 end
 
-function (\)(sys::SaddleSystem,input::AbstractVector)
-    sol = similar(input)
-    ldiv!(sol,sys,input)
+function (\)(sys::SaddleSystem,rhs::AbstractVector)
+    sol = similar(rhs)
+    ldiv!(sol,sys,rhs)
+    return sol
+end
+
+function ldiv!(sol,sys::NTuple{M,SaddleSystem},rhs) where {M}
+   for (i,sysi) in enumerate(sys)
+     ldiv!(sol[i],sysi,rhs[i])
+   end
+   sol
+end
+
+function (\)(sys::NTuple{M,SaddleSystem},rhs) where {M}
+    sol = deepcopy.(rhs)
+    ldiv!(sol,sys,rhs)
     return sol
 end
 

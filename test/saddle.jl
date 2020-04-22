@@ -105,6 +105,14 @@ using LinearAlgebra
 
   end
 
+  ψb = ScalarData(X)
+  w = Nodes(Dual,(nx,ny))
+  ψb .= -(xb .- 1)
+  f .= ones(Float64,n)*ds
+  ψ = Nodes(Dual,w)
+
+  nada = empty(f)
+
   @testset "Field operators" begin
 
     A = SaddleSystem(L,Emat,Hmat,w,f)
@@ -118,12 +126,6 @@ using LinearAlgebra
     rhs = (vec(w),vec(f))
 
     ldiv!(sol,A,rhs)
-
-    ψb = ScalarData(X)
-    w = Nodes(Dual,(nx,ny))
-    ψb .= -(xb .- 1)
-    f .= ones(Float64,n)*ds
-    ψ = Nodes(Dual,w)
 
     sol2 = (zero(w),zero(f))
 
@@ -149,8 +151,6 @@ using LinearAlgebra
 
   @testset "Reduction to unconstrained system" begin
 
-    nada = empty(f)
-
     op = SaddlePointSystems.linear_map(nothing,nada)
 
     @test size(op) == (0,0)
@@ -166,12 +166,26 @@ using LinearAlgebra
     @test size(op) == (length(w),0)
     @test op*nada == zero(w)
 
-    A = SaddleSystem(L,w)
+    Anc = SaddleSystem(L,w)
 
-    ψ, fnull = A\(w,nada)
+    ψ, fnull = Anc\(w,nada)
 
     @test ψ == L\w
     @test fnull == nada
+
+  end
+
+  @testset "Tuple of saddle point systems" begin
+
+    A = SaddleSystem(L,Emat,Hmat,w,f)
+    ψ,f = A\(w,ψb)
+
+    Anc = SaddleSystem(L,w)
+
+    sys = (A,Anc)
+    rhs = ((w,ψb),(w,nada))
+    sol1, sol2 = sys\rhs
+    @test sol1[1] == ψ && sol1[2] == f && sol2[1] == zero(w) && sol2[2] == nada
 
   end
 
@@ -213,9 +227,7 @@ using LinearAlgebra
 
 
 
-  @testset "Tuple of saddle point systems" begin
 
-  end
 
 end
 
