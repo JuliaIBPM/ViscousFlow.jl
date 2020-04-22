@@ -1,13 +1,13 @@
 ### LINEAR MAP CONSTRUCTION
 
-# for a given function of function-like object A, which acts upon data of type u
-# and returns data of type f
+# for a given function of function-like object A, which acts upon data of type `input`
+# and returns data of type `output`
 # return a LinearMap that acts upon a vector form of u
-linear_map(A,u,f;eltype=Float64) = _linear_map(A,u,f,eltype,Val(length(u)),Val(length(f)))
+linear_map(A,input,output;eltype=Float64) = _linear_map(A,input,output,eltype,Val(length(input)),Val(length(output)))
 
-linear_map(A,u;eltype=Float64) = _linear_map(A,u,eltype,Val(length(u)))
+linear_map(A,input;eltype=Float64) = _linear_map(A,input,eltype,Val(length(input)))
 
-linear_map(A::AbstractMatrix{T},u::AbstractVector{T};eltype=Float64) where {T} = LinearMap{eltype}(A)
+linear_map(A::AbstractMatrix{T},input::AbstractVector{T};eltype=Float64) where {T} = LinearMap{eltype}(A)
 
 linear_map(A::SaddleSystem{T,Ns,Nc},::Any;eltype=Float64) where {T,Ns,Nc} = LinearMap{T}(x->A*x,Ns+Nc)
 
