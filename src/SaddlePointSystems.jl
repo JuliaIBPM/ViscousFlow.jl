@@ -10,7 +10,7 @@ import Base: size, eltype
 
 export SaddleSystem
 
-struct SaddleSystem{T,Ns,Nc}
+struct SaddleSystem{T,Ns,Nc,TF,TU}
     A :: LinearMap{T}
     B₂ :: LinearMap{T}
     B₁ᵀ :: LinearMap{T}
@@ -58,7 +58,7 @@ If called with `SaddleSystem(A,u)`, this is equivalent to calling `SaddleSystem(
 to the unconstrained system described by operator `A`.
 """
 function SaddleSystem(A::LinearMap{T},B₂::LinearMap{T},B₁ᵀ::LinearMap{T},C::LinearMap{T},
-                      A⁻¹::LinearMap{T}) where {T}
+                      A⁻¹::LinearMap{T},TU,TF) where {T}
 
     ns, nc = _check_sizes(A,B₂,B₁ᵀ,C)
 
@@ -67,7 +67,7 @@ function SaddleSystem(A::LinearMap{T},B₂::LinearMap{T},B₁ᵀ::LinearMap{T},C
     Sfact = factorize(Matrix(S))
     S⁻¹ = LinearMap{T}(x -> Sfact\x,nc)
 
-    return SaddleSystem{T,ns,nc}(A,B₂,B₁ᵀ,C,A⁻¹,zeros(T,ns),zeros(T,nc),zeros(T,ns),zeros(T,nc),S,S⁻¹)
+    return SaddleSystem{T,ns,nc,TU,TF}(A,B₂,B₁ᵀ,C,A⁻¹,zeros(T,ns),zeros(T,nc),zeros(T,ns),zeros(T,nc),S,S⁻¹)
 end
 
 
@@ -78,7 +78,7 @@ function SaddleSystem(A::AbstractMatrix{T},B₂::AbstractMatrix{T},B₁ᵀ::Abst
     Ainv = LinearMap{T}(x -> Afact\x,size(A,1))
 
     return SaddleSystem(LinearMap{T}(A),LinearMap{T}(B₂),LinearMap{T}(B₁ᵀ),
-                        LinearMap{T}(C),Ainv)
+                        LinearMap{T}(C),Ainv,Vector{T},Vector{T})
 end
 
 # For cases in which C is zero, no need to pass along the argument
@@ -94,13 +94,20 @@ function SaddleSystem(A,B₂,B₁ᵀ,C,u::TU,f::TF;eltype=Float64) where {TU,TF}
     return SaddleSystem(linear_map(A,u,eltype=eltype),linear_map(B₂,u,f,eltype=eltype),
                         linear_map(B₁ᵀ,f,u,eltype=eltype),
                         linear_map(C,f,eltype=eltype),
-                        linear_inverse_map(A,u,eltype=eltype))
+                        linear_inverse_map(A,u,eltype=eltype),TU,TF)
 end
 
 SaddleSystem(A,B₂,B₁ᵀ,u::TU,f::TF;eltype=Float64) where {TU,TF} =
     SaddleSystem(A,B₂,B₁ᵀ,C_zero(f,eltype),u,f,eltype=eltype)
 
 SaddleSystem(A,u::TU;eltype=Float64) where {TU} = SaddleSystem(A,nothing,nothing,u,Type{eltype}[])
+
+function Base.show(io::IO, S::SaddleSystem{T,Ns,Nc,TU,TF}) where {T,Ns,Nc,TU,TF}
+     println(io, "Saddle system with $Ns states and $Nc constraints and")
+     println(io, "   State vector of type $TU")
+     println(io, "   Constraint vector of type $TF")
+     println(io, "   Elements of type $T")
+end
 
 ### AUXILIARY ROUTINES
 
@@ -299,41 +306,7 @@ include("saddlepoint/arithmetic.jl")
 #   state = u, f
 # end
 #
-# # stored matrix
-# function ldiv!(state::Tuple{TU,TF},
-#                     sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,T,N,true},
-#                     rhs::Tuple{TU,TF}) where {TU,TF,T,FA,FAB,FBA,FP,N}
-#
-#   ru, rf = rhs
-#   u, f = state
-#   sys.B₂A⁻¹r₁ .= sys.B₂A⁻¹(ru)
-#   sys.tmpvec .= rf
-#   sys.tmpvec .-= sys.B₂A⁻¹r₁
-#   if N > 0
-#     ldiv!(sys.S⁻¹,sys.tmpvec)
-#     f .= sys.tmpvec
-#     f .= sys.P(f)
-#   end
-#   u .= sys.A⁻¹(ru)
-#   sys.A⁻¹B₁ᵀf .= sys.A⁻¹B₁ᵀ(f)
-#   u .-= sys.A⁻¹B₁ᵀf
-#   state = u, f
-# end
-#
-#
-# \(sys::SaddleSystem{FA,FAB,FBA,FP,TU,TF,T,N,Storage},rhs::Tuple{TU,TF}) where {TU,TF,T,FA,FAB,FBA,FP,N,Storage} =
-#       ldiv!(similar.(rhs),sys,rhs)
-#
-#
-# # solving tuples of systems
-# function ldiv!(state,sys::NTuple{M,SaddleSystem},rhs) where {M}
-#   for (i,sysi) in enumerate(sys)
-#     ldiv!(state[i],sysi,rhs[i])
-#   end
-#   state
-# end
-#
-# \(sys::NTuple{M,SaddleSystem},rhs) where {M} =
-#       ldiv!(deepcopy.(rhs),sys,rhs)
+
+
 
 end
