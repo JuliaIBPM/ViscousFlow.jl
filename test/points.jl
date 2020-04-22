@@ -24,7 +24,33 @@ using LinearAlgebra
 
   @testset "Point operations" begin
 
+    f = ScalarData(10)
+    f .= rand(10)
+
+    g = ScalarData(f)
+    g .= rand(10)
+
+    h = f + g
+
+    @test h[8] == f[8]+g[8]
+
+    h = 2.0*g
+
+    @test h[4] == 2.0*g[4]
+
+
     Y = VectorData(4)
+    Y .= rand(length(Y))
+    X = 2*Y
+
+    @test X.u[1] == 2*Y.u[1] && X.v[1] == 2*Y.v[1]
+
+    X = Y/2
+
+    @test X.u[3] == Y.u[3]/2 && X.v[3] == Y.v[3]/2
+
+    fill!(Y,0.0)
+
     X = Y + (1,2)
     @test X.v[4] == 2.0
 
@@ -43,6 +69,9 @@ using LinearAlgebra
 
     X = TensorData(Y)
     fill!(X,1)
+    Z = X + X
+    @test Z.dvdx[4] == X.dvdx[4] + X.dvdx[4]
+
     Z = (1,2) ⋅ X
     @test typeof(Z) <: VectorData
     @test Z.u[3] == 3.0

@@ -1,63 +1,49 @@
 import Base: +, -, ∘, real, imag, abs
 
 # Set it to negative of itself
-function (-)(p_in::ScalarData)
+function (-)(p_in::PointData)
   p = deepcopy(p_in)
   @. p.data = -p.data
   return p
 end
 
-function (-)(p_in::VectorData)
-  p = deepcopy(p_in)
-  @. p.u = -p.u
-  @. p.v = -p.v
-  return p
-end
-
 # Add and subtract the same type
-function (-)(p1::T,p2::T) where {T<:ScalarData}
-  return T(p1.data .- p2.data)
+function (-)(p1::T,p2::T) where {T<:PointData}
+  q = similar(p1)
+  @. q.data = p1.data - p2.data
+  return q
 end
 
-function (+)(p1::T,p2::T) where {T<:ScalarData}
-  return T(p1.data .+ p2.data)
+function (+)(p1::T,p2::T) where {T<:PointData}
+  q = similar(p1)
+  @. q.data = p1.data + p2.data
+  return q
 end
 
-function (-)(p1::T,p2::T) where {T<:VectorData}
-  return T(p1.u - p2.u, p1.v - p2.v)
-end
-
-function (+)(p1::T,p2::T) where {T<:VectorData}
-  return T(p1.u + p2.u, p1.v + p2.v)
-end
 
 # Multiply and divide by a constant
-function (*)(p::T,c::Number) where {T<:ScalarData}
-  return T(c*p.data)
+function (*)(p::T,c::Number) where {T<:PointData}
+  q = similar(p)
+  @. q.data = c*p.data
+  return q
 end
 
 
-function (/)(p::T,c::Number) where {T<:ScalarData}
-  return T(p.data ./ c)
-end
-
-function (*)(p::T,c::Number) where {T<:VectorData}
-  return T(c*p.u,c*p.v)
+function (/)(p::T,c::Number) where {T<:PointData}
+  q = similar(p)
+  @. q.data = p.data/c
+  return q
 end
 
 (*)(c::Number,p::T) where {T<:PointData} = *(p,c)
 
-function (/)(p::T,c::Number) where {T<:VectorData}
-  return T(p.u / c, p.v / c)
+
+function (*)(p1::T,p2::T) where {T<:PointData}
+  q = similar(p)
+  @. q.data = p1.data * p2.data
+  return q
 end
 
-function (*)(p1::T,p2::T) where {T<:ScalarData}
-  return T(p1.data .* p2.data)
-end
-
-function (*)(p1::T,p2::T) where {T<:VectorData}
-  return T(p1.u * p2.u, p1.v * p2.v)
-end
 
 """
     (+)(X::VectorData,a::Tuple{T,T}) where {T<:Number} -> VectorData
@@ -144,9 +130,9 @@ julia> product!(out,frt,fcs)
  0.0+2.0im  0.0+2.0im  0.0+2.0im  0.0+2.0im
 ```
 """
-function product!(out::ScalarData{N},
-                  p::ScalarData{N},
-                  q::ScalarData{N}) where {N}
+function product!(out::PointData{N},
+                  p::PointData{N},
+                  q::PointData{N}) where {N}
 
     @inbounds for x in 1:N
         out.data[x] = p.data[x] * q.data[x]
@@ -154,29 +140,29 @@ function product!(out::ScalarData{N},
     out
 end
 
-function product!(out::VectorData{N},
-                  p::VectorData{N},
-                  q::VectorData{N}) where {N}
+# function product!(out::VectorData{N},
+#                   p::VectorData{N},
+#                   q::VectorData{N}) where {N}
+#
+#     @inbounds for x in 1:N
+#         out.u[x] = p.u[x] * q.u[x]
+#         out.v[x] = p.v[x] * q.v[x]
+#     end
+#     out
+# end
 
-    @inbounds for x in 1:N
-        out.u[x] = p.u[x] * q.u[x]
-        out.v[x] = p.v[x] * q.v[x]
-    end
-    out
-end
-
-function product!(out::TensorData{N},
-                  p::TensorData{N},
-                  q::TensorData{N}) where {N}
-
-    @inbounds for x in 1:N
-        out.dudx[x] = p.dudx[x] * q.dudx[x]
-        out.dudy[x] = p.dudy[x] * q.dudy[x]
-        out.dvdx[x] = p.dvdx[x] * q.dvdx[x]
-        out.dvdy[x] = p.dvdy[x] * q.dvdy[x]
-    end
-    out
-end
+# function product!(out::TensorData{N},
+#                   p::TensorData{N},
+#                   q::TensorData{N}) where {N}
+#
+#     @inbounds for x in 1:N
+#         out.dudx[x] = p.dudx[x] * q.dudx[x]
+#         out.dudy[x] = p.dudy[x] * q.dudy[x]
+#         out.dvdx[x] = p.dvdx[x] * q.dvdx[x]
+#         out.dvdy[x] = p.dvdy[x] * q.dvdy[x]
+#     end
+#     out
+# end
 
 function product!(out::VectorData{N},
                   p::ScalarData{N},
@@ -237,7 +223,7 @@ end
 ### Operations between tuples and vectors
 
 a::(Tuple{T,T} where {T}) + A::VectorData = A + a
-a::(Tuple{T,T} where {T}) - A::VectorData = (B = A - a; @. B.u = -B.u; @. B.v = -B.v; return B)
+a::(Tuple{T,T} where {T}) - A::VectorData = (B = A - a; @. B.data = -B.data; return B)
 
 """
     cross(a::Number/ScalarData,A::VectorData) -> VectorData
