@@ -88,6 +88,4 @@ function (\)(sys::SaddleSystem,input::AbstractVector)
 end
 
 # vector -> tuple
-function _split_vector(x,Ns,Nc)
-    return view(x,1:Ns), view(x,Ns+1:Ns+Nc)
-end
+_split_vector(x,Ns,Nc) = view(x,1:Ns), view(x,Ns+1:Ns+Nc)

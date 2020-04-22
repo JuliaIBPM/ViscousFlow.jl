@@ -147,6 +147,34 @@ using LinearAlgebra
 
   end
 
+  @testset "Reduction to unconstrained system" begin
+
+    nada = empty(f)
+
+    op = SaddlePointSystems.linear_map(nothing,nada)
+
+    @test size(op) == (0,0)
+    @test op*nada == ()
+
+    op = SaddlePointSystems.linear_map(nothing,w,nada)
+
+    @test size(op) == (0,length(w))
+    @test op*vec(w) == ()
+
+    op = SaddlePointSystems.linear_map(nothing,nada,w)
+
+    @test size(op) == (length(w),0)
+    @test op*nada == zero(w)
+
+    A = SaddleSystem(L,w)
+
+    ψ, fnull = A\(w,nada)
+
+    @test ψ == L\w
+    @test fnull == nada
+
+  end
+
   @testset "Recursive saddle point with vectors" begin
     A1 = Float64[1 2; 2 1]
     B21 = Float64[2 3]
@@ -183,20 +211,7 @@ using LinearAlgebra
 
   end
 
-  @testset "Reduction to unconstrained system" begin
 
-    #ru = Float64[1,2]
-    #rf = nothing
-  # A⁻¹(u::Vector{Float64}) = u
-  # B₁ᵀ(f::Vector{Float64}) = zeros(Float64,2)
-  # B₂(u::Vector{Float64}) = Vector{Float64}()
-  # sys = SaddleSystem((ru,rf),(A⁻¹,B₁ᵀ,B₂))
-  #
-  # u,fnull = sys\(ru,rf)
-  # @test u ≈ [1.0,1.0]
-  # @test length(fnull) == 0
-
-  end
 
   @testset "Tuple of saddle point systems" begin
 

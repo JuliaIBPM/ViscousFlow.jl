@@ -6,6 +6,8 @@ using RecursiveArrayTools
 using LinearAlgebra
 import LinearAlgebra: ldiv!, mul!, *, \
 
+import Base: size, eltype
+
 export SaddleSystem
 
 struct SaddleSystem{T,Ns,Nc}
@@ -36,19 +38,24 @@ with `*` and `\` to multiply and solve. The saddle-point problem has the form
 ``
 
 ### Constructors
-- `SaddleSystem(A::AbstractMatrix,B₂::AbstractMatrix,B₁ᵀ::AbstractMatrix,C::AbstractMatrix)`.
-Blocks are given as matrices. Must have consistent sizes to stack appropriately.
-- `SaddleSystem(A,B₂,B₁ᵀ,C,u,f)`.
+`SaddleSystem(A::AbstractMatrix,B₂::AbstractMatrix,B₁ᵀ::AbstractMatrix,C::AbstractMatrix[,eltype=Float64])`.
+Blocks are given as matrices. Must have consistent sizes to stack appropriately. If
+this is called with `SaddleSystem(A,B₂,B₁ᵀ)`, it sets `C` to zero automatically.
+
+`SaddleSystem(A,B₂,B₁ᵀ,C,u,f[,eltype=Float64])`.
 Operators `A`, `B₂`, `B₁ᵀ`, `C` are given in various forms, including matrices, functions, and function-like objects.
 `u` and `f` are examples of the data types in the corresponding solution and right-hand side vectors.
 Guidelines:
-* The entries `A` and `B₂` must be able to act upon `u` (either by multiplication or as a function) and
- `B₁ᵀ` and `C` must be able to act on `f` (also, either by multiplication or as a function).
-* `A` and `B₁ᵀ` should return data of type `u`, and `B₂` and `C` should
- return data of type `f`.
-* Both `u` and `f` must be mappable to/from `AbstractVector` type.
-- `SaddleSystem(A,B₂,B₁ᵀ)` or `SaddleSystem(A,B₂,B₁ᵀ,u,f)`.
-The `C` block is omitted and assumed to be zero.
+
+* The entries `A` and `B₂` must be able to act upon `u` (either by multiplication or as a function) and `B₁ᵀ` and `C` must be able to act on `f` (also, either by multiplication or as a function).
+* `A` and `B₁ᵀ` should return data of type `u`, and `B₂` and `C` should return data of type `f`.
+* `A` must be invertible and be outfitted with operators `\` and `ldiv!`.
+* Both `u` and `f` must be mappable to/from `AbstractVector` type. This essentially means that they should be subtypes of `AbstractArray`.
+
+If called as `SaddleSystem(A,B₂,B₁ᵀ,u,f)`, the `C` block is omitted and assumed to be zero.
+
+If called with `SaddleSystem(A,u)`, this is equivalent to calling `SaddleSystem(A,nothing,nothing,u,[])`, then this reverts
+to the unconstrained system described by operator `A`.
 """
 function SaddleSystem(A::LinearMap{T},B₂::LinearMap{T},B₁ᵀ::LinearMap{T},C::LinearMap{T},
                       A⁻¹::LinearMap{T}) where {T}
@@ -91,9 +98,17 @@ function SaddleSystem(A,B₂,B₁ᵀ,C,u::TU,f::TF;eltype=Float64) where {TU,TF}
 end
 
 SaddleSystem(A,B₂,B₁ᵀ,u::TU,f::TF;eltype=Float64) where {TU,TF} =
-    SaddleSystem(A,B₂,B₁ᵀ,zeros(eltype,length(f),length(f)),u,f,eltype=eltype)
+    SaddleSystem(A,B₂,B₁ᵀ,C_zero(f,eltype),u,f,eltype=eltype)
+
+SaddleSystem(A,u::TU;eltype=Float64) where {TU} = SaddleSystem(A,nothing,nothing,u,Type{eltype}[])
 
 ### AUXILIARY ROUTINES
+
+size(::SaddleSystem{T,Ns,Nc}) where {T,Ns,Nc} = (Ns+Nc,Ns+Nc)
+
+eltype(::SaddleSystem{T,Ns,Nc}) where {T,Ns,Nc} = T
+
+C_zero(f,eltype) = zeros(eltype,length(f),length(f))
 
 function _check_sizes(A,B₂,B₁ᵀ,C)
     mA, nA = size(A)
