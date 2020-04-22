@@ -27,6 +27,9 @@ using LinearAlgebra
     f = ScalarData(10)
     f .= rand(10)
 
+    g = -f
+    @test g[4] == -f[4]
+
     g = ScalarData(f)
     g .= rand(10)
 

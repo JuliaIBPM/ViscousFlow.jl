@@ -2,8 +2,8 @@ import Base: +, -, ∘, real, imag, abs
 
 # Set it to negative of itself
 function (-)(p_in::PointData)
-  p = deepcopy(p_in)
-  @. p.data = -p.data
+  p = similar(p_in)
+  @. p.data = -p_in.data
   return p
 end
 
