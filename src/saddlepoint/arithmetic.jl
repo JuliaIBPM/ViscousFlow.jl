@@ -6,8 +6,8 @@ function mul!(output::Tuple{AbstractVector{T},AbstractVector{T}},sys::SaddleSyst
     length(u) == length(r₁) == Ns || error("Incompatible number of elements")
     length(f) == length(r₂) == Nc || error("Incompatible number of elements")
 
-    r₁ .= sys.A*u + sys.B₁ᵀ*f
-    r₂ .= sys.B₂*u + sys.C*f
+    r₁ .= sys.A*u .+ sys.B₁ᵀ*f
+    r₂ .= sys.B₂*u .+ sys.C*f
     return output
 end
 
@@ -30,13 +30,28 @@ function mul!(sol::AbstractVector{T},sys::SaddleSystem{T,Ns,Nc},rhs::AbstractVec
     return sol
 end
 
-function (*)(sys::SaddleSystem,input::AbstractVector)
-    output = similar(input)
-    mul!(output,sys,input)
+function (*)(sys::SaddleSystem,rhs::AbstractVector)
+    output = similar(rhs)
+    mul!(output,sys,rhs)
     return output
 end
 
-# Left division
+## Multiplying tuples of saddle point systems
+
+function mul!(sol,sys::NTuple{M,SaddleSystem},rhs) where {M}
+   for (i,sysi) in enumerate(sys)
+     mul!(sol[i],sysi,rhs[i])
+   end
+   sol
+end
+
+function (*)(sys::NTuple{M,SaddleSystem},rhs) where {M}
+    sol = deepcopy.(rhs)
+    mul!(sol,sys,rhs)
+    return sol
+end
+
+#### Left division ####
 
 function ldiv!(sol::Tuple{AbstractVector{T},AbstractVector{T}},sys::SaddleSystem{T,Ns,Nc},rhs::Tuple{AbstractVector{T},AbstractVector{T}}) where {T,Ns,Nc}
 
@@ -86,6 +101,8 @@ function (\)(sys::SaddleSystem,rhs::AbstractVector)
     ldiv!(sol,sys,rhs)
     return sol
 end
+
+## Solving tuples of saddle point systems
 
 function ldiv!(sol,sys::NTuple{M,SaddleSystem},rhs) where {M}
    for (i,sysi) in enumerate(sys)
