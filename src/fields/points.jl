@@ -1,4 +1,4 @@
-import Base: size, show, summary, similar
+import Base: size, show, summary, similar, parent, parentindices
 
 abstract type PointData{N,T} <: AbstractVector{T} end
 
@@ -43,9 +43,11 @@ julia> f
 """
 struct ScalarData{N,T,DT<:AbstractVector} <: PointData{N,T}
     data::DT
+    ScalarData{N,T,DT}(a::S) where {N,T,DT<:AbstractVector,S<:PointData} = new{length(a),T,typeof(a.data)}(a.data)
+    ScalarData{N,T,DT}(a::S) where {N,T,DT<:AbstractVector,S<:AbstractVector} = new{length(a),T,typeof(a)}(a)
 end
 
-@wraparray ScalarData data 1
+#@wraparray ScalarData data 1
 
 function ScalarData(data::AbstractVector{T}) where {T <: Number}
   ScalarData{length(data),T,typeof(data)}(data)
@@ -179,14 +181,29 @@ TensorData(x::NTuple{NDIM*NDIM,AbstractVector{T}}) where {T <: Number} = TensorD
 TensorData(n::Int;dtype=Float64) = TensorData(zeros(dtype,n*NDIM*NDIM))
 
 for f in (:ScalarData,:VectorData,:TensorData)
-  @eval (::Type{$f{N,T}})() where {N,T<:Number} = $f(N,dtype=T)
+  @eval (::Type{$f{N,T,DT}})() where {N,T<:Number,DT<:AbstractVector} = $f(N,dtype=T)
   @eval $f(::PointData{N,T};dtype=T) where {N,T<:Number} = $f(N,dtype=dtype)
-  @eval similar(::$f{N,T};element_type=T) where {N,T<:Number} = $f(N,dtype=element_type)
+  @eval similar(::$f{N,T,DT};element_type=T) where {N,T<:Number,DT<:AbstractVector} = $f(N,dtype=element_type)
+end
+
+for f in (:VectorData,:TensorData)
+  @eval (::Type{$f{N,T,DT}})(data::AbstractVector) where {N,T<:Number,DT<:AbstractVector} = $f(data)
 end
 
 
+parent(A::PointData) = A.data
+parentindices(A::PointData) = parentindices(A.data)
+
+@propagate_inbounds Base.getindex(A::PointData,i::Int) = getindex(A.data,i)
+@propagate_inbounds Base.setindex!(A::PointData, v, i::Int) = setindex!(A.data,v,i)
+
+size(A::PointData{N,T},d::Int) where {N,T} = size(A.data,d)
+size(A::PointData{N,T}) where {N,T} = size(A.data)
+
+
+#=
 """
-    size(A::VectorData,d::Int) -> Int
+    size(A::PointData,d::Int) -> Int
 
 Return twice the number of vector data points if `d` is 1 (the sum of the length of the `u` and
 `v` vectors) and 1 if `d` is 2. This is consistent with the interpretation of VectorData as
@@ -200,8 +217,9 @@ Base.size(::VectorData{N,T},d::Int) where {N,T} = d == 1 ? NDIM*N : 1
 Return a tuple of the number of vector data points by the number of dimensions.
 """
 Base.size(A::VectorData) = (size(A,1),)
-@propagate_inbounds Base.getindex(A::PointData,i::Int) = getindex(A.data,i)
-@propagate_inbounds Base.setindex!(A::PointData, v, i::Int) = setindex!(A.data,v,i)
+
+
+
 #@propagate_inbounds Base.getindex(A::VectorData{N,T},i::Int) where {N,T} =
 #   i > N ? A.data[i-N] : A.u[i]
 #@propagate_inbounds Base.setindex!(A::VectorData{N,T}, v, i::Int) where {N,T} =
@@ -222,7 +240,7 @@ Base.size(::TensorData{N,T},d::Int) where {N,T} = d == 1 ? NDIM*NDIM*N : 1
 Return a tuple of the number of tensor data points by the number of dimensions.
 """
 Base.size(A::TensorData) = (size(A,1),)
-
+=#
 
 function show(io::IO, m::MIME"text/plain", pts::ScalarData{N,T}) where {N,T}
   println(io,"$N points of scalar-valued $T data")

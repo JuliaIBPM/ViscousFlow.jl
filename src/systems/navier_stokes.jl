@@ -94,7 +94,7 @@ mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
 end
 
 function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Real}, Δt;
-                       U∞ = (0.0, 0.0), X̃ = VectorData{0,Float64}(),
+                       U∞ = (0.0, 0.0), X̃ = VectorData(0),
                        isstore = false,
                        isstatic = true,
                        isasymptotic = false,
