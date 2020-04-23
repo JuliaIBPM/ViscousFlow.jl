@@ -31,7 +31,7 @@ makedocs(
 
 #if "DOCUMENTER_KEY" in keys(ENV)
 deploydocs(
-     repo = "github.com/jdeldre/ViscousFlow.jl.git",
+     repo = "github.com/JuliaIBPM/ViscousFlow.jl.git",
      target = "build",
      deps = nothing,
      make = nothing
