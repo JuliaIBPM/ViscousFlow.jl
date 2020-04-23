@@ -41,14 +41,14 @@ julia> f
  0.0
 ```
 """
-struct ScalarData{N,T} <: PointData{N,T}
-    data::AbstractVector{T}
+struct ScalarData{N,T,DT<:AbstractVector} <: PointData{N,T}
+    data::DT
 end
 
 @wraparray ScalarData data 1
 
 function ScalarData(data::AbstractVector{T}) where {T <: Number}
-  ScalarData{length(data),T}(data)
+  ScalarData{length(data),T,typeof(data)}(data)
 end
 
 ScalarData(n::Int;dtype=Float64) = ScalarData(zeros(dtype,n))
@@ -109,8 +109,8 @@ julia> f
  0.0+0.0im  0.0+0.0im
 ```
 """
-struct VectorData{N,T} <: PointData{N,T}
-    data::AbstractVector{T}
+struct VectorData{N,T,DT<:AbstractVector} <: PointData{N,T}
+    data::DT
     u::ScalarData{N,T}
     v::ScalarData{N,T}
 end
@@ -121,7 +121,7 @@ function VectorData(data::AbstractVector{T}) where {T <: Number}
   numpts = div(length(data),nc)
   u = ScalarData(view(data,1:numpts))
   v = ScalarData(view(data,numpts+1:length(data)))
-  VectorData{numpts,T}(data,u,v)
+  VectorData{numpts,T,typeof(data)}(data,u,v)
 end
 
 function VectorData(u::AbstractVector{T},v::AbstractVector{T}) where {T <: Number}
@@ -149,8 +149,8 @@ on top of each other.
 # Example
 
 """
-struct TensorData{N,T} <: PointData{N,T}
-    data::AbstractVector{T}
+struct TensorData{N,T,DT<:AbstractVector} <: PointData{N,T}
+    data::DT
     dudx::ScalarData{N,T}
     dudy::ScalarData{N,T}
     dvdx::ScalarData{N,T}
@@ -165,7 +165,7 @@ function TensorData(data::AbstractVector{T}) where {T <: Number}
   dudy = ScalarData(view(data,  numpts+1:2*numpts))
   dvdx = ScalarData(view(data,2*numpts+1:3*numpts))
   dvdy = ScalarData(view(data,3*numpts+1:4*numpts))
-  TensorData{numpts,T}(data,dudx,dudy,dvdx,dvdy)
+  TensorData{numpts,T,typeof(data)}(data,dudx,dudy,dvdx,dvdy)
 end
 
 function TensorData(dudx::AbstractVector{T},dudy::AbstractVector{T},
