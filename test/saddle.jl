@@ -157,6 +157,22 @@ using LinearAlgebra
 
   end
 
+  fv = VectorData(X)
+  q = Edges(Primal,w)
+  Hvmat,Evmat = RegularizationMatrix(E,fv,q)
+
+  @testset "Vector force data" begin
+
+    B₁ᵀ(f) = Curl()*(Hvmat*f)
+    B₂(w) = -(Evmat*(Curl()*(L\w)))
+
+    A = SaddleSystem(I,B₂,B₁ᵀ,w,fv)
+
+    sol1, sol2 = A\(w,fv)
+    @test sol1 == zero(w) && sol2 == zero(fv)
+
+  end
+
   @testset "Reduction to unconstrained system" begin
 
     op = SaddlePointSystems.linear_map(nothing,nada)
