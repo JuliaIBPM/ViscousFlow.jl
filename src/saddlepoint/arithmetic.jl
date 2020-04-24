@@ -1,6 +1,7 @@
 ### ARITHMETIC OPERATIONS
 
-function mul!(output::Tuple{AbstractVector{T},AbstractVector{T}},sys::SaddleSystem{T,Ns,Nc},input::Tuple{AbstractVector{T},AbstractVector{T}}) where {T,Ns,Nc}
+function mul!(output::Union{Tuple{AbstractVector{T},AbstractVector{T}},AbstractVectorOfArray{T}},sys::SaddleSystem{T,Ns,Nc},
+  input::Union{Tuple{AbstractVector{T},AbstractVector{T}},AbstractVectorOfArray{T}}) where {T,Ns,Nc}
     u,f = input
     r₁,r₂ = output
     length(u) == length(r₁) == Ns || error("Incompatible number of elements")
@@ -17,6 +18,12 @@ function mul!(sol::Tuple{TU,TF},sys::SaddleSystem,rhs::Tuple{TU,TF}) where {T,Ns
     return mul!((_unwrap_vec(u),_unwrap_vec(f)),sys,(_unwrap_vec(r₁),_unwrap_vec(r₂)))
 end
 
+function mul!(sol::ArrayPartition,sys::SaddleSystem,rhs::ArrayPartition) where {T,Ns,Nc,TU,TF}
+    u, f = sol.x
+    r₁, r₂ = rhs.x
+    return mul!((_unwrap_vec(u),_unwrap_vec(f)),sys,(_unwrap_vec(r₁),_unwrap_vec(r₂)))
+end
+
 function (*)(sys::SaddleSystem,input::Tuple)
     u, f = input
     output = (similar(u),similar(f))
@@ -30,7 +37,7 @@ function mul!(sol::AbstractVector{T},sys::SaddleSystem{T,Ns,Nc},rhs::AbstractVec
     return sol
 end
 
-function (*)(sys::SaddleSystem,rhs::AbstractVector)
+function (*)(sys::SaddleSystem{T},rhs::Union{AbstractVector{T},AbstractVectorOfArray{T},ArrayPartition{T}}) where {T}
     output = similar(rhs)
     mul!(output,sys,rhs)
     return output
@@ -53,7 +60,8 @@ end
 
 #### Left division ####
 
-function ldiv!(sol::Tuple{AbstractVector{T},AbstractVector{T}},sys::SaddleSystem{T,Ns,Nc},rhs::Tuple{AbstractVector{T},AbstractVector{T}}) where {T,Ns,Nc}
+function ldiv!(sol::Union{Tuple{AbstractVector{T},AbstractVector{T}},AbstractVectorOfArray{T}},sys::SaddleSystem{T,Ns,Nc},
+              rhs::Union{Tuple{AbstractVector{T},AbstractVector{T}},AbstractVectorOfArray{T}}) where {T,Ns,Nc}
 
     N = Ns+Nc
     u,f = sol #_split_vector(sol,Ns,Nc)
@@ -83,6 +91,12 @@ function ldiv!(sol::Tuple{TU,TF},sys::SaddleSystem,rhs::Tuple{TU,TF}) where {T,N
     return ldiv!((_unwrap_vec(u),_unwrap_vec(f)),sys,(_unwrap_vec(r₁),_unwrap_vec(r₂)))
 end
 
+function ldiv!(sol::ArrayPartition,sys::SaddleSystem,rhs::ArrayPartition) where {T,Ns,Nc,TU,TF}
+    u, f = sol.x
+    r₁, r₂ = rhs.x
+    return ldiv!((_unwrap_vec(u),_unwrap_vec(f)),sys,(_unwrap_vec(r₁),_unwrap_vec(r₂)))
+end
+
 function (\)(sys::SaddleSystem,rhs::Tuple) where {T,Ns,Nc}
     u, f = rhs
     sol = (similar(u),similar(f))
@@ -96,7 +110,7 @@ function ldiv!(sol::AbstractVector{T},sys::SaddleSystem{T,Ns,Nc},rhs::AbstractVe
     return sol
 end
 
-function (\)(sys::SaddleSystem,rhs::AbstractVector)
+function (\)(sys::SaddleSystem{T},rhs::Union{AbstractVector{T},AbstractVectorOfArray{T},ArrayPartition{T}}) where {T}
     sol = similar(rhs)
     ldiv!(sol,sys,rhs)
     return sol

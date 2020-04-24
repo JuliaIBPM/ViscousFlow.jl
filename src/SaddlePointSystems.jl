@@ -15,7 +15,7 @@ import LinearAlgebra: ldiv!, mul!, *, \
 
 import Base: size, eltype
 
-export SaddleSystem
+export SaddleSystem, SaddleVector
 
 struct SaddleSystem{T,Ns,Nc,TF,TU}
     A :: LinearMap{T}
@@ -145,7 +145,7 @@ function _check_sizes(A,B₂,B₁ᵀ,C)
     return ns, nc
 end
 
-
+include("saddlepoint/vectors.jl")
 include("saddlepoint/linearmaps.jl")
 include("saddlepoint/arithmetic.jl")
 
