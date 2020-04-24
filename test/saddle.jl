@@ -37,6 +37,14 @@ using LinearAlgebra
 
     @test norm(A*solvec-rhsvec) < 1e-14
 
+    # test with the other constructor
+    Aother = SaddleSystem(A1,B2,B1,C,zeros(Float64,2),zeros(Float64,2))
+
+    sol_other = Aother\rhs
+
+    @test norm((Aother*sol_other)[1]-rhs[1]) < 1e-14
+    @test norm((Aother*sol_other)[2]-rhs[2]) < 1e-14
+
   end
 
   nx = 130; ny = 130

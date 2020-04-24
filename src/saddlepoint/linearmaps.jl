@@ -42,11 +42,15 @@ _linear_map(A,input,output,eltype,::Val{N},::Val{M}) where {N,M} =
       LinearMap{eltype}(_create_fcn(A,input),length(output),length(input))
 
 
-
-
+# Create a function for operator A that can act upon an input of type AbstractVector
+# and return an output of type AbstractVector. It should wrap the input vector
+# in the input data type associated with A and it should then unwrap its
+# output back into vector form
 function _create_fcn(A,input)
+    # if A has an associated * operation, then use this
     if hasmethod(*,Tuple{typeof(A),typeof(input)})
         fcn = _create_vec_multiplication(A,input)
+    # or if A is a function or function-like object, then use this
     elseif hasmethod(A,Tuple{typeof(input)})
         fcn = _create_vec_function(A,input)
     end
@@ -57,9 +61,10 @@ _create_vec_multiplication(A,u::TU) where {TU} = (x -> _unwrap_vec(A*_wrap_vec(x
 _create_vec_function(A,u::TU) where {TU} = (x -> _unwrap_vec(A(_wrap_vec(x,u))))
 _create_vec_backslash(A,u::TU) where {TU} = (x -> _unwrap_vec(A\_wrap_vec(x,u)))
 
+#### WRAPPERS ####
 # wrap the vector x in type u, unless u is already a subtype of AbstractVector
 _wrap_vec(x::AbstractVector{T},u::TU) where {T,TU} = TU(reshape(x,size(u)...))
-_wrap_vec(x::AbstractVector{T},u::TU) where {T,TU <: AbstractVector} = x
+#_wrap_vec(x::AbstractVector{T},u::TU) where {T,TU <: AbstractVector} = x
 
 # if the vector x is simply a reshaped form of type u, then just get the
 # parent of x
@@ -68,5 +73,7 @@ _wrap_vec(x::Base.ReshapedArray,u::TU) where {TU} = parent(x)
 # not sure if this one is needed
 #_wrap_vec(x,u::TU) where {TU <: Tuple} = x
 
+#### UNWRAPPERS ####
+# Usually vec suffices
 _unwrap_vec(x) = vec(x)
 _unwrap_vec(x::Tuple) = x

@@ -57,7 +57,9 @@ Guidelines:
 * The entries `A` and `B₂` must be able to act upon `u` (either by multiplication or as a function) and `B₁ᵀ` and `C` must be able to act on `f` (also, either by multiplication or as a function).
 * `A` and `B₁ᵀ` should return data of type `u`, and `B₂` and `C` should return data of type `f`.
 * `A` must be invertible and be outfitted with operators `\` and `ldiv!`.
-* Both `u` and `f` must be mappable to/from `AbstractVector` type. This essentially means that they should be subtypes of `AbstractArray`.
+* Both `u` and `f` must be subtypes of `AbstractArray`: they must be equipped with `size`
+  and `vec` functions and with a constructor of the form `T(data)` where `T` is the data type of
+  `u` or `f` and `data` is the wrapped data array.
 
 If called as `SaddleSystem(A,B₂,B₁ᵀ,u,f)`, the `C` block is omitted and assumed to be zero.
 
