@@ -187,7 +187,11 @@ for f in (:ScalarData,:VectorData,:TensorData)
 end
 
 for f in (:VectorData,:TensorData)
-  @eval (::Type{$f{N,T,DT}})(data::AbstractVector) where {N,T<:Number,DT<:AbstractVector} = $f(data)
+  # if argument u is an AbstractVector, then make this new instance a point to it
+  @eval (::Type{$f{N,T,DT}})(u::AbstractVector) where {N,T<:Number,DT<:AbstractVector} = $f(u)
+  # if argument u is the same PointData type, then make this new instance
+  # a pointer to the `data` field of u
+  @eval (::Type{$f{N,T,DT}})(u::$f{N,T,DT}) where {N,T<:Number,DT<:AbstractVector} = $f(u.data)
 end
 
 
