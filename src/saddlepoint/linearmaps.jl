@@ -31,7 +31,7 @@ _linear_map(A,input,output,eltype,::Val{0},::Val{0}) =
 
 # input is 0 length, output is not
 _linear_map(A,input,output,eltype,::Val{0},::Val{M}) where {M} =
-      LinearMap{eltype}(x -> _unwrap_vec(typeof(output)()),length(output),0)
+      LinearMap{eltype}(x -> _unwrap_vec(zero(output)),length(output),0)
 
 # output is 0 length, input is not
 _linear_map(A,input,output,eltype,::Val{N},::Val{0}) where {N} =

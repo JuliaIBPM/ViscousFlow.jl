@@ -15,7 +15,7 @@ import LinearAlgebra: ldiv!, mul!, *, \
 
 import Base: size, eltype
 
-export SaddleSystem, SaddleVector
+export SaddleSystem, SaddleVector, state, constraint
 
 struct SaddleSystem{T,Ns,Nc,TF,TU}
     A :: LinearMap{T}
@@ -65,6 +65,9 @@ If called as `SaddleSystem(A,B₂,B₁ᵀ,u,f)`, the `C` block is omitted and as
 
 If called with `SaddleSystem(A,u)`, this is equivalent to calling `SaddleSystem(A,nothing,nothing,u,[])`, then this reverts
 to the unconstrained system described by operator `A`.
+
+The list of vectors in any of these constructors can be replaced by a `SaddleVector`,
+e.g. `SaddleSystem(A,B₂,B₁ᵀ,SaddleVector(u,f))`.
 """
 function SaddleSystem(A::LinearMap{T},B₂::LinearMap{T},B₁ᵀ::LinearMap{T},C::LinearMap{T},
                       A⁻¹::LinearMap{T},TU,TF) where {T}
@@ -109,7 +112,13 @@ end
 SaddleSystem(A,B₂,B₁ᵀ,u::TU,f::TF;eltype=Float64) where {TU,TF} =
     SaddleSystem(A,B₂,B₁ᵀ,C_zero(f,eltype),u,f,eltype=eltype)
 
+
 SaddleSystem(A,u::TU;eltype=Float64) where {TU} = SaddleSystem(A,nothing,nothing,u,Type{eltype}[])
+
+SaddleSystem(A,B₂,B₁ᵀ,C,v::ArrayPartition;eltype=Float64) = SaddleSystem(A,B₂,B₁ᵀ,C,v.x[1],v.x[2],eltype=eltype)
+SaddleSystem(A,B₂,B₁ᵀ,v::ArrayPartition;eltype=Float64) = SaddleSystem(A,B₂,B₁ᵀ,v.x[1],v.x[2],eltype=eltype)
+SaddleSystem(A,v::ArrayPartition;eltype=Float64) = SaddleSystem(A,v.x[1],eltype=eltype)
+
 
 function Base.show(io::IO, S::SaddleSystem{T,Ns,Nc,TU,TF}) where {T,Ns,Nc,TU,TF}
      println(io, "Saddle system with $Ns states and $Nc constraints and")
