@@ -45,6 +45,15 @@ using LinearAlgebra
     @test norm((Aother*sol_other)[1]-rhs[1]) < 1e-14
     @test norm((Aother*sol_other)[2]-rhs[2]) < 1e-14
 
+    # Test with SaddleVector
+    rhs = SaddleVector(rhs1,rhs2)
+    As = SaddleSystem(A1,B2,B1,C,rhs)
+
+    sol = As\rhs
+
+    @test norm(state(As*sol)-state(rhs)) < 1e-14
+    @test norm(constraint(As*sol)-constraint(rhs)) < 1e-14
+
   end
 
   nx = 130; ny = 130
@@ -123,34 +132,29 @@ using LinearAlgebra
 
   @testset "Field operators" begin
 
-    A = SaddleSystem(L,Emat,Hmat,w,f)
+    rhs = SaddleVector(w,ψb)
+
+    A = SaddleSystem(L,Emat,Hmat,rhs)
 
     A.S*vec(f)
 
     A.S⁻¹*vec(f)
 
-    sol = (vec(zero(w)),vec(zero(f)))
-
-    rhs = (vec(w),vec(f))
+    sol = deepcopy(rhs)
 
     ldiv!(sol,A,rhs)
 
-    sol2 = (zero(w),zero(f))
+    sol2 = A\rhs
 
-    ldiv!(sol2,A,(w,ψb))
+    @test state(sol2) == state(sol)
+    @test constraint(sol2) == constraint(sol)
 
-    ψ,f = A\(w,ψb)
-
-    @test sol2[1] == ψ
-    @test sol2[2] == f
-
-    rhs2 = (similar(w),similar(f))
     rhs2 = A*sol2
 
-    @test norm(rhs2[2]-ψb) < 1e-14
+    @test norm(constraint(rhs2)-ψb) < 1e-14
 
     fex = -2*cos.(θ[1:n])
-    @test norm(f-fex*ds) < 0.02
+    @test norm(constraint(sol)-fex*ds) < 0.02
     @test ψ[nx,65] ≈ -ψ[1,65]
     @test ψ[65,ny] ≈ ψ[65,1]
 
@@ -166,10 +170,11 @@ using LinearAlgebra
     B₁ᵀ(f) = Curl()*(Hvmat*f)
     B₂(w) = -(Evmat*(Curl()*(L\w)))
 
-    A = SaddleSystem(I,B₂,B₁ᵀ,w,fv)
+    rhsv = SaddleVector(w,fv)
+    A = SaddleSystem(I,B₂,B₁ᵀ,rhsv)
 
-    sol1, sol2 = A\(w,fv)
-    @test sol1 == zero(w) && sol2 == zero(fv)
+    sol = A\rhsv
+    @test state(sol) == zero(w) && constraint(sol) == zero(fv)
 
   end
 
@@ -190,9 +195,13 @@ using LinearAlgebra
     @test size(op) == (length(w),0)
     @test op*nada == vec(zero(w))
 
-    Anc = SaddleSystem(L,w)
+    rhsnc = SaddleVector(w,nada)
 
-    ψ, fnull = Anc\(w,nada)
+    Anc = SaddleSystem(L,rhsnc)
+
+    sol = Anc\rhsnc
+    ψ = state(sol)
+    fnull = constraint(sol)
 
     @test ψ == L\w
     @test fnull == nada
@@ -201,16 +210,20 @@ using LinearAlgebra
 
   @testset "Tuple of saddle point systems" begin
 
-    A = SaddleSystem(L,Emat,Hmat,w,f)
-    ψ,f = A\(w,ψb)
+    rhs = SaddleVector(w,ψb)
+    A = SaddleSystem(L,Emat,Hmat,rhs)
+    sol = A\rhs
+    ψ = state(sol)
+    f = constraint(sol)
 
-    Anc = SaddleSystem(L,w)
+    rhsnc = SaddleVector(w,nada)
+    Anc = SaddleSystem(L,rhsnc)
 
     sys = (A,Anc)
-    rhs1,rhs2 = (w,ψb),(w,nada)
-    sol1, sol2 = sys\(rhs1,rhs2)
+    sol1, sol2 = sys\(rhs,rhsnc)
 
-    @test sol1[1] == ψ && sol1[2] == f && sol2[1] == zero(w) && sol2[2] == nada
+
+    @test state(sol1) == ψ && constraint(sol1) == f && state(sol2) == zero(w) && constraint(sol2) == nada
 
     newrhs1,newrhs2 = sys*(sol1,sol2)
 

@@ -23,7 +23,7 @@ end
     SaddleSystem
 
 Construct a saddle-point system operator from the constituent operator blocks. The resulting object can be used
-with `*` and `\` to multiply and solve. The saddle-point problem has the form
+with `*` and `\\` to multiply and solve. The saddle-point problem has the form
 
 ``
 \\begin{bmatrix}A & B_1^T \\\\ B_2 & C \\end{bmatrix} \\begin{pmatrix} u \\\\ f \\end{pmatrix} = \\begin{pmatrix} r_1 \\\\ r_2 \\end{pmatrix}
