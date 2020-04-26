@@ -1,10 +1,8 @@
 ### SaddleSystem ###
 
-abstract type SchurType end
-abstract type Direct <: SchurType end
-abstract type Iterative <: SchurType end
+abstract type SchurSolverType end
 
-struct SaddleSystem{T,Ns,Nc,TF,TU,TS<:SchurType}
+struct SaddleSystem{T,Ns,Nc,TF,TU,TS<:SchurSolverType}
     A :: LinearMap{T}
     B₂ :: LinearMap{T}
     B₁ᵀ :: LinearMap{T}
@@ -57,62 +55,94 @@ The list of vectors in any of these constructors can be replaced by a `SaddleVec
 e.g. `SaddleSystem(A,B₂,B₁ᵀ,SaddleVector(u,f))`.
 """
 function SaddleSystem(A::LinearMap{T},B₂::LinearMap{T},B₁ᵀ::LinearMap{T},C::LinearMap{T},
-                      A⁻¹::LinearMap{T},TU,TF;schur_type::Type{TS}=Direct) where {T,TS<:SchurType}
+                      A⁻¹::LinearMap{T},TU,TF;solver::Type{TS}=Direct,kwargs...) where {T,TS<:SchurSolverType}
 
     ns, nc = _check_sizes(A,B₂,B₁ᵀ,C)
 
     S = C - B₂*A⁻¹*B₁ᵀ
 
-    Sfact = factorize(Matrix(S))
-    S⁻¹ = LinearMap{T}(x -> Sfact\x,nc)
+    S⁻¹ = _schur_inverse_function(S,T,nc,solver,kwargs...)
 
-    return SaddleSystem{T,ns,nc,TU,TF,schur_type}(A,B₂,B₁ᵀ,C,A⁻¹,zeros(T,ns),zeros(T,nc),zeros(T,ns),zeros(T,nc),S,S⁻¹)
+    return SaddleSystem{T,ns,nc,TU,TF,solver}(A,B₂,B₁ᵀ,C,A⁻¹,zeros(T,ns),zeros(T,nc),zeros(T,ns),zeros(T,nc),S,S⁻¹)
 end
 
+##### Schur complement solver functions #####
+
+abstract type Direct <: SchurSolverType end
+
+function _schur_inverse_function(S,T,M,::Type{Direct},kwargs...)
+  Sfact = factorize(Matrix(S))
+  return LinearMap{T}(x -> Sfact\x,M)
+end
+
+macro createsolver(stype)
+  sroutine = Symbol(lowercase(string(stype)),"!")
+
+  return esc(quote
+          export $stype
+          abstract type $stype <: SchurSolverType end
+          function _schur_inverse_function(S,T,M,::Type{$stype},kwargs...)
+            return LinearMap{T}(x -> (y = deepcopy(x); $sroutine(y,S,x;kwargs...); return y),M)
+          end
+        end)
+end
+
+@createsolver CG
+@createsolver BiCGStabl
+@createsolver GMRES
+@createsolver MINRES
+@createsolver IDRS
+
+###########
+
+
+### Other constructors
 
 function SaddleSystem(A::AbstractMatrix{T},B₂::AbstractMatrix{T},B₁ᵀ::AbstractMatrix{T},
-                      C::AbstractMatrix{T}) where {T}
+                      C::AbstractMatrix{T};solver::Type{TS}=Direct,kwargs...) where {T,TS<:SchurSolverType}
 
     Afact = factorize(A)
     Ainv = LinearMap{T}(x -> Afact\x,size(A,1))
 
     return SaddleSystem(LinearMap{T}(A),LinearMap{T}(B₂),LinearMap{T}(B₁ᵀ),
-                        LinearMap{T}(C),Ainv,Vector{T},Vector{T})
+                        LinearMap{T}(C),Ainv,Vector{T},Vector{T};solver=solver,kwargs...)
 end
 
 # For cases in which C is zero, no need to pass along the argument
-SaddleSystem(A::AbstractMatrix{T},B₂::AbstractMatrix{T},B₁ᵀ::AbstractMatrix{T}) where {T} =
-        SaddleSystem(A,B₂,B₁ᵀ,zeros(T,size(B₂,1),size(B₁ᵀ,2)))
+SaddleSystem(A::AbstractMatrix{T},B₂::AbstractMatrix{T},B₁ᵀ::AbstractMatrix{T};solver::Type{TS}=Direct,kwargs...) where {T,TS<:SchurSolverType} =
+        SaddleSystem(A,B₂,B₁ᵀ,zeros(T,size(B₂,1),size(B₁ᵀ,2));solver=solver,kwargs...)
 
 # This version should take in functions or function-like objects that act upon given
 # data types u and f. Should transform them into operators that act on abstract vectors
 # of the same size
 # There should already be an \ operator associated with A
-function SaddleSystem(A,B₂,B₁ᵀ,C,u::TU,f::TF;eltype=Float64) where {TU,TF}
+# NOTE: should change default value of eltype to eltype(u)
+function SaddleSystem(A,B₂,B₁ᵀ,C,u::TU,f::TF;eltype=Float64,solver::Type{TS}=Direct,kwargs...) where {TU,TF,TS<:SchurSolverType}
 
     return SaddleSystem(linear_map(A,u,eltype=eltype),linear_map(B₂,u,f,eltype=eltype),
                         linear_map(B₁ᵀ,f,u,eltype=eltype),
                         linear_map(C,f,eltype=eltype),
-                        linear_inverse_map(A,u,eltype=eltype),TU,TF)
+                        linear_inverse_map(A,u,eltype=eltype),TU,TF;solver=solver,kwargs...)
 end
 
-SaddleSystem(A,B₂,B₁ᵀ,u::TU,f::TF;eltype=Float64) where {TU,TF} =
-    SaddleSystem(A,B₂,B₁ᵀ,C_zero(f,eltype),u,f,eltype=eltype)
+SaddleSystem(A,B₂,B₁ᵀ,u::TU,f::TF;eltype=Float64,solver::Type{TS}=Direct,kwargs...) where {TU,TF,TS<:SchurSolverType} =
+    SaddleSystem(A,B₂,B₁ᵀ,C_zero(f,eltype),u,f;eltype=eltype,solver=solver,kwargs...)
 
 
-SaddleSystem(A,u::TU;eltype=Float64) where {TU} = SaddleSystem(A,nothing,nothing,u,Type{eltype}[])
+SaddleSystem(A,u::TU;eltype=Float64,solver::Type{TS}=Direct,kwargs...) where {TU,TS<:SchurSolverType} = SaddleSystem(A,nothing,nothing,u,Type{eltype}[];eltype=eltype,solver=solver,kwargs...)
 
-SaddleSystem(A,B₂,B₁ᵀ,C,v::ArrayPartition;eltype=Float64) = SaddleSystem(A,B₂,B₁ᵀ,C,v.x[1],v.x[2],eltype=eltype)
-SaddleSystem(A,B₂,B₁ᵀ,v::ArrayPartition;eltype=Float64) = SaddleSystem(A,B₂,B₁ᵀ,v.x[1],v.x[2],eltype=eltype)
-SaddleSystem(A,v::ArrayPartition;eltype=Float64) = SaddleSystem(A,v.x[1],eltype=eltype)
+SaddleSystem(A,B₂,B₁ᵀ,C,v::ArrayPartition;eltype=Float64,solver::Type{TS}=Direct,kwargs...) where {TS<:SchurSolverType} = SaddleSystem(A,B₂,B₁ᵀ,C,v.x[1],v.x[2];eltype=eltype,solver=solver,kwargs...)
+SaddleSystem(A,B₂,B₁ᵀ,v::ArrayPartition;eltype=Float64,solver::Type{TS}=Direct,kwargs...) where {TS<:SchurSolverType} = SaddleSystem(A,B₂,B₁ᵀ,v.x[1],v.x[2];eltype=eltype,solver=solver,kwargs...)
+SaddleSystem(A,v::ArrayPartition;eltype=Float64,solver::Type{TS}=Direct,kwargs...) where {TS<:SchurSolverType} = SaddleSystem(A,v.x[1];eltype=eltype,solver=solver,kwargs...)
 
 ### AUXILIARY ROUTINES
 
-function Base.show(io::IO, S::SaddleSystem{T,Ns,Nc,TU,TF}) where {T,Ns,Nc,TU,TF}
+function Base.show(io::IO, S::SaddleSystem{T,Ns,Nc,TU,TF,TS}) where {T,Ns,Nc,TU,TF,TS<:SchurSolverType}
      println(io, "Saddle system with $Ns states and $Nc constraints and")
      println(io, "   State vector of type $TU")
      println(io, "   Constraint vector of type $TF")
      println(io, "   Elements of type $T")
+     println(io, "using a $TS solver")
 end
 
 size(::SaddleSystem{T,Ns,Nc}) where {T,Ns,Nc} = (Ns+Nc,Ns+Nc)

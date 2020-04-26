@@ -8,6 +8,7 @@ Still to do:
 
 using LinearMaps
 using RecursiveArrayTools
+using IterativeSolvers
 
 using LinearAlgebra
 import LinearAlgebra: ldiv!, mul!, *, \
@@ -15,6 +16,7 @@ import LinearAlgebra: ldiv!, mul!, *, \
 import Base: size, eltype
 
 export SaddleSystem, SaddleVector, state, constraint
+export SchurSolverType, Direct, CG, BiCG, GMRES
 
 include("saddlepoint/saddlesystems.jl")
 include("saddlepoint/vectors.jl")
