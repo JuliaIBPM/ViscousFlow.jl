@@ -71,6 +71,13 @@ import Base: to_indices, uncolon, tail, _maybetail
     w2[1,1] = 2.0
     @test vec(w2) == data
 
+    data = zeros(Float64,length(q))
+    q2 = typeof(q)(data)
+    @test all(q2 .== 0.0)
+    @test vec(q2) == data
+
+    q2.u .= 2.0
+    @test all(data[1:length(q2.u)] .== 2.0)
 
 
   end

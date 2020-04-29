@@ -20,7 +20,8 @@ and horizontal faces of the corresponding cell.
 - `Edges(C,w)` performs the same construction, but uses existing field data `w`
   of `Nodes` type to determine the size of the grid.
 """
-struct Edges{C <: CellType, NX, NY, T <: Number} <: VectorGridData{NX,NY,T}
+struct Edges{C <: CellType, NX, NY, T <: Number, DT} <: VectorGridData{NX,NY,T}
+    data::DT
     u::XEdges{C,NX,NY,T}
     v::YEdges{C,NX,NY,T}
 end
@@ -29,34 +30,40 @@ end
 edge_inds(T::Type{C},   dualnodedims) where {C <: CellType} =
             xedge_inds(T,dualnodedims), yedge_inds(T,dualnodedims)
 
+
+function (::Type{Edges{C,NX,NY,T,DT}})(data::AbstractVector{R}) where {C<: CellType,NX,NY,T<:Number,DT,R}
+    udims, vdims = edge_inds(C, (NX, NY))
+    nu = prod(udims)
+    nv = prod(vdims)
+    u = reshape(view(data,1:nu),udims)
+    v = reshape(view(data,nu+1:nu+nv),vdims)
+    Edges{C, NX, NY,R,typeof(data)}(data, XEdges{C,NX,NY,R,typeof(u)}(u),
+                                                   YEdges{C,NX,NY,R,typeof(v)}(v))
+end
+
 function Edges(T::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {C <: CellType}
     udims, vdims = edge_inds(T, dualnodedims)
-    u = XEdges(T,dualnodedims...,dtype=dtype)
-    v = YEdges(T,dualnodedims...,dtype=dtype)
-    Edges{T, dualnodedims...,dtype}(u, v)
+    nu = prod(udims)
+    nv = prod(vdims)
+    data = zeros(dtype,nu+nv)
+    Edges{T,dualnodedims...,dtype,typeof(data)}(data)
 end
+
+
+(::Type{Edges{C,NX,NY,T,DT}})() where {C,NX,NY,T,DT} = Edges(C, (NX, NY),dtype=T)
 
 (::Type{Edges{C,NX,NY,T}})() where {C,NX,NY,T} = Edges(C, (NX, NY),dtype=T)
 
+
+
 Edges(C, ::GridData{NX,NY,T};dtype=T) where {NX, NY,T} = Edges(C, (NX,NY),dtype=dtype)
 
-Base.similar(::Edges{C,NX,NY,T};element_type=T) where {C,NX,NY,T} = Edges(C, (NX, NY),dtype=element_type)
+Base.similar(::Edges{C,NX,NY,T,DT};element_type=T) where {C,NX,NY,T,DT} = Edges(C, (NX, NY),dtype=element_type)
 
-function fill!(edges::Edges, s::Number)
-    fill!(edges.u, s)
-    fill!(edges.v, s)
-    edges
-end
-
-Base.size(A::Edges{C,NX,NY}) where {C,NX,NY} = (length(A.u)+length(A.v),1)
-@propagate_inbounds Base.getindex(A::Edges{C,NX,NY,T},i::Int) where {C,NX,NY,T <: Number} =
-   i > length(A.u) ? A.v[i-length(A.u)] : A.u[i]
-@propagate_inbounds Base.setindex!(A::Edges{C,NX,NY,T}, v, i::Int) where {C,NX,NY,T <: Number} =
-   i > length(A.u) ? A.v[i-length(A.u)] = convert(T, v) : A.u[i] = convert(T, v)
+Base.size(A::Edges{C,NX,NY}) where {C,NX,NY} = size(A.data)
+@propagate_inbounds Base.getindex(A::Edges{C,NX,NY,T},i::Int) where {C,NX,NY,T} = getindex(A.data,i)
+@propagate_inbounds Base.setindex!(A::Edges{C,NX,NY,T}, v, i::Int) where {C,NX,NY,T} = setindex!(A.data,convert(T,v),i)
 Base.IndexStyle(::Type{<:Edges}) = IndexLinear()
-
-
-
 
 
 function Base.show(io::IO, edges::Edges{C, NX, NY, T}) where {C, NX, NY, T}
