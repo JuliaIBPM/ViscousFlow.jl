@@ -48,7 +48,7 @@ and
 
 module Fields
 
-import Base: @propagate_inbounds, show, summary
+import Base: @propagate_inbounds, show, summary, fill!
 
 #using Compat
 using FFTW
@@ -65,7 +65,6 @@ import Base: parentindices
 const GAMMA = MathConstants.γ
 
 export Primal, Dual, ScalarGridData, VectorGridData, GridData,
-       Edges, # Nodes, XEdges, YEdges,
        EdgeGradient, NodePair,
        Points, ScalarData, VectorData, TensorData,
        celltype,

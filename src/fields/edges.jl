@@ -23,8 +23,8 @@ struct Edges{C <: CellType, NX, NY, T <: Number, DT} <: VectorGridData{NX,NY,T}
 end
 
 # Based on number of dual nodes, return the number of edges
-edge_inds(T::Type{C},   dualnodedims) where {C <: CellType} =
-            xedge_inds(T,dualnodedims), yedge_inds(T,dualnodedims)
+edge_inds(::Type{C},   dualnodedims) where {C <: CellType} =
+            xedge_inds(C,dualnodedims), yedge_inds(C,dualnodedims)
 
 
 function (::Type{Edges{C,NX,NY,T,DT}})(data::AbstractVector{R}) where {C<: CellType,NX,NY,T<:Number,DT,R}
@@ -37,24 +37,20 @@ function (::Type{Edges{C,NX,NY,T,DT}})(data::AbstractVector{R}) where {C<: CellT
                                                    YEdges{C,NX,NY,R,typeof(v)}(v))
 end
 
-function Edges(T::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {C <: CellType}
-    udims, vdims = edge_inds(T, dualnodedims)
+function Edges(::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {C <: CellType}
+    udims, vdims = edge_inds(C, dualnodedims)
     nu = prod(udims)
     nv = prod(vdims)
     data = zeros(dtype,nu+nv)
-    Edges{T,dualnodedims...,dtype,typeof(data)}(data)
+    Edges{C,dualnodedims...,dtype,typeof(data)}(data)
 end
 
 
-# routines that are generic across all GridData and should probably be merged
 
-Edges(C, ::GridData{NX,NY,T};dtype=T) where {NX, NY,T} = Edges(C, (NX,NY),dtype=dtype)
+@griddata Edges
 
-(::Type{Edges{C,NX,NY,T,DT}})() where {C,NX,NY,T,DT} = Edges(C, (NX, NY),dtype=T)
 
-(::Type{Edges{C,NX,NY,T}})() where {C,NX,NY,T} = Edges(C, (NX, NY),dtype=T)
-
-Base.similar(::Edges{C,NX,NY,T,DT};element_type=T) where {C,NX,NY,T,DT} = Edges(C, (NX, NY),dtype=element_type)
+# routines that should be combined for all GridData...
 
 Base.size(A::Edges) = size(A.data)
 @propagate_inbounds Base.getindex(A::Edges{C,NX,NY,T},i::Int) where {C,NX,NY,T} = getindex(A.data,i)

@@ -10,6 +10,28 @@ To do:
 =#
 
 
+macro griddata(wrapper)
+
+  return esc(quote
+
+    export $wrapper
+
+    # This allows easy construction from existing GridData on the same grid.
+    $wrapper(C, ::GridData{NX,NY,T};dtype=T) where {NX, NY,T <: Number} = $wrapper(C, (NX, NY),dtype=dtype )
+
+    $wrapper(C, nx::Int, ny::Int;dtype=Float64) = $wrapper(C,(nx,ny),dtype=dtype)
+    (::Type{$wrapper{C,NX,NY,T,DT}})() where {C,NX,NY,T,DT} = $wrapper(C, (NX, NY),dtype=T)
+
+    # This constructor might be problematic? Introduced only because we have not
+    # yet updated the regularization routines for the new GridData parameterization
+    (::Type{$wrapper{C,NX,NY,T}})() where {C,NX,NY,T} = $wrapper(C, (NX, NY),dtype=T)
+
+    Base.similar(::$wrapper{C,NX,NY,T,DT};element_type=T) where {C,NX,NY,T,DT} = $wrapper(C, (NX, NY),dtype=element_type)
+
+  end)
+
+end
+
 
 macro scalarfield(wrapper)
 
@@ -17,8 +39,6 @@ macro scalarfield(wrapper)
   indexfcn = Symbol(wrapname[1:end-1],"_inds")
 
   return esc(quote
-
-    export $wrapper
 
     # The data type
 
@@ -49,22 +69,12 @@ macro scalarfield(wrapper)
 
     # Constructors
 
-    function $wrapper(T::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {C <: CellType}
-        dims = $indexfcn(T, dualnodedims)
-        $wrapper{T, dualnodedims...,dtype,typeof(zeros(dtype,dims))}(zeros(dtype,dims))
+    function $wrapper(::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {C <: CellType}
+        dims = $indexfcn(C, dualnodedims)
+        $wrapper{C, dualnodedims...,dtype,typeof(zeros(dtype,dims))}(zeros(dtype,dims))
     end
 
-    # This allows easy construction from existing GridData on the same grid.
-    $wrapper(C, ::GridData{NX,NY,T};dtype=T) where {NX, NY,T <: Number} = $wrapper(C, (NX, NY),dtype=dtype )
-
-    $wrapper(C, nx::Int, ny::Int;dtype=Float64) = $wrapper(C,(nx,ny),dtype=dtype)
-    (::Type{$wrapper{C,NX,NY,T,DT}})() where {C,NX,NY,T,DT} = $wrapper(C, (NX, NY),dtype=T)
-
-    # This constructor might be problematic? Introduced only because we have not
-    # yet updated the regularization routines for the new GridData parameterization
-    (::Type{$wrapper{C,NX,NY,T}})() where {C,NX,NY,T} = $wrapper(C, (NX, NY),dtype=T)
-
-    Base.similar(::$wrapper{C,NX,NY,T,DT};element_type=T) where {C,NX,NY,T,DT} = $wrapper(C, (NX, NY),dtype=element_type)
+    @griddata($wrapper)
 
     function Base.show(io::IO, u::$wrapper{C, NX, NY,T,DT}) where {C, NX, NY, T, DT}
         nodedims = "(nx = $NX, ny = $NY)"
@@ -77,6 +87,7 @@ macro scalarfield(wrapper)
   end)
 
 end
+
 
 
 # [X]_inds functions set the number of indices in each direction
