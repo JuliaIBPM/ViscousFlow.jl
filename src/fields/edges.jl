@@ -1,12 +1,8 @@
-import Base: fill!
-
-
-
 # VECTOR EDGE DATA
 
 
 """
-    Edges{Dual/Primal}
+    Edges
 
 `Edges` is a wrapper for vector-valued data that lie at the faces of either dual cells or
 primary cells. `Edges` type data have fields `u` and `v` for the components of the
@@ -50,23 +46,26 @@ function Edges(T::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {C
 end
 
 
+# routines that are generic across all GridData and should probably be merged
+
+Edges(C, ::GridData{NX,NY,T};dtype=T) where {NX, NY,T} = Edges(C, (NX,NY),dtype=dtype)
+
 (::Type{Edges{C,NX,NY,T,DT}})() where {C,NX,NY,T,DT} = Edges(C, (NX, NY),dtype=T)
 
 (::Type{Edges{C,NX,NY,T}})() where {C,NX,NY,T} = Edges(C, (NX, NY),dtype=T)
 
-
-
-Edges(C, ::GridData{NX,NY,T};dtype=T) where {NX, NY,T} = Edges(C, (NX,NY),dtype=dtype)
-
 Base.similar(::Edges{C,NX,NY,T,DT};element_type=T) where {C,NX,NY,T,DT} = Edges(C, (NX, NY),dtype=element_type)
 
-Base.size(A::Edges{C,NX,NY}) where {C,NX,NY} = size(A.data)
+Base.size(A::Edges) = size(A.data)
 @propagate_inbounds Base.getindex(A::Edges{C,NX,NY,T},i::Int) where {C,NX,NY,T} = getindex(A.data,i)
 @propagate_inbounds Base.setindex!(A::Edges{C,NX,NY,T}, v, i::Int) where {C,NX,NY,T} = setindex!(A.data,convert(T,v),i)
-Base.IndexStyle(::Type{<:Edges}) = IndexLinear()
+Base.IndexStyle(::Type{<:Edges}) = IndexLinear() # necessary?
+
+Base.parent(A::Edges) = A.data
+Base.parentindices(A::Edges) = parentindices(A.data)
 
 
-function Base.show(io::IO, edges::Edges{C, NX, NY, T}) where {C, NX, NY, T}
+function Base.show(io::IO, edges::Edges{C, NX, NY, T, DT}) where {C, NX, NY, T, DT}
     nodedims = "(nx = $NX, ny = $NY)"
     udims = "(nx = $(size(edges.u,1)), ny = $(size(edges.u,2)))"
     vdims = "(nx = $(size(edges.v,1)), ny = $(size(edges.v,2)))"
