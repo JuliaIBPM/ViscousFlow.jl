@@ -21,6 +21,24 @@ macro scalarfield(wrapper)
     export $wrapper
 
     # The data type
+
+    @doc """
+        $($wrapper)
+
+    `$($wrapper)` is a wrapper for scalar-valued data that lie at the centers of either dual cells or
+    primary cells. A `$($wrapper)` type can be accessed by indexing like any other array,
+    and allows the use of [`size`](@ref), [`similar`](@ref), [`zero`](@ref).
+
+    # Constructors
+    - `$($wrapper)(C,dims)` creates a field of zeros in cells of type `C` (where `C` is
+      either `Dual` or `Primal`), on a grid of dimensions `dims` (a tuple). Note that `dims`
+      represent the number of dual cells on the grid, even if `C` is `Primal`.
+    - `$($wrapper)(C,w)` performs the same construction, but uses existing field data `w`
+      of `GridData` type to determine the size of the grid.
+    -  Adding the `dtype=` keyword allows the data type of the field data to be
+      changed. The default is `Float64`, but can be changed to, e.g., `ComplexF64`
+    - `$($wrapper)`
+    """
     struct $wrapper{C <: CellType, NX, NY, T <: Number, DT <: AbstractMatrix} <: ScalarGridData{NX,NY,T}
       data::DT
       $wrapper{C,NX,NY,T,DT}(data::AbstractMatrix) where {C<: CellType,NX,NY,T<:Number,DT} =
@@ -36,8 +54,7 @@ macro scalarfield(wrapper)
         $wrapper{T, dualnodedims...,dtype,typeof(zeros(dtype,dims))}(zeros(dtype,dims))
     end
 
-    # This allows easy construction of nodes of either type from existing nodes of either
-    # type on the same grid.
+    # This allows easy construction from existing GridData on the same grid.
     $wrapper(C, ::GridData{NX,NY,T};dtype=T) where {NX, NY,T <: Number} = $wrapper(C, (NX, NY),dtype=dtype )
 
     $wrapper(C, nx::Int, ny::Int;dtype=Float64) = $wrapper(C,(nx,ny),dtype=dtype)
@@ -66,31 +83,13 @@ end
 # Based on number of dual nodes, return the number of elements of this type
 
 @scalarfield Nodes
-node_inds(::Type{Dual},   dualnodedims) = (dualnodedims[1], dualnodedims[2])
-node_inds(::Type{Primal}, dualnodedims) = (dualnodedims[1]-1, dualnodedims[2]-1)
+node_inds(::Type{Dual},   dualnodedims) = dualnodedims[1], dualnodedims[2]
+node_inds(::Type{Primal}, dualnodedims) = dualnodedims[1]-1, dualnodedims[2]-1
 
 @scalarfield XEdges
-xedge_inds(::Type{Dual}, dualnodedims) = (dualnodedims[1]-1, dualnodedims[2])
-xedge_inds(::Type{Primal}, dualnodedims) = (dualnodedims[1], dualnodedims[2]-1)
+xedge_inds(::Type{Dual}, dualnodedims) = dualnodedims[1]-1, dualnodedims[2]
+xedge_inds(::Type{Primal}, dualnodedims) = dualnodedims[1], dualnodedims[2]-1
 
 @scalarfield YEdges
-yedge_inds(::Type{Dual}, dualnodedims) = (dualnodedims[1], dualnodedims[2]-1)
-yedge_inds(::Type{Primal}, dualnodedims) = (dualnodedims[1]-1, dualnodedims[2])
-
-"""
-    Nodes{Dual/Primal}
-
-`Nodes` is a wrapper for scalar-valued data that lie at the centers of either dual cells or
-primary cells. A `Nodes` type can be accessed by indexing like any other array,
-and allows the use of [size], [similar], [zero].
-
-# Constructors
-- `Nodes(C,dims)` creates a field of zeros in cells of type `C` (where `C` is
-  either `Dual` or `Primal`), on a grid of dimensions `dims`. Note that `dims`
-  represent the number of dual cells on the grid, even if `C` is `Primal`.
-- `Nodes(C,w)` performs the same construction, but uses existing field data `w`
-  of `GridData` type to determine the size of the grid.
--  Adding the `dtype=` keyword allows the data type of the field data to be
-  changed. The default is `Float64`, but can be changed to, e.g., `ComplexF64`
-"""
-function Nodes end
+yedge_inds(::Type{Dual}, dualnodedims) = dualnodedims[1], dualnodedims[2]-1
+yedge_inds(::Type{Primal}, dualnodedims) = dualnodedims[1]-1, dualnodedims[2]
