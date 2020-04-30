@@ -50,7 +50,7 @@ end
 @griddata Edges
 
 
-# routines that should be combined for all GridData...
+# routines that should be combined for all GridData. Probably should stop using wraparray for ScalarGridData
 
 Base.size(A::Edges) = size(A.data)
 @propagate_inbounds Base.getindex(A::Edges{C,NX,NY,T},i::Int) where {C,NX,NY,T} = getindex(A.data,i)
