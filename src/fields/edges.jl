@@ -14,7 +14,9 @@ and horizontal faces of the corresponding cell.
   either `Dual` or `Primal`), on a grid of dimensions `dims`. Note that `dims`
   represent the number of dual cells on the grid.
 - `Edges(C,w)` performs the same construction, but uses existing field data `w`
-  of `Nodes` type to determine the size of the grid.
+  of `GridData` type to determine the size of the grid.
+-  Adding the `dtype=` keyword allows the data type of the field data to be
+  changed. The default is `Float64`, but can be changed to, e.g., `ComplexF64`
 """
 struct Edges{C <: CellType, NX, NY, T <: Number, DT} <: VectorGridData{NX,NY,T}
     data::DT
@@ -29,12 +31,16 @@ edge_inds(::Type{C},   dualnodedims) where {C <: CellType} =
 
 function (::Type{Edges{C,NX,NY,T,DT}})(data::AbstractVector{R}) where {C<: CellType,NX,NY,T<:Number,DT,R}
     udims, vdims = edge_inds(C, (NX, NY))
-    nu = prod(udims)
-    nv = prod(vdims)
-    u = reshape(view(data,1:nu),udims)
-    v = reshape(view(data,nu+1:nu+nv),vdims)
+    n0 = 0
+    dims = udims
+    dn = prod(dims)
+    u = reshape(view(data,n0+1:n0+dn),dims)
+    n0 += dn
+    dims = vdims
+    dn = prod(dims)
+    v = reshape(view(data,n0+1:n0+dn),dims)
     Edges{C, NX, NY,R,typeof(data)}(data, XEdges{C,NX,NY,R,typeof(u)}(u),
-                                                   YEdges{C,NX,NY,R,typeof(v)}(v))
+                                          YEdges{C,NX,NY,R,typeof(v)}(v))
 end
 
 function Edges(::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {C <: CellType}
@@ -43,21 +49,9 @@ function Edges(::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {C 
     Edges{C,dualnodedims...,dtype,typeof(data)}(data)
 end
 
-
-
 @griddata(Edges,1)
 
-
-# routines that should be combined for all GridData. Probably should stop using wraparray for ScalarGridData
-
-Base.size(A::Edges) = size(A.data)
-@propagate_inbounds Base.getindex(A::Edges{C,NX,NY,T},i::Int) where {C,NX,NY,T} = getindex(A.data,i)
-@propagate_inbounds Base.setindex!(A::Edges{C,NX,NY,T}, v, i::Int) where {C,NX,NY,T} = setindex!(A.data,convert(T,v),i)
-Base.IndexStyle(::Type{<:Edges}) = IndexLinear() # necessary?
-
-Base.parent(A::Edges) = A.data
-Base.parentindices(A::Edges) = parentindices(A.data)
-
+#Base.IndexStyle(::Type{<:Edges}) = IndexLinear() # necessary?
 
 function Base.show(io::IO, edges::Edges{C, NX, NY, T, DT}) where {C, NX, NY, T, DT}
     nodedims = "(nx = $NX, ny = $NY)"
@@ -76,12 +70,3 @@ function Base.show(io::IO, m::MIME"text/plain", edges::Edges)
     println(io,"v (in grid orientation)")
     show(io,m,reverse(transpose(edges.v),dims=1))
 end
-
-# function Base.show(io::IO, ::MIME"text/plain", edges::Edges{T, NX, NY}) where {T, NX, NY}
-#     println(io,"$(typeof(edges)) data")
-#     println(io,"u (in grid orientation):")
-#     #Base.showarray(io,flipdim(transpose(edges.u),1),false;header=false)
-#     println(io)
-#     println(io,"v (in grid orientation):")
-#     #Base.showarray(io,flipdim(transpose(edges.v),1),false;header=false)
-# end

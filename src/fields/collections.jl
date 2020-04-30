@@ -1,5 +1,24 @@
 # Collections of data
 
+### Edge gradient ###
+
+"""
+    EdgeGradient
+
+`EdgeGradient` is a wrapper for tensor-valued data that lie partly at the nodes of dual cells and
+primary cells. `EdgeGradient` type data have fields `dudx`, `dudy`, `dvdx`, `dvdy` for the components of the
+tensor field. The diagonal components lie at one set of nodes (e.g. Primal),
+and the offdiagonal at the other set (e.g. Dual).
+
+# Constructors
+- `EdgeGradient(C,dims)` creates a tensor field of zeros in cells of type `C` (where `C` is
+  either `Dual` or `Primal`), on a grid of dimensions `dims`. Note that `dims`
+  represent the number of dual cells on the grid.
+- `EdgeGradient(C,w)` performs the same construction, but uses existing field data `w`
+  of `GridData` type to determine the size of the grid.
+-  Adding the `dtype=` keyword allows the data type of the field data to be
+  changed. The default is `Float64`, but can be changed to, e.g., `ComplexF64`
+"""
 struct EdgeGradient{C <: CellType,D <: CellType, NX,NY, T<: Number, DT} <: GridData{NX,NY,T}
   data :: DT
   dudx :: Nodes{C,NX,NY,T}
@@ -46,14 +65,7 @@ end
 
 @griddata(EdgeGradient,2)
 
-# These should get handled same way as other GridData (with possible exception of ScalarGridData)
-Base.size(A::EdgeGradient) = size(A.data)
-@propagate_inbounds Base.getindex(A::EdgeGradient,i::Int) = getindex(A.data,i)
-@propagate_inbounds Base.setindex!(A::EdgeGradient{R,S,NX,NY,T}, v, i::Int) where {R,S,NX,NY,T}= setindex!(A.data,convert(T,v),i)
-Base.IndexStyle(::Type{<:EdgeGradient}) = IndexLinear()
-
-Base.parent(A::EdgeGradient) = A.data
-Base.parentindices(A::EdgeGradient) = parentindices(A.data)
+#Base.IndexStyle(::Type{<:EdgeGradient}) = IndexLinear()
 
 function Base.show(io::IO, nodes::EdgeGradient{R, S, NX, NY, T, DT}) where {R, S, NX, NY, T, DT}
     nodedims = "(nx = $NX, ny = $NY)"
@@ -79,7 +91,25 @@ function Base.show(io::IO, m::MIME"text/plain", nodes::EdgeGradient)
     show(io,m,reverse(transpose(nodes.dvdy),dims=1))
 end
 
+### Node pair ###
 
+"""
+    NodePair
+
+`NodePair` is a wrapper for vector-valued data that lie at the nodes of dual cells and
+primal cells. `NodePair` type data have fields `u` and `v` for the components of the
+vector field. These are the normal components of a vector field on nodes that
+form the faces of a virtual cell centered at one of the faces of the primal cell.
+
+# Constructors
+- `NodePair(C,dims)` creates a vector field of zeros in cells of type `C` (where `C` is
+  either `Dual` or `Primal`), on a grid of dimensions `dims`. Note that `dims`
+  represent the number of dual cells on the grid.
+- `NodePair(C,w)` performs the same construction, but uses existing field data `w`
+  of `GridData` type to determine the size of the grid.
+-  Adding the `dtype=` keyword allows the data type of the field data to be
+  changed. The default is `Float64`, but can be changed to, e.g., `ComplexF64`
+"""
 struct NodePair{C <: CellType,D <: CellType, NX,NY,T, DT} <: GridData{NX,NY,T}
   data :: DT
   u :: Nodes{C,NX,NY,T}
@@ -108,14 +138,9 @@ function NodePair(::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where 
     NodePair{C,othertype(C),dualnodedims...,dtype,typeof(data)}(data)
 end
 
-
 @griddata(NodePair,2)
 
-Base.size(A::NodePair) = size(A.data)
-@propagate_inbounds Base.getindex(A::NodePair{C,D,NX,NY,T},i::Int) where {C,D,NX,NY,T} = getindex(A.data,i)
-@propagate_inbounds Base.setindex!(A::NodePair{C,D,NX,NY,T}, v, i::Int) where {C,D,NX,NY,T} = setindex!(A.data,convert(T,v),i)
-Base.IndexStyle(::Type{<:NodePair}) = IndexLinear() # necessary?
-
+#Base.IndexStyle(::Type{<:NodePair}) = IndexLinear() # necessary?
 
 function Base.show(io::IO, nodes::NodePair{R, S, NX, NY, T}) where {R, S, NX, NY, T}
     nodedims = "(nx = $NX, ny = $NY)"

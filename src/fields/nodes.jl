@@ -1,47 +1,5 @@
 import Base: size, ∘
 
-#=
-To do:
-* Add a parameter of all GridData types that describes the type of the data array
-  This will allow the data field to be of other AbstractMatrix types, like
-  reshaped array
-* Create constructors for all GridData types that accept an input vector
-  and reshape this into an array (or arrays, via view, for Edges)
-=#
-
-
-macro griddata(wrapper,nctypes)
-
-  ctype = Symbol[]
-  for i in 1:eval(nctypes)
-    push!(ctype,Symbol("C",string(i)))
-  end
-
-  return esc(quote
-
-    export $wrapper
-
-    celltype(::$wrapper{C}) where {C<:CellType} = C
-
-    # This allows easy construction from existing GridData on the same grid.
-    $wrapper(C, ::GridData{NX,NY,T};dtype=T) where {NX, NY,T <: Number} = $wrapper(C, (NX, NY),dtype=dtype )
-
-    $wrapper(C, nx::Int, ny::Int;dtype=Float64) = $wrapper(C,(nx,ny),dtype=dtype)
-    (::Type{$wrapper{$(ctype...),NX,NY,T,DT}})() where {$(ctype...),NX,NY,T,DT} =
-                  $wrapper($(ctype[1]), (NX, NY),dtype=T)
-
-    # This constructor might be problematic? Introduced only because we have not
-    # yet updated the regularization routines for the new GridData parameterization
-    (::Type{$wrapper{$(ctype...),NX,NY,T}})() where {$(ctype...),NX,NY,T} =
-                  $wrapper($(ctype[1]), (NX, NY),dtype=T)
-
-    Base.similar(::$wrapper{$(ctype...),NX,NY,T,DT};element_type=T) where {$(ctype...),NX,NY,T,DT} =
-                  $wrapper($(ctype[1]), (NX, NY),dtype=element_type)
-
-  end)
-
-end
-
 
 macro scalarfield(wrapper)
 
@@ -67,7 +25,6 @@ macro scalarfield(wrapper)
       of `GridData` type to determine the size of the grid.
     -  Adding the `dtype=` keyword allows the data type of the field data to be
       changed. The default is `Float64`, but can be changed to, e.g., `ComplexF64`
-    - `$($wrapper)`
     """
     struct $wrapper{C <: CellType, NX, NY, T <: Number, DT <: AbstractMatrix} <: ScalarGridData{NX,NY,T}
       data::DT
@@ -84,13 +41,24 @@ macro scalarfield(wrapper)
         $wrapper{C, dualnodedims...,dtype,typeof(zeros(dtype,dims))}(zeros(dtype,dims))
     end
 
+    # Endow this scalar grid data type with some basic constructors and functions
     @griddata($wrapper,1)
+
+    # Multidimensional indexing for scalar grid data
+    @propagate_inbounds Base.getindex(A::$wrapper, I::Vararg{Int,2}) = A.data[I...]
+    @propagate_inbounds Base.setindex!(A::$wrapper, v, I::Vararg{Int,2}) = A.data[I...] = convert(eltype(A.data), v)
 
     function Base.show(io::IO, u::$wrapper{C, NX, NY,T,DT}) where {C, NX, NY, T, DT}
         nodedims = "(nx = $NX, ny = $NY)"
         dims = "(nx = $(size(u,1)), ny = $(size(u,2)))"
         println(io, "$C $wrapname in a $nodedims cell grid of type $T data")
         print(io, "  Number of $C $wrapname: $dims")
+    end
+
+    function Base.show(io::IO, m::MIME"text/plain", A::$wrapper)
+      println(io, "$(typeof(A)) data")
+      println(io, "Printing in grid orientation (lower left is (1,1))")
+      show(io,m, reverse(transpose(A.data),dims=1))
     end
 
 

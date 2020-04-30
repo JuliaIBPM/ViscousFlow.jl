@@ -142,8 +142,9 @@ end
 @othertype CellType CellType
 
 # This macro allows us to access scalar grid data via just the wrapper itself
-@wraparray ScalarGridData data 2
+#@wraparray ScalarGridData data 2
 
+include("fields/fieldmacros.jl")
 include("fields/nodes.jl")
 include("fields/edges.jl")
 include("fields/collections.jl")
