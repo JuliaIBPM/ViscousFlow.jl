@@ -162,10 +162,8 @@ scalarlist = ((:(Nodes{Primal,NX,NY,T}), 1,1,0.0,0.0),
 # (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy)
 vectorlist = ((:(Edges{Primal,NX,NY,T}),          0,1,1,0,0.5,0.0,0.0,0.5),
               (:(Edges{Dual,NX,NY,T}),            1,0,0,1,0.0,0.5,0.5,0.0),
-              (:(NodePair{Dual,Dual,NX,NY,T}),    0,0,0,0,0.5,0.5,0.5,0.5),
               (:(NodePair{Primal,Dual,NX,NY,T}),  1,1,0,0,0.0,0.0,0.5,0.5),
-              (:(NodePair{Dual,Primal,NX,NY,T}),  0,0,1,1,0.5,0.5,0.0,0.0),
-              (:(NodePair{Primal,Primal,NX,NY,T}),1,1,1,1,0.0,0.0,0.0,0.0))
+              (:(NodePair{Dual,Primal,NX,NY,T}),  0,0,1,1,0.5,0.5,0.0,0.0))
 
 tensorlist = ((:(EdgeGradient{Dual,Primal,NX,NY,T}), 0,0,1,1,0.5,0.5,0.0,0.0),
               (:(EdgeGradient{Primal,Dual,NX,NY,T}), 1,1,0,0,0.0,0.0,0.5,0.5))
