@@ -51,8 +51,8 @@ macro scalarfield(wrapper)
     function Base.show(io::IO, u::$wrapper{C, NX, NY,T,DT}) where {C, NX, NY, T, DT}
         nodedims = "(nx = $NX, ny = $NY)"
         dims = "(nx = $(size(u,1)), ny = $(size(u,2)))"
-        println(io, "$C $wrapname in a $nodedims cell grid of type $T data")
-        print(io, "  Number of $C $wrapname: $dims")
+        println(io, "$C $($wrapname) in a $nodedims cell grid of type $T data")
+        print(io, "  Number of $C $($wrapname): $dims")
     end
 
     function Base.show(io::IO, m::MIME"text/plain", A::$wrapper)
