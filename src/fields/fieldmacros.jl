@@ -45,3 +45,45 @@ macro griddata(wrapper, nctypes)
   end)
 
 end
+
+"""
+    @wrapparay(wrapper,field,N)
+
+Basic macro to develop any AbstractArray data type into a proper wrapper, with
+indexing and other array-type operations.
+"""
+macro wraparray(wrapper, field, N)
+    S = eval(wrapper)
+    @assert S <: AbstractArray "Wrapped type must be a subtype of AbstractArray"
+    while supertype(S) <: AbstractArray
+        S = supertype(S)
+    end
+    #T = supertype(eval(wrapper))
+    #@assert T <: AbstractArray "Wrapped type must be a subtype of AbstractArray"
+    #el_type, N = S.parameters
+
+    quote
+        Base.parent(A::$wrapper) = A.$field
+        Base.size(A::$wrapper) = size(A.$field)
+        parentindices(A::$wrapper) = parentindices(A.$field)
+
+        if $N > 1
+          function Base.show(io::IO, m::MIME"text/plain", A::$wrapper)
+            println(io, "$(typeof(A)) data")
+            println(io, "Printing in grid orientation (lower left is (1,1))")
+            show(io,m, reverse(transpose(A.$field),dims=1))
+          end
+          #function Base.summary(io::IO, A::$wrapper)
+          #  println(io, "$(typeof(A)) data")
+          #  print(io, "Printing in grid orientation (lower left is (1,1))")
+          #end
+        end
+
+        @propagate_inbounds Base.getindex(A::$wrapper, i::Int) = A.$field[i]
+        @propagate_inbounds Base.setindex!(A::$wrapper, v, i::Int) = A.$field[i] = convert(eltype(A.$field), v)
+        if $N > 1
+          @propagate_inbounds Base.getindex(A::$wrapper, I::Vararg{Int, $N}) = A.$field[I...]
+          @propagate_inbounds Base.setindex!(A::$wrapper, v, I::Vararg{Int, $N}) = A.$field[I...] = convert(eltype(A.$field), v)
+        end
+    end
+end

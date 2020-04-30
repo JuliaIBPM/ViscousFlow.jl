@@ -92,42 +92,6 @@ abstract type ScalarGridData{NX,NY,T} <: GridData{NX,NY,T} end
 abstract type VectorGridData{NX,NY,T} <: GridData{NX,NY,T} end
 
 
-macro wraparray(wrapper, field, N)
-    S = eval(wrapper)
-    @assert S <: AbstractArray "Wrapped type must be a subtype of AbstractArray"
-    while supertype(S) <: AbstractArray
-        S = supertype(S)
-    end
-    #T = supertype(eval(wrapper))
-    #@assert T <: AbstractArray "Wrapped type must be a subtype of AbstractArray"
-    #el_type, N = S.parameters
-
-    quote
-        Base.parent(A::$wrapper) = A.$field
-        Base.size(A::$wrapper) = size(A.$field)
-        parentindices(A::$wrapper) = parentindices(A.$field)
-
-        if $N > 1
-          function Base.show(io::IO, m::MIME"text/plain", A::$wrapper)
-            println(io, "$(typeof(A)) data")
-            println(io, "Printing in grid orientation (lower left is (1,1))")
-            show(io,m, reverse(transpose(A.$field),dims=1))
-          end
-          #function Base.summary(io::IO, A::$wrapper)
-          #  println(io, "$(typeof(A)) data")
-          #  print(io, "Printing in grid orientation (lower left is (1,1))")
-          #end
-        end
-
-        @propagate_inbounds Base.getindex(A::$wrapper, i::Int) = A.$field[i]
-        @propagate_inbounds Base.setindex!(A::$wrapper, v, i::Int) = A.$field[i] = convert(eltype(A.$field), v)
-        if $N > 1
-          @propagate_inbounds Base.getindex(A::$wrapper, I::Vararg{Int, $N}) = A.$field[I...]
-          @propagate_inbounds Base.setindex!(A::$wrapper, v, I::Vararg{Int, $N}) = A.$field[I...] = convert(eltype(A.$field), v)
-        end
-    end
-end
-
 function othertype end
 
 macro othertype(celltype, k)
@@ -145,8 +109,7 @@ end
 #@wraparray ScalarGridData data 2
 
 include("fields/fieldmacros.jl")
-include("fields/nodes.jl")
-include("fields/edges.jl")
+include("fields/scalargrid.jl")
 include("fields/collections.jl")
 
 # (ctype,dnx,dny,shiftx,shifty)
