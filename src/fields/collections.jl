@@ -136,33 +136,6 @@ Base.size(A::NodePair) = size(A.data)
 Base.IndexStyle(::Type{<:NodePair}) = IndexLinear() # necessary?
 
 
-#=
-function NodePair(R::Type{C},S::Type{D},dualnodedims::Tuple{Int,Int};dtype=Float64) where {C <: CellType, D <: CellType}
-    udims = node_inds(R, dualnodedims)
-    vdims = node_inds(S, dualnodedims)
-
-    NodePair{R, S, dualnodedims...,dtype}(
-            Nodes(R,dualnodedims,dtype=dtype),
-            Nodes(S,dualnodedims,dtype=dtype)
-            )
-end
-NodePair(R::Type{C}, U::Type{D},nodes::Nodes{S,NX,NY,T}) where
-        {C <: CellType, D <: CellType, S <: CellType, NX,NY,T} = NodePair(R, U, (NX, NY),dtype=T)
-NodePair(R::Type{C},dualnodedims::Tuple{Int,Int};dtype=Float64) where {C <: CellType}= NodePair(R,R,dualnodedims,dtype=dtype)
-
-NodePair(R::Type{C}, nodes::Nodes{S,NX,NY,T}) where {C <: CellType, S <: CellType, NX,NY,T} = NodePair(R, (NX, NY),dtype=T)
-
-(::Type{NodePair{R,S,NX,NY,T}})() where {R<:CellType,S<:CellType,NX,NY,T} = NodePair(R, S, (NX, NY),dtype=T)
-
-NodePair(R, S, ::GridData{NX,NY,T};dtype=T) where {NX, NY,T} = NodePair(R, S, (NX,NY),dtype=dtype)
-
-Base.similar(::NodePair{R,S,NX,NY,T};element_type=T) where {R<:CellType,S<:CellType,NX,NY,T} = NodePair(R, S, (NX, NY),dtype=element_type)
-=#
-
-
-
-
-
 function Base.show(io::IO, nodes::NodePair{R, S, NX, NY, T}) where {R, S, NX, NY, T}
     nodedims = "(nx = $NX, ny = $NY)"
     udims = "(nx = $(size(nodes.u,1)), ny = $(size(nodes.u,2)))"

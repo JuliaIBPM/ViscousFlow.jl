@@ -39,15 +39,13 @@ end
 
 function Edges(::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {C <: CellType}
     udims, vdims = edge_inds(C, dualnodedims)
-    nu = prod(udims)
-    nv = prod(vdims)
-    data = zeros(dtype,nu+nv)
+    data = zeros(dtype,prod(udims)+prod(vdims))
     Edges{C,dualnodedims...,dtype,typeof(data)}(data)
 end
 
 
 
-@griddata Edges
+@griddata(Edges,1)
 
 
 # routines that should be combined for all GridData. Probably should stop using wraparray for ScalarGridData

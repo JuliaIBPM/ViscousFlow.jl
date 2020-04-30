@@ -10,23 +10,33 @@ To do:
 =#
 
 
-macro griddata(wrapper)
+macro griddata(wrapper,nctypes)
+
+  ctype = Symbol[]
+  for i in 1:eval(nctypes)
+    push!(ctype,Symbol("C",string(i)))
+  end
 
   return esc(quote
 
     export $wrapper
 
+    celltype(::$wrapper{C}) where {C<:CellType} = C
+
     # This allows easy construction from existing GridData on the same grid.
     $wrapper(C, ::GridData{NX,NY,T};dtype=T) where {NX, NY,T <: Number} = $wrapper(C, (NX, NY),dtype=dtype )
 
     $wrapper(C, nx::Int, ny::Int;dtype=Float64) = $wrapper(C,(nx,ny),dtype=dtype)
-    (::Type{$wrapper{C,NX,NY,T,DT}})() where {C,NX,NY,T,DT} = $wrapper(C, (NX, NY),dtype=T)
+    (::Type{$wrapper{$(ctype...),NX,NY,T,DT}})() where {$(ctype...),NX,NY,T,DT} =
+                  $wrapper($(ctype[1]), (NX, NY),dtype=T)
 
     # This constructor might be problematic? Introduced only because we have not
     # yet updated the regularization routines for the new GridData parameterization
-    (::Type{$wrapper{C,NX,NY,T}})() where {C,NX,NY,T} = $wrapper(C, (NX, NY),dtype=T)
+    (::Type{$wrapper{$(ctype...),NX,NY,T}})() where {$(ctype...),NX,NY,T} =
+                  $wrapper($(ctype[1]), (NX, NY),dtype=T)
 
-    Base.similar(::$wrapper{C,NX,NY,T,DT};element_type=T) where {C,NX,NY,T,DT} = $wrapper(C, (NX, NY),dtype=element_type)
+    Base.similar(::$wrapper{$(ctype...),NX,NY,T,DT};element_type=T) where {$(ctype...),NX,NY,T,DT} =
+                  $wrapper($(ctype[1]), (NX, NY),dtype=element_type)
 
   end)
 
@@ -74,7 +84,7 @@ macro scalarfield(wrapper)
         $wrapper{C, dualnodedims...,dtype,typeof(zeros(dtype,dims))}(zeros(dtype,dims))
     end
 
-    @griddata($wrapper)
+    @griddata($wrapper,1)
 
     function Base.show(io::IO, u::$wrapper{C, NX, NY,T,DT}) where {C, NX, NY, T, DT}
         nodedims = "(nx = $NX, ny = $NY)"

@@ -129,8 +129,6 @@ macro wraparray(wrapper, field, N)
     end
 end
 
-celltype(w::GridData) = typeof(w).parameters[1]
-
 function othertype end
 
 macro othertype(celltype, k)
