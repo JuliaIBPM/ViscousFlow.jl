@@ -65,7 +65,6 @@ import Base: parentindices
 const GAMMA = MathConstants.γ
 
 export Primal, Dual, ScalarGridData, VectorGridData, GridData,
-       EdgeGradient, NodePair,
        Points, ScalarData, VectorData, TensorData,
        celltype,
        diff!,grid_interpolate!,

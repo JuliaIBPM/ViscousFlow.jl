@@ -1,9 +1,5 @@
 # Collections of data
 
-# To do
-# - wrap a vector, as with Edges, and use view/reshape for the components
-# - eliminate the second CellType parameter, since it is not really needed
-
 struct EdgeGradient{C <: CellType,D <: CellType, NX,NY, T<: Number, DT} <: GridData{NX,NY,T}
   data :: DT
   dudx :: Nodes{C,NX,NY,T}
@@ -48,16 +44,7 @@ function EdgeGradient(::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) wh
     EdgeGradient{C,othertype(C),dualnodedims...,dtype,typeof(data)}(data)
 end
 
-
-# These will get handled by @griddata when the second type parameter is removed
-(::Type{EdgeGradient{R,S,NX,NY,T,DT}})() where {R<:CellType,S<:CellType,NX,NY,T,DT} = EdgeGradient(R, (NX, NY),dtype=T)
-
-(::Type{EdgeGradient{R,S,NX,NY,T}})() where {R<:CellType,S<:CellType,NX,NY,T} = EdgeGradient(R, (NX, NY),dtype=T)
-
-EdgeGradient(C, ::GridData{NX,NY,T}; dtype=T) where {NX, NY,T} = EdgeGradient(C, (NX,NY),dtype=dtype)
-
-Base.similar(::EdgeGradient{R,S,NX,NY,T,DT};element_type=T) where {R,S,NX,NY,T,DT} = EdgeGradient(R, (NX, NY),dtype=element_type)
-
+@griddata(EdgeGradient,2)
 
 # These should get handled same way as other GridData (with possible exception of ScalarGridData)
 Base.size(A::EdgeGradient) = size(A.data)
@@ -121,14 +108,8 @@ function NodePair(::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where 
     NodePair{C,othertype(C),dualnodedims...,dtype,typeof(data)}(data)
 end
 
-# These will get handled by @griddata when the second type parameter is removed
-(::Type{NodePair{R,S,NX,NY,T,DT}})() where {R<:CellType,S<:CellType,NX,NY,T,DT} = NodePair(R, (NX, NY),dtype=T)
 
-(::Type{NodePair{R,S,NX,NY,T}})() where {R<:CellType,S<:CellType,NX,NY,T} = NodePair(R, (NX, NY),dtype=T)
-
-NodePair(C, ::GridData{NX,NY,T}; dtype=T) where {NX, NY,T} = NodePair(C, (NX,NY),dtype=dtype)
-
-Base.similar(::NodePair{R,S,NX,NY,T,DT};element_type=T) where {R,S,NX,NY,T,DT} = NodePair(R, (NX, NY),dtype=element_type)
+@griddata(NodePair,2)
 
 Base.size(A::NodePair) = size(A.data)
 @propagate_inbounds Base.getindex(A::NodePair{C,D,NX,NY,T},i::Int) where {C,D,NX,NY,T} = getindex(A.data,i)
