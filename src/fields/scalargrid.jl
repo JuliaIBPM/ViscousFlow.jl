@@ -1,10 +1,27 @@
 import Base: size, ∘
 
+"""
+    @scalarfield(wrapper,primaldn,dualdn)
 
-macro scalarfield(wrapper)
+Given a name `wrapper`, generate a scalar grid data type that wraps an
+array of grid data. The macro automatically generates several constructors
+and functions for the data type. The tuples `primaldn` and `dualdn` specify
+the different number of indices in each direction compared to the reference
+grid type (dual nodes). For example, if `primaldn` is (-1,0), then this corresponds
+to one fewer point in the x direction and the same number of points in the y
+direction compared to dual nodes. Each 0 entry in these tuples will be interpreted
+as placing the data half a cell spacing from the boundary of the domain in
+the physical grid.
+"""
+macro scalarfield(wrapper,primaldn,dualdn)
 
   wrapname = lowercase(string(wrapper))
   indexfcn = Symbol(wrapname[1:end-1],"_inds")
+
+  pdn = 0 .- eval(primaldn)
+  ddn = 0 .- eval(dualdn)
+  pshift = 0.5.*(1 .- pdn)
+  dshift = 0.5.*(1 .- ddn)
 
   return esc(quote
 
@@ -33,6 +50,13 @@ macro scalarfield(wrapper)
       $wrapper{C,NX,NY,T,DT}(data::AbstractVector) where {C<: CellType,NX,NY,T<:Number,DT} =
             (u = reshape(data,$indexfcn(C,(NX,NY))); new{C,NX,NY,T,typeof(u)}(u))
     end
+
+    # functions set the number of indices in each direction, based on the
+    # number of dual node dimensions
+    export $indexfcn
+
+    $indexfcn(::Type{Dual},   dualnodedims) = dualnodedims .+ $dualdn
+    $indexfcn(::Type{Primal}, dualnodedims) = dualnodedims .+ $primaldn
 
     # Constructors
 
@@ -66,19 +90,15 @@ macro scalarfield(wrapper)
 
 end
 
+macro grid_shifts(wrapper,primaldn,dualdn)
+    pdn = 0 .- eval(primaldn)
+    ddn = 0 .- eval(dualdn)
+    pshift = 0.5.*(1 .- pdn)
+    dshift = 0.5.*(1 .- ddn)
+    return (wrapper,:Primal,pdn...,pshift...), (wrapper,:Dual,ddn...,dshift...)
+end
 
 
-# [X]_inds functions set the number of indices in each direction
-# Based on number of dual nodes, return the number of elements of this type
-
-@scalarfield Nodes
-node_inds(::Type{Dual},   dualnodedims) = dualnodedims[1], dualnodedims[2]
-node_inds(::Type{Primal}, dualnodedims) = dualnodedims[1]-1, dualnodedims[2]-1
-
-@scalarfield XEdges
-xedge_inds(::Type{Dual}, dualnodedims) = dualnodedims[1]-1, dualnodedims[2]
-xedge_inds(::Type{Primal}, dualnodedims) = dualnodedims[1], dualnodedims[2]-1
-
-@scalarfield YEdges
-yedge_inds(::Type{Dual}, dualnodedims) = dualnodedims[1], dualnodedims[2]-1
-yedge_inds(::Type{Primal}, dualnodedims) = dualnodedims[1]-1, dualnodedims[2]
+@scalarfield Nodes (-1,-1) (0,0)
+@scalarfield XEdges (0,-1) (-1,0)
+@scalarfield YEdges (-1,0) (0,-1)

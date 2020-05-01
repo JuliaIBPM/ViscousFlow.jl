@@ -225,10 +225,10 @@ end
 # ======  Regularization and interpolation operators of scalar types ======== #
 
 ftype = :(ScalarData{N,S,DT})
-for (ctype,dnx,dny,shiftx,shifty) in scalarlist
+for (dtype,ctype,dnx,dny,shiftx,shifty) in scalarlist
 
 # Regularization
-  @eval function (H::Regularize{N,F})(target::$ctype,source::$ftype) where {N,F,NX,NY,S,T,DT}
+  @eval function (H::Regularize{N,F})(target::$dtype{$ctype,NX,NY,T,DDT},source::$ftype) where {N,F,NX,NY,S,T,DT,DDT}
         radius = H.ddf_radius
         fill!(target,0.0)
         xmin = -radius+$shiftx; xmax = radius+$shiftx
@@ -245,7 +245,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
 
 
 # Interpolation
-  @eval function (H::Regularize{N,false})(target::$ftype,source::$ctype) where {N,NX,NY,S,T,DT}
+  @eval function (H::Regularize{N,false})(target::$ftype,source::$dtype{$ctype,NX,NY,T,DDT}) where {N,NX,NY,S,T,DT,DDT}
         radius = H.ddf_radius
         fill!(target,0.0)
         xmin = -radius+$shiftx; xmax = radius+$shiftx
@@ -261,7 +261,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
   end
 
 # Interpolation with filtering
-  @eval function (H::Regularize{N,true})(target::$ftype,source::$ctype) where {N,NX,NY,S,T,DT}
+  @eval function (H::Regularize{N,true})(target::$ftype,source::$dtype{$ctype,NX,NY,T,DDT}) where {N,NX,NY,S,T,DT,DDT}
         tmp = typeof(source)()
         radius = H.ddf_radius
         fill!(target,0.0)
@@ -289,7 +289,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
   # Construct regularization matrix
   @eval function RegularizationMatrix(H::Regularize{N,F},
     f::$ftype,
-    u::$ctype) where {N,F,NX,NY,S,T,DT}
+    u::$dtype{$ctype,NX,NY,T,DDT}) where {N,F,NX,NY,S,T,DT,DDT}
 
     Hmat = spzeros(length(u),length(f))
     g = deepcopy(f)
@@ -303,16 +303,16 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
     if H._issymmetric
       # In symmetric case, these matrices are identical. (Interpolation is stored
       # as its transpose.)
-      return RegularizationMatrix{$ctype,$ftype}(Hmat),InterpolationMatrix{$ctype,$ftype}(Hmat)
+      return RegularizationMatrix{typeof(u),typeof(f)}(Hmat),InterpolationMatrix{typeof(u),typeof(f)}(Hmat)
     else
-      return RegularizationMatrix{$ctype,$ftype}(Hmat)
+      return RegularizationMatrix{typeof(u),typeof(f)}(Hmat)
     end
   end
 
   # Construct interpolation matrix
   @eval function InterpolationMatrix(H::Regularize{N,false},
-    u::$ctype,
-    f::$ftype) where {N,NX,NY,S,T,DT}
+    u::$dtype{$ctype,NX,NY,T,DDT},
+    f::$ftype) where {N,NX,NY,S,T,DT,DDT}
 
     Emat = spzeros(length(u),length(f))
     g = deepcopy(f)
@@ -323,7 +323,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
       Emat[:,i] = sparsevec(H(v,g))
       g[i] = 0.0
     end
-    InterpolationMatrix{$ctype,$ftype}(Emat)
+    InterpolationMatrix{typeof(u),typeof(f)}(Emat)
   end
 
   # Construct interpolation matrix with filtering. Because we construct
@@ -331,8 +331,8 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
   # to carry out the filtering here rather than call the filtered operator
   # we defined above
   @eval function InterpolationMatrix(H::Regularize{N,true},
-    u::$ctype,
-    f::$ftype) where {N,NX,NY,S,T,DT}
+    u::$dtype{$ctype,NX,NY,T,DDT},
+    f::$ftype) where {N,NX,NY,S,T,DT,DDT}
 
     Emat = spzeros(length(u),length(f))
     g = deepcopy(f)
@@ -346,7 +346,7 @@ for (ctype,dnx,dny,shiftx,shifty) in scalarlist
       Emat[:,i] = wt.*sparsevec(H(v,g))
       g[i] = 0.0
     end
-    InterpolationMatrix{$ctype,$ftype}(Emat)
+    InterpolationMatrix{typeof(u),typeof(f)}(Emat)
   end
 
 end
@@ -357,21 +357,21 @@ ftype = :(VectorData{N,S,DT})
 for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
 
 # Regularization
-  @eval function (H::Regularize{N,F})(target::$ctype,source::$ftype) where {N,F,NX,NY,S,T,DT}
+  @eval function (H::Regularize{N,F})(target::$ctype,source::$ftype) where {N,F,NX,NY,S,T,DT,DDT}
         H(target.u,source.u)
         H(target.v,source.v)
         target
   end
 
 # Interpolation
-  @eval function (H::Regularize{N,F})(target::$ftype,source::$ctype) where {N,F,NX,NY,S,T,DT}
+  @eval function (H::Regularize{N,F})(target::$ftype,source::$ctype) where {N,F,NX,NY,S,T,DT,DDT}
         H(target.u,source.u)
         H(target.v,source.v)
         target
   end
 
   # Construct regularization matrix
-  @eval function RegularizationMatrix(H::Regularize{N,F},src::$ftype,target::$ctype) where {N,F,NX,NY,S,T,DT}
+  @eval function RegularizationMatrix(H::Regularize{N,F},src::$ftype,target::$ctype) where {N,F,NX,NY,S,T,DT,DDT}
 
     lenu = length(target.u)
     lenv = length(target.v)
@@ -391,7 +391,7 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
   end
 
   # Construct interpolation matrix
-  @eval function InterpolationMatrix(H::Regularize{N,F},src::$ctype,target::$ftype) where {N,F,NX,NY,S,T,DT}
+  @eval function InterpolationMatrix(H::Regularize{N,F},src::$ctype,target::$ftype) where {N,F,NX,NY,S,T,DT,DDT}
 
     # note that we store interpolation matrices in the same shape as regularization matrices
     lenu = length(src.u)
@@ -414,7 +414,7 @@ ftype = :(TensorData{N,S,DT})
 for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tensorlist
 
 # Regularization
-  @eval function (H::Regularize{N,F})(target::$ctype,source::$ftype) where {N,F,NX,NY,S,T,DT}
+  @eval function (H::Regularize{N,F})(target::$ctype,source::$ftype) where {N,F,NX,NY,S,T,DT,DDT}
         radius = H.ddf_radius
         fill!(target.dudx,0.0)
         fill!(target.dvdy,0.0)
@@ -454,7 +454,7 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tensorlist
   # end
 
 # Interpolation
-  @eval function (H::Regularize{N,false})(target::$ftype,source::$ctype) where {N,NX,NY,S,T,DT}
+  @eval function (H::Regularize{N,false})(target::$ftype,source::$ctype) where {N,NX,NY,S,T,DT,DDT}
         radius = H.ddf_radius
         fill!(target.dudx,0.0)
         fill!(target.dvdy,0.0)
@@ -494,7 +494,7 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tensorlist
   # end
 
 # Interpolation with filtering -- need to speed up
-  @eval function (H::Regularize{N,true})(target::$ftype,source::$ctype) where {N,NX,NY,S,T,DT}
+  @eval function (H::Regularize{N,true})(target::$ftype,source::$ctype) where {N,NX,NY,S,T,DT,DDT}
         tmp = typeof(source)()
         radius = H.ddf_radius
         fill!(target.dudx,0.0)
@@ -549,7 +549,7 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tensorlist
   end
 
   # Construct regularization matrix
-  @eval function RegularizationMatrix(H::Regularize{N,F},src::$ftype,target::$ctype) where {N,F,NX,NY,S,T,DT}
+  @eval function RegularizationMatrix(H::Regularize{N,F},src::$ftype,target::$ctype) where {N,F,NX,NY,S,T,DT,DDT}
 
     # note that we only need to compute two distinct matrices, since there are
     # only two types of cell data in this tensor
@@ -582,7 +582,7 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tensorlist
   end
 
   # Construct interpolation matrix
-  @eval function InterpolationMatrix(H::Regularize{N,false},src::$ctype,target::$ftype) where {N,NX,NY,S,T,DT}
+  @eval function InterpolationMatrix(H::Regularize{N,false},src::$ctype,target::$ftype) where {N,NX,NY,S,T,DT,DDT}
 
     # note that we store interpolation matrices in the same shape as regularization matrices
     #Emat = (spzeros(length(src.u),length(target.u)),spzeros(length(src.v),length(target.v)))
@@ -607,7 +607,7 @@ for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tensorlist
   end
 
   # Construct interpolation matrix with filtering
-  @eval function InterpolationMatrix(H::Regularize{N,true},src::$ctype,target::$ftype) where {N,NX,NY,S,T,DT}
+  @eval function InterpolationMatrix(H::Regularize{N,true},src::$ctype,target::$ftype) where {N,NX,NY,S,T,DT,DDT}
 
     # note that we store interpolation matrices in the same shape as regularization matrices
     #Emat = (spzeros(length(src.u),length(target.u)),spzeros(length(src.v),length(target.v)))

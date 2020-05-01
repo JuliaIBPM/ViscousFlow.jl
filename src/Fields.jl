@@ -105,7 +105,6 @@ end
 @othertype Dual Primal
 @othertype CellType CellType
 
-# This macro allows us to access scalar grid data via just the wrapper itself
 #@wraparray ScalarGridData data 2
 
 include("fields/fieldmacros.jl")
@@ -113,21 +112,30 @@ include("fields/scalargrid.jl")
 include("fields/collections.jl")
 
 # (ctype,dnx,dny,shiftx,shifty)
+#=
 scalarlist = ((:(Nodes{Primal,NX,NY,T}), 1,1,0.0,0.0),
               (:(Nodes{Dual,NX,NY,T}),   0,0,0.5,0.5),
               (:(XEdges{Primal,NX,NY,T}),0,1,0.5,0.0),
               (:(YEdges{Primal,NX,NY,T}),1,0,0.0,0.5),
               (:(XEdges{Dual,NX,NY,T}),  1,0,0.0,0.5),
               (:(YEdges{Dual,NX,NY,T}),  0,1,0.5,0.0))
+=#
+
+scalarlist = ((:Nodes,:Primal, 1,1,0.0,0.0),
+              (:Nodes, :Dual,  0,0,0.5,0.5),
+              (:XEdges, :Primal,0,1,0.5,0.0),
+              (:YEdges, :Primal,1,0,0.0,0.5),
+              (:XEdges, :Dual,  1,0,0.0,0.5),
+              (:YEdges, :Dual,  0,1,0.5,0.0))
 
 # (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy)
-vectorlist = ((:(Edges{Primal,NX,NY,T}),          0,1,1,0,0.5,0.0,0.0,0.5),
-              (:(Edges{Dual,NX,NY,T}),            1,0,0,1,0.0,0.5,0.5,0.0),
-              (:(NodePair{Primal,Dual,NX,NY,T}),  1,1,0,0,0.0,0.0,0.5,0.5),
-              (:(NodePair{Dual,Primal,NX,NY,T}),  0,0,1,1,0.5,0.5,0.0,0.0))
+vectorlist = ((:(Edges{Primal,NX,NY,T,DDT}),          0,1,1,0,0.5,0.0,0.0,0.5),
+              (:(Edges{Dual,NX,NY,T,DDT}),            1,0,0,1,0.0,0.5,0.5,0.0),
+              (:(NodePair{Primal,Dual,NX,NY,T,DDT}),  1,1,0,0,0.0,0.0,0.5,0.5),
+              (:(NodePair{Dual,Primal,NX,NY,T,DDT}),  0,0,1,1,0.5,0.5,0.0,0.0))
 
-tensorlist = ((:(EdgeGradient{Dual,Primal,NX,NY,T}), 0,0,1,1,0.5,0.5,0.0,0.0),
-              (:(EdgeGradient{Primal,Dual,NX,NY,T}), 1,1,0,0,0.0,0.0,0.5,0.5))
+tensorlist = ((:(EdgeGradient{Dual,Primal,NX,NY,T,DDT}), 0,0,1,1,0.5,0.5,0.0,0.0),
+              (:(EdgeGradient{Primal,Dual,NX,NY,T,DDT}), 1,1,0,0,0.0,0.0,0.5,0.5))
 
 include("fields/basicoperations.jl")
 include("fields/points.jl")
@@ -158,15 +166,15 @@ julia> xg, yg = coordinates(w,dx=0.1)
 """
 function coordinates end
 
-for (ctype,dnx,dny,shiftx,shifty) in scalarlist
-   @eval coordinates(w::$ctype;dx::Float64=1.0,I0::Tuple{Int,Int}=(1,1)) where {NX,NY,T} =
+for (ctype,dtype,dnx,dny,shiftx,shifty) in scalarlist
+   @eval coordinates(w::$ctype{$dtype,NX,NY,T};dx::Float64=1.0,I0::Tuple{Int,Int}=(1,1)) where {NX,NY,T} =
     dx.*((1-I0[1]-$shiftx):(NX-$dnx-I0[1]-$shiftx),
          (1-I0[2]-$shifty):(NY-$dny-I0[2]-$shifty))
 
 end
 
 for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
-   @eval coordinates(w::$ctype;dx::Float64=1.0,I0::Tuple{Int,Int}=(1,1)) where {NX,NY,T} =
+   @eval coordinates(w::$ctype;dx::Float64=1.0,I0::Tuple{Int,Int}=(1,1)) where {NX,NY,T,DDT} =
     dx.*((1-I0[1]-$shiftux):(NX-$dunx-I0[1]-$shiftux),
          (1-I0[2]-$shiftuy):(NY-$duny-I0[2]-$shiftuy),
          (1-I0[1]-$shiftvx):(NX-$dvnx-I0[1]-$shiftvx),
