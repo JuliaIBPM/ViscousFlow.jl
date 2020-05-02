@@ -31,7 +31,8 @@ edge_inds(::Type{C},   dualnodedims) where {C <: CellType} =
 
 
 function (::Type{Edges{C,NX,NY,T,DT}})(data::AbstractVector{R}) where {C<: CellType,NX,NY,T<:Number,DT,R}
-    udims, vdims = edge_inds(C, (NX, NY))
+    udims = xedge_inds(C, (NX, NY))
+    vdims = yedge_inds(C, (NX, NY))
     n0 = 0
     dims = udims
     dn = prod(dims)
@@ -45,7 +46,8 @@ function (::Type{Edges{C,NX,NY,T,DT}})(data::AbstractVector{R}) where {C<: CellT
 end
 
 function Edges(::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {C <: CellType}
-    udims, vdims = edge_inds(C, dualnodedims)
+    udims = xedge_inds(C, dualnodedims)
+    vdims = yedge_inds(C, dualnodedims)
     data = zeros(dtype,prod(udims)+prod(vdims))
     Edges{C,dualnodedims...,dtype,typeof(data)}(data)
 end
@@ -104,7 +106,7 @@ end
 
 function (::Type{EdgeGradient{C,D,NX,NY,T,DT}})(data::AbstractVector{R}) where {C<: CellType,D<:CellType,NX,NY,T<:Number,DT,R}
     dudxdims = dvdydims = node_inds(C, (NX,NY))
-    dudydims = dvdxdims = node_inds(othertype(C), (NX,NY))
+    dudydims = dvdxdims = node_inds(D, (NX,NY))
 
     n0 = 0
     dims = dudxdims
@@ -190,7 +192,7 @@ end
 
 function (::Type{NodePair{C,D,NX,NY,T,DT}})(data::AbstractVector{R}) where {C<: CellType,D<: CellType,NX,NY,T<:Number,DT,R}
     udims = node_inds(C, (NX,NY))
-    vdims = node_inds(othertype(C), (NX,NY))
+    vdims = node_inds(D, (NX,NY))
     n0 = 0
     dims = udims
     dn = prod(dims)

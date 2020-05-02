@@ -1,5 +1,7 @@
 ## Field data macros
 
+export show_scalarlist
+
 """
     @griddata(wrapper,nctypes)
 
@@ -47,6 +49,35 @@ macro griddata(wrapper, nctypes)
 end
 
 """
+    @generate_scalarlist(list)
+
+Process a list of scalar grid types and generate an expanded form of the list,
+complete with cell shifts. Used for constructing the regularization functions
+and coordinate functions.
+"""
+macro generate_scalarlist(list)
+    return quote
+        newlist = []
+        for (i,l) in enumerate($(esc(list)))
+            wrapper, primaldn, dualdn = l
+
+            # negative index shifts become positive values in this list
+            pdn = 0 .- primaldn
+            ddn = 0 .- dualdn
+
+            # grid cell shifts: dn = 0 implies shift by half-cell, dn = 1 implies no shift
+            pshift = 0.5.*(1 .- abs.(pdn))
+            dshift = 0.5.*(1 .- abs.(ddn))
+            push!(newlist,(Symbol(wrapper),:Primal,pdn...,pshift...))
+            push!(newlist,(Symbol(wrapper),:Dual,ddn...,dshift...))
+        end
+        newlist
+    end
+end
+
+show_scalarlist() = @generate_scalarlist SCALARLIST
+
+"""
     @wrapparay(wrapper,field,N)
 
 Basic macro to develop any AbstractArray data type into a proper wrapper, with
@@ -55,12 +86,6 @@ indexing and other array-type operations.
 macro wraparray(wrapper, field, N)
     S = eval(wrapper)
     @assert S <: AbstractArray "Wrapped type must be a subtype of AbstractArray"
-    while supertype(S) <: AbstractArray
-        S = supertype(S)
-    end
-    #T = supertype(eval(wrapper))
-    #@assert T <: AbstractArray "Wrapped type must be a subtype of AbstractArray"
-    #el_type, N = S.parameters
 
     quote
         Base.parent(A::$wrapper) = A.$field

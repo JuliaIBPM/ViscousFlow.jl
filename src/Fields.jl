@@ -76,7 +76,6 @@ export Primal, Dual, ScalarGridData, VectorGridData, GridData,
        product, product!, ∘,
        directional_derivative!, directional_derivative_conserve!, curl_cross!,
        convective_derivative!, convective_derivative_rot!,
-       coordinates,
        DDF, GradDDF,
        Regularize, RegularizationMatrix, InterpolationMatrix,
        CircularConvolution
@@ -91,6 +90,9 @@ abstract type ScalarGridData{NX,NY,T} <: GridData{NX,NY,T} end
 
 abstract type VectorGridData{NX,NY,T} <: GridData{NX,NY,T} end
 
+const SCALARLIST = [ :Nodes, (-1,-1), (0,0)],
+                   [ :XEdges, (0,-1), (-1,0)],
+                   [ :YEdges, (-1,0), (0,-1)]
 
 function othertype end
 
@@ -109,17 +111,17 @@ end
 
 include("fields/fieldmacros.jl")
 include("fields/scalargrid.jl")
+
+# Generate the scalar grid field types and associated functions
+for (wrapper,primaldn,dualdn) in SCALARLIST
+    @eval @scalarfield $wrapper $primaldn $dualdn
+end
+
 include("fields/collections.jl")
 
-# (gridtype,ctype,dnx,dny,shiftx,shifty)
 
-scalarlist = ((:Nodes,:Primal, 1,1,0.0,0.0),
-              (:Nodes, :Dual,  0,0,0.5,0.5),
-              (:XEdges, :Primal,0,1,0.5,0.0),
-              (:YEdges, :Primal,1,0,0.0,0.5),
-              (:XEdges, :Dual,  1,0,0.0,0.5),
-              (:YEdges, :Dual,  0,1,0.5,0.0))
-
+# The information in this list (after the cell types) follows directly from
+# the known component types.
 # (gtype,ctype(s),dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy)
 vectorlist = ((:Edges, [:Primal],      0,1,1,0,0.5,0.0,0.0,0.5),
               (:Edges, [:Dual],            1,0,0,1,0.0,0.5,0.5,0.0),
@@ -132,48 +134,7 @@ tensorlist = ((:EdgeGradient, [:Dual,:Primal], 0,0,1,1,0.5,0.5,0.0,0.0),
 include("fields/basicoperations.jl")
 include("fields/points.jl")
 
-
-CollectedData = Union{EdgeGradient{R,S,NX,NY,T},NodePair{R,S,NX,NY,T}} where {R,S,NX,NY,T}
-
-"""
-    coordinates(w::GridData;[dx=1.0],[I0=(1,1)])
-
-Return a tuple of the ranges of the physical coordinates in each direction for grid
-data `w`. If `w` is of `Nodes` type, then it returns a tuple of the form
-`xg,yg`. If `w` is of `Edges` or `NodePair` type, then it returns a tuple of
-the form `xgu,ygu,xgv,ygv`.
-
-The optional keyword argument `dx` sets the grid spacing; its default is `1.0`. The
-optional keyword `I0` accepts a tuple of integers to set the index pair of the
-primal nodes that coincide with the origin. The default is `(1,1)`.
-
-# Example
-
-```jldoctest
-julia> w = Nodes(Dual,(12,22));
-
-julia> xg, yg = coordinates(w,dx=0.1)
-(-0.05:0.1:1.05, -0.05:0.1:2.0500000000000003)
-```
-"""
-function coordinates end
-
-for (gridtype,ctype,dnx,dny,shiftx,shifty) in scalarlist
-   @eval coordinates(w::$gridtype{$ctype,NX,NY,T};dx::Float64=1.0,I0::Tuple{Int,Int}=(1,1)) where {NX,NY,T} =
-    dx.*((1-I0[1]-$shiftx):(NX-$dnx-I0[1]-$shiftx),
-         (1-I0[2]-$shifty):(NY-$dny-I0[2]-$shifty))
-
-end
-
-for (gridtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
-   @eval coordinates(w::$gridtype{$(ctype...),NX,NY,T};dx::Float64=1.0,I0::Tuple{Int,Int}=(1,1)) where {NX,NY,T,DDT} =
-    dx.*((1-I0[1]-$shiftux):(NX-$dunx-I0[1]-$shiftux),
-         (1-I0[2]-$shiftuy):(NY-$duny-I0[2]-$shiftuy),
-         (1-I0[1]-$shiftvx):(NX-$dvnx-I0[1]-$shiftvx),
-         (1-I0[2]-$shiftvy):(NY-$dvny-I0[2]-$shiftvy))
-
-
-end
+#CollectedData = Union{EdgeGradient{R,S,NX,NY,T},NodePair{R,S,NX,NY,T}} where {R,S,NX,NY,T}
 
 include("fields/physicalgrid.jl")
 include("fields/operators.jl")

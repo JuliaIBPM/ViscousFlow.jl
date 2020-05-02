@@ -1,5 +1,44 @@
+export coordinates, PhysicalGrid, limits, origin, cellsize
 
-export PhysicalGrid, limits, origin, cellsize
+"""
+    coordinates(w::GridData;[dx=1.0],[I0=(1,1)])
+
+Return a tuple of the ranges of the physical coordinates in each direction for grid
+data `w`. If `w` is of `Nodes` type, then it returns a tuple of the form
+`xg,yg`. If `w` is of `Edges` or `NodePair` type, then it returns a tuple of
+the form `xgu,ygu,xgv,ygv`.
+
+The optional keyword argument `dx` sets the grid spacing; its default is `1.0`. The
+optional keyword `I0` accepts a tuple of integers to set the index pair of the
+primal nodes that coincide with the origin. The default is `(1,1)`.
+
+# Example
+
+```jldoctest
+julia> w = Nodes(Dual,(12,22));
+
+julia> xg, yg = coordinates(w,dx=0.1)
+(-0.05:0.1:1.05, -0.05:0.1:2.0500000000000003)
+```
+"""
+function coordinates end
+
+for (gridtype,ctype,dnx,dny,shiftx,shifty) in @generate_scalarlist(SCALARLIST)
+   @eval coordinates(w::$gridtype{$ctype,NX,NY,T};dx::Float64=1.0,I0::Tuple{Int,Int}=(1,1)) where {NX,NY,T} =
+    dx.*((1-I0[1]-$shiftx):(NX-$dnx-I0[1]-$shiftx),
+         (1-I0[2]-$shifty):(NY-$dny-I0[2]-$shifty))
+
+end
+
+for (gridtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
+   @eval coordinates(w::$gridtype{$(ctype...),NX,NY,T};dx::Float64=1.0,I0::Tuple{Int,Int}=(1,1)) where {NX,NY,T,DDT} =
+    dx.*((1-I0[1]-$shiftux):(NX-$dunx-I0[1]-$shiftux),
+         (1-I0[2]-$shiftuy):(NY-$duny-I0[2]-$shiftuy),
+         (1-I0[1]-$shiftvx):(NX-$dvnx-I0[1]-$shiftvx),
+         (1-I0[2]-$shiftvy):(NY-$dvny-I0[2]-$shiftvy))
+
+
+end
 
 struct PhysicalGrid{ND}
   N :: NTuple{ND,Int}

@@ -225,14 +225,14 @@ end
 # ======  Regularization and interpolation operators of scalar types ======== #
 
 pointtype = :ScalarData
-for (gridtype,ctype,dnx,dny,shiftx,shifty) in scalarlist
+for (gridtype,ctype,dnx,dny,shiftx,shifty) in @generate_scalarlist(SCALARLIST)
 
 # Regularization
   @eval function (H::Regularize{N,F})(target::$gridtype{$ctype,NX,NY,T,DDT},source::$pointtype{N,S,DT}) where {N,F,NX,NY,S,T,DT,DDT}
         radius = H.ddf_radius
         fill!(target,0.0)
-        xmin = -radius+$shiftx; xmax = radius+$shiftx
-        ymin = -radius+$shifty; ymax = radius+$shifty
+        xmin, xmax = -radius+$shiftx, radius+$shiftx
+        ymin, ymax = -radius+$shifty, radius+$shifty
         @inbounds for pt in 1:N
             prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dnx,floor(Int,H.x[pt]+xmax))
             prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$dny,floor(Int,H.y[pt]+ymax))
@@ -248,8 +248,8 @@ for (gridtype,ctype,dnx,dny,shiftx,shifty) in scalarlist
   @eval function (H::Regularize{N,false})(target::$pointtype{N,S,DT},source::$gridtype{$ctype,NX,NY,T,DDT}) where {N,NX,NY,S,T,DT,DDT}
         radius = H.ddf_radius
         fill!(target,0.0)
-        xmin = -radius+$shiftx; xmax = radius+$shiftx
-        ymin = -radius+$shifty; ymax = radius+$shifty
+        xmin, xmax = -radius+$shiftx, radius+$shiftx
+        ymin, ymax = -radius+$shifty, radius+$shifty
         @inbounds for pt in 1:N
             prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dnx,floor(Int,H.x[pt]+xmax))
             prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$dny,floor(Int,H.y[pt]+ymax))
@@ -265,8 +265,8 @@ for (gridtype,ctype,dnx,dny,shiftx,shifty) in scalarlist
         tmp = typeof(source)()
         radius = H.ddf_radius
         fill!(target,0.0)
-        xmin = -radius+$shiftx; xmax = radius+$shiftx
-        ymin = -radius+$shifty; ymax = radius+$shifty
+        xmin, xmax = -radius+$shiftx, radius+$shiftx
+        ymin, ymax = -radius+$shifty, radius+$shifty
         @inbounds for pt in 1:N
             prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dnx,floor(Int,H.x[pt]+xmax))
             prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$dny,floor(Int,H.y[pt]+ymax))
@@ -418,8 +418,8 @@ for (gridtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tens
         radius = H.ddf_radius
         fill!(target.dudx,0.0)
         fill!(target.dvdy,0.0)
-        xmin = -radius+$shiftux; xmax = radius+$shiftux
-        ymin = -radius+$shiftuy; ymax = radius+$shiftuy
+        xmin, xmax = -radius+$shiftux, radius+$shiftux
+        ymin, ymax = -radius+$shiftuy, radius+$shiftuy
         @inbounds for pt in 1:N
             prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dunx,floor(Int,H.x[pt]+xmax))
             prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$duny,floor(Int,H.y[pt]+ymax))
@@ -431,8 +431,8 @@ for (gridtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tens
         end
         fill!(target.dudy,0.0)
         fill!(target.dvdx,0.0)
-        xmin = -radius+$shiftvx; xmax = radius+$shiftvx
-        ymin = -radius+$shiftvy; ymax = radius+$shiftvy
+        xmin, xmax = -radius+$shiftvx, radius+$shiftvx
+        ymin, ymax = -radius+$shiftvy, radius+$shiftvy
         @inbounds for pt in 1:N
             prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dvnx,floor(Int,H.x[pt]+xmax))
             prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$dvny,floor(Int,H.y[pt]+ymax))
@@ -458,8 +458,8 @@ for (gridtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tens
         radius = H.ddf_radius
         fill!(target.dudx,0.0)
         fill!(target.dvdy,0.0)
-        xmin = -radius+$shiftux; xmax = radius+$shiftux
-        ymin = -radius+$shiftuy; ymax = radius+$shiftuy
+        xmin, xmax = -radius+$shiftux, radius+$shiftux
+        ymin, ymax = -radius+$shiftuy, radius+$shiftuy
         @inbounds for pt in 1:N
             prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dunx,floor(Int,H.x[pt]+xmax))
             prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$duny,floor(Int,H.y[pt]+ymax))
@@ -471,8 +471,8 @@ for (gridtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tens
         end
         fill!(target.dudy,0.0)
         fill!(target.dvdx,0.0)
-        xmin = -radius+$shiftvx; xmax = radius+$shiftvx
-        ymin = -radius+$shiftvy; ymax = radius+$shiftvy
+        xmin, xmax = -radius+$shiftvx, radius+$shiftvx
+        ymin, ymax = -radius+$shiftvy, radius+$shiftvy
         @inbounds for pt in 1:N
             prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dvnx,floor(Int,H.x[pt]+xmax))
             prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$dvny,floor(Int,H.y[pt]+ymax))
@@ -499,8 +499,8 @@ for (gridtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tens
         radius = H.ddf_radius
         fill!(target.dudx,0.0)
         fill!(target.dvdy,0.0)
-        xmin = -radius+$shiftux; xmax = radius+$shiftux
-        ymin = -radius+$shiftuy; ymax = radius+$shiftuy
+        xmin, xmax = -radius+$shiftux, radius+$shiftux
+        ymin, ymax = -radius+$shiftuy, radius+$shiftuy
         @inbounds for pt in 1:N
             prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dunx,floor(Int,H.x[pt]+xmax))
             prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$duny,floor(Int,H.y[pt]+ymax))
@@ -523,8 +523,8 @@ for (gridtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tens
         end
         fill!(target.dudy,0.0)
         fill!(target.dvdx,0.0)
-        xmin = -radius+$shiftvx; xmax = radius+$shiftvx
-        ymin = -radius+$shiftvy; ymax = radius+$shiftvy
+        xmin, xmax = -radius+$shiftvx, radius+$shiftvx
+        ymin, ymax = -radius+$shiftvy, radius+$shiftvy
         @inbounds for pt in 1:N
             prangex = max(1,ceil(Int,H.x[pt]+xmin)):min(NX-$dvnx,floor(Int,H.x[pt]+xmax))
             prangey = max(1,ceil(Int,H.y[pt]+ymin)):min(NY-$dvny,floor(Int,H.y[pt]+ymax))

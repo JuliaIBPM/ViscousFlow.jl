@@ -18,10 +18,10 @@ macro scalarfield(wrapper,primaldn,dualdn)
   wrapname = lowercase(string(wrapper))
   indexfcn = Symbol(wrapname[1:end-1],"_inds")
 
-  pdn = 0 .- eval(primaldn)
-  ddn = 0 .- eval(dualdn)
-  pshift = 0.5.*(1 .- pdn)
-  dshift = 0.5.*(1 .- ddn)
+  #pdn = 0 .- eval(primaldn)
+  #ddn = 0 .- eval(dualdn)
+  #pshift = 0.5.*(1 .- pdn)
+  #dshift = 0.5.*(1 .- ddn)
 
   return esc(quote
 
@@ -89,16 +89,3 @@ macro scalarfield(wrapper,primaldn,dualdn)
   end)
 
 end
-
-macro grid_shifts(wrapper,primaldn,dualdn)
-    pdn = 0 .- eval(primaldn)
-    ddn = 0 .- eval(dualdn)
-    pshift = 0.5.*(1 .- pdn)
-    dshift = 0.5.*(1 .- ddn)
-    return (wrapper,:Primal,pdn...,pshift...), (wrapper,:Dual,ddn...,dshift...)
-end
-
-
-@scalarfield Nodes (-1,-1) (0,0)
-@scalarfield XEdges (0,-1) (-1,0)
-@scalarfield YEdges (-1,0) (0,-1)
