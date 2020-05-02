@@ -224,11 +224,11 @@ end
 
 # ======  Regularization and interpolation operators of scalar types ======== #
 
-ftype = :(ScalarData{N,S,DT})
-for (dtype,ctype,dnx,dny,shiftx,shifty) in scalarlist
+pointtype = :ScalarData
+for (gridtype,ctype,dnx,dny,shiftx,shifty) in scalarlist
 
 # Regularization
-  @eval function (H::Regularize{N,F})(target::$dtype{$ctype,NX,NY,T,DDT},source::$ftype) where {N,F,NX,NY,S,T,DT,DDT}
+  @eval function (H::Regularize{N,F})(target::$gridtype{$ctype,NX,NY,T,DDT},source::$pointtype{N,S,DT}) where {N,F,NX,NY,S,T,DT,DDT}
         radius = H.ddf_radius
         fill!(target,0.0)
         xmin = -radius+$shiftx; xmax = radius+$shiftx
@@ -245,7 +245,7 @@ for (dtype,ctype,dnx,dny,shiftx,shifty) in scalarlist
 
 
 # Interpolation
-  @eval function (H::Regularize{N,false})(target::$ftype,source::$dtype{$ctype,NX,NY,T,DDT}) where {N,NX,NY,S,T,DT,DDT}
+  @eval function (H::Regularize{N,false})(target::$pointtype{N,S,DT},source::$gridtype{$ctype,NX,NY,T,DDT}) where {N,NX,NY,S,T,DT,DDT}
         radius = H.ddf_radius
         fill!(target,0.0)
         xmin = -radius+$shiftx; xmax = radius+$shiftx
@@ -261,7 +261,7 @@ for (dtype,ctype,dnx,dny,shiftx,shifty) in scalarlist
   end
 
 # Interpolation with filtering
-  @eval function (H::Regularize{N,true})(target::$ftype,source::$dtype{$ctype,NX,NY,T,DDT}) where {N,NX,NY,S,T,DT,DDT}
+  @eval function (H::Regularize{N,true})(target::$pointtype{N,S,DT},source::$gridtype{$ctype,NX,NY,T,DDT}) where {N,NX,NY,S,T,DT,DDT}
         tmp = typeof(source)()
         radius = H.ddf_radius
         fill!(target,0.0)
@@ -288,8 +288,8 @@ for (dtype,ctype,dnx,dny,shiftx,shifty) in scalarlist
 
   # Construct regularization matrix
   @eval function RegularizationMatrix(H::Regularize{N,F},
-    f::$ftype,
-    u::$dtype{$ctype,NX,NY,T,DDT}) where {N,F,NX,NY,S,T,DT,DDT}
+    f::$pointtype{N,S,DT},
+    u::$gridtype{$ctype,NX,NY,T,DDT}) where {N,F,NX,NY,S,T,DT,DDT}
 
     Hmat = spzeros(length(u),length(f))
     g = deepcopy(f)
@@ -311,8 +311,8 @@ for (dtype,ctype,dnx,dny,shiftx,shifty) in scalarlist
 
   # Construct interpolation matrix
   @eval function InterpolationMatrix(H::Regularize{N,false},
-    u::$dtype{$ctype,NX,NY,T,DDT},
-    f::$ftype) where {N,NX,NY,S,T,DT,DDT}
+    u::$gridtype{$ctype,NX,NY,T,DDT},
+    f::$pointtype{N,S,DT}) where {N,NX,NY,S,T,DT,DDT}
 
     Emat = spzeros(length(u),length(f))
     g = deepcopy(f)
@@ -331,8 +331,8 @@ for (dtype,ctype,dnx,dny,shiftx,shifty) in scalarlist
   # to carry out the filtering here rather than call the filtered operator
   # we defined above
   @eval function InterpolationMatrix(H::Regularize{N,true},
-    u::$dtype{$ctype,NX,NY,T,DDT},
-    f::$ftype) where {N,NX,NY,S,T,DT,DDT}
+    u::$gridtype{$ctype,NX,NY,T,DDT},
+    f::$pointtype{N,S,DT}) where {N,NX,NY,S,T,DT,DDT}
 
     Emat = spzeros(length(u),length(f))
     g = deepcopy(f)
@@ -353,25 +353,25 @@ end
 
 
 # ===== Regularization and interpolation operators of vector data to edges ===== #
-ftype = :(VectorData{N,S,DT})
-for (dtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
+pointtype = :VectorData
+for (gridtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
 
 # Regularization
-  @eval function (H::Regularize{N,F})(target::$dtype{$(ctype...),NX,NY,T,DDT},source::$ftype) where {N,F,NX,NY,S,T,DT,DDT}
+  @eval function (H::Regularize{N,F})(target::$gridtype{$(ctype...),NX,NY,T,DDT},source::$pointtype{N,S,DT}) where {N,F,NX,NY,S,T,DT,DDT}
         H(target.u,source.u)
         H(target.v,source.v)
         target
   end
 
 # Interpolation
-  @eval function (H::Regularize{N,F})(target::$ftype,source::$dtype{$(ctype...),NX,NY,T,DDT}) where {N,F,NX,NY,S,T,DT,DDT}
+  @eval function (H::Regularize{N,F})(target::$pointtype{N,S,DT},source::$gridtype{$(ctype...),NX,NY,T,DDT}) where {N,F,NX,NY,S,T,DT,DDT}
         H(target.u,source.u)
         H(target.v,source.v)
         target
   end
 
   # Construct regularization matrix
-  @eval function RegularizationMatrix(H::Regularize{N,F},src::$ftype,target::$dtype{$(ctype...),NX,NY,T,DDT}) where {N,F,NX,NY,S,T,DT,DDT}
+  @eval function RegularizationMatrix(H::Regularize{N,F},src::$pointtype{N,S,DT},target::$gridtype{$(ctype...),NX,NY,T,DDT}) where {N,F,NX,NY,S,T,DT,DDT}
 
     lenu = length(target.u)
     lenv = length(target.v)
@@ -391,7 +391,7 @@ for (dtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorl
   end
 
   # Construct interpolation matrix
-  @eval function InterpolationMatrix(H::Regularize{N,F},src::$dtype{$(ctype...),NX,NY,T,DDT},target::$ftype) where {N,F,NX,NY,S,T,DT,DDT}
+  @eval function InterpolationMatrix(H::Regularize{N,F},src::$gridtype{$(ctype...),NX,NY,T,DDT},target::$pointtype{N,S,DT}) where {N,F,NX,NY,S,T,DT,DDT}
 
     # note that we store interpolation matrices in the same shape as regularization matrices
     lenu = length(src.u)
@@ -410,11 +410,11 @@ end
 # We do not use the scalar-wise operations here because there is double use of
 # the same ddf evaluation, so this saves us quite a bit of time.
 
-ftype = :(TensorData{N,S,DT})
-for (dtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tensorlist
+pointtype = :TensorData
+for (gridtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tensorlist
 
 # Regularization
-  @eval function (H::Regularize{N,F})(target::$dtype{$(ctype...),NX,NY,T,DDT},source::$ftype) where {N,F,NX,NY,S,T,DT,DDT}
+  @eval function (H::Regularize{N,F})(target::$gridtype{$(ctype...),NX,NY,T,DDT},source::$pointtype{N,S,DT}) where {N,F,NX,NY,S,T,DT,DDT}
         radius = H.ddf_radius
         fill!(target.dudx,0.0)
         fill!(target.dvdy,0.0)
@@ -454,7 +454,7 @@ for (dtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tensorl
   # end
 
 # Interpolation
-  @eval function (H::Regularize{N,false})(target::$ftype,source::$dtype{$(ctype...),NX,NY,T,DDT}) where {N,NX,NY,S,T,DT,DDT}
+  @eval function (H::Regularize{N,false})(target::$pointtype{N,S,DT},source::$gridtype{$(ctype...),NX,NY,T,DDT}) where {N,NX,NY,S,T,DT,DDT}
         radius = H.ddf_radius
         fill!(target.dudx,0.0)
         fill!(target.dvdy,0.0)
@@ -494,7 +494,7 @@ for (dtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tensorl
   # end
 
 # Interpolation with filtering -- need to speed up
-  @eval function (H::Regularize{N,true})(target::$ftype,source::$dtype{$(ctype...),NX,NY,T,DDT}) where {N,NX,NY,S,T,DT,DDT}
+  @eval function (H::Regularize{N,true})(target::$pointtype{N,S,DT},source::$gridtype{$(ctype...),NX,NY,T,DDT}) where {N,NX,NY,S,T,DT,DDT}
         tmp = typeof(source)()
         radius = H.ddf_radius
         fill!(target.dudx,0.0)
@@ -549,7 +549,7 @@ for (dtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tensorl
   end
 
   # Construct regularization matrix
-  @eval function RegularizationMatrix(H::Regularize{N,F},src::$ftype,target::$dtype{$(ctype...),NX,NY,T,DDT}) where {N,F,NX,NY,S,T,DT,DDT}
+  @eval function RegularizationMatrix(H::Regularize{N,F},src::$pointtype{N,S,DT},target::$gridtype{$(ctype...),NX,NY,T,DDT}) where {N,F,NX,NY,S,T,DT,DDT}
 
     # note that we only need to compute two distinct matrices, since there are
     # only two types of cell data in this tensor
@@ -582,7 +582,7 @@ for (dtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tensorl
   end
 
   # Construct interpolation matrix
-  @eval function InterpolationMatrix(H::Regularize{N,false},src::$dtype{$(ctype...),NX,NY,T,DDT},target::$ftype) where {N,NX,NY,S,T,DT,DDT}
+  @eval function InterpolationMatrix(H::Regularize{N,false},src::$gridtype{$(ctype...),NX,NY,T,DDT},target::$pointtype{N,S,DT}) where {N,NX,NY,S,T,DT,DDT}
 
     # note that we store interpolation matrices in the same shape as regularization matrices
     #Emat = (spzeros(length(src.u),length(target.u)),spzeros(length(src.v),length(target.v)))
@@ -607,7 +607,7 @@ for (dtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tensorl
   end
 
   # Construct interpolation matrix with filtering
-  @eval function InterpolationMatrix(H::Regularize{N,true},src::$dtype{$(ctype...),NX,NY,T,DDT},target::$ftype) where {N,NX,NY,S,T,DT,DDT}
+  @eval function InterpolationMatrix(H::Regularize{N,true},src::$gridtype{$(ctype...),NX,NY,T,DDT},target::$pointtype{N,S,DT}) where {N,NX,NY,S,T,DT,DDT}
 
     # note that we store interpolation matrices in the same shape as regularization matrices
     #Emat = (spzeros(length(src.u),length(target.u)),spzeros(length(src.v),length(target.v)))
