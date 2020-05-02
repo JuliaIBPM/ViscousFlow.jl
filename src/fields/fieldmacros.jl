@@ -21,6 +21,8 @@ macro griddata(wrapper, nctypes)
     export $wrapper
 
     celltype(::$wrapper{C}) where {C<:CellType} = C
+    celltype(::Type{$wrapper{C}}) where {C<:CellType} = C
+    griddatatype(::$wrapper{C}) where {C<:CellType} = $wrapper
 
     # This allows easy construction from existing GridData on the same grid.
     $wrapper(C, ::GridData{NX,NY,T};dtype=T) where {NX, NY,T <: Number} = $wrapper(C, (NX, NY),dtype=dtype )

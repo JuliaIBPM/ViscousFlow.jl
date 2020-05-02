@@ -96,9 +96,9 @@ and the offdiagonal at the other set (e.g. Dual).
 struct EdgeGradient{C <: CellType,D <: CellType, NX,NY, T<: Number, DT} <: GridData{NX,NY,T}
   data :: DT
   dudx :: Nodes{C,NX,NY,T}
-  dvdy :: Nodes{C,NX,NY,T}
   dudy :: Nodes{D,NX,NY,T}
   dvdx :: Nodes{D,NX,NY,T}
+  dvdy :: Nodes{C,NX,NY,T}
 end
 
 
@@ -125,9 +125,9 @@ function (::Type{EdgeGradient{C,D,NX,NY,T,DT}})(data::AbstractVector{R}) where {
     dn = prod(dims)
     dvdy = reshape(view(data,n0+1:n0+dn),dims)
     EdgeGradient{C,D,NX, NY,R,typeof(data)}(data, Nodes{C,NX,NY,R,typeof(dudx)}(dudx),
-                                                  Nodes{C,NX,NY,R,typeof(dvdy)}(dvdy),
                                                   Nodes{D,NX,NY,R,typeof(dudy)}(dudy),
-                                                  Nodes{D,NX,NY,R,typeof(dvdx)}(dvdx))
+                                                  Nodes{D,NX,NY,R,typeof(dvdx)}(dvdx),
+                                                  Nodes{C,NX,NY,R,typeof(dvdy)}(dvdy))                        
 end
 
 function EdgeGradient(::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {C <: CellType}

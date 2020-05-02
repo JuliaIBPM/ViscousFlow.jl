@@ -35,6 +35,13 @@ import Base: to_indices, uncolon, tail, _maybetail
   @test typeof(dualfacezero.u) <: XEdges{Dual}
   @test typeof(dualfacezero.v) <: YEdges{Dual}
 
+  @test celltype(cellzero) == Dual
+  @test celltype(facezero) == Primal
+  @test griddatatype(dualfacezero) == Edges
+
+  @test griddatatype(NodePair(Dual,dualfacezero)) == NodePair
+  @test griddatatype(EdgeGradient(Dual,cellzero)) == EdgeGradient
+
 
   cellunit = deepcopy(cellzero)
   cellunit[i,j] = 1.0

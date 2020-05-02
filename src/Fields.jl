@@ -66,7 +66,7 @@ const GAMMA = MathConstants.γ
 
 export Primal, Dual, ScalarGridData, VectorGridData, GridData,
        Points, ScalarData, VectorData, TensorData,
-       celltype,
+       celltype, griddatatype,
        diff!,grid_interpolate!,
        curl, curl!, Curl, divergence, divergence!, Divergence,
        grad, grad!, Grad,
@@ -90,6 +90,10 @@ abstract type ScalarGridData{NX,NY,T} <: GridData{NX,NY,T} end
 
 abstract type VectorGridData{NX,NY,T} <: GridData{NX,NY,T} end
 
+# List of scalar grid types. Each pair of numbers specifies
+# the number of grid points in each direction for this data type, relative
+# to the reference grid. The two pairs of numbers correspond to Primal
+# and Dual versions of this grid data type.
 const SCALARLIST = [ :Nodes, (-1,-1), (0,0)],
                    [ :XEdges, (0,-1), (-1,0)],
                    [ :YEdges, (-1,0), (0,-1)]
