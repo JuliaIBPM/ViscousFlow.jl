@@ -48,7 +48,7 @@ and
 
 module Fields
 
-import Base: @propagate_inbounds, show, summary
+import Base: @propagate_inbounds, show, summary, fill!
 
 #using Compat
 using FFTW
@@ -65,10 +65,8 @@ import Base: parentindices
 const GAMMA = MathConstants.γ
 
 export Primal, Dual, ScalarGridData, VectorGridData, GridData,
-       Edges, Nodes, XEdges, YEdges,
-       EdgeGradient, NodePair,
        Points, ScalarData, VectorData, TensorData,
-       celltype,
+       celltype, griddatatype, indexshift,
        diff!,grid_interpolate!,
        curl, curl!, Curl, divergence, divergence!, Divergence,
        grad, grad!, Grad,
@@ -78,7 +76,6 @@ export Primal, Dual, ScalarGridData, VectorGridData, GridData,
        product, product!, ∘,
        directional_derivative!, directional_derivative_conserve!, curl_cross!,
        convective_derivative!, convective_derivative_rot!,
-       coordinates,
        DDF, GradDDF,
        Regularize, RegularizationMatrix, InterpolationMatrix,
        CircularConvolution
@@ -93,44 +90,24 @@ abstract type ScalarGridData{NX,NY,T} <: GridData{NX,NY,T} end
 
 abstract type VectorGridData{NX,NY,T} <: GridData{NX,NY,T} end
 
+# List of scalar grid types. Each pair of numbers specifies
+# the number of grid points in each direction for this data type, relative
+# to the reference grid. The two pairs of numbers correspond to Primal
+# and Dual versions of this grid data type.
+const SCALARLIST = [ :Nodes, (-1,-1), (0,0)],
+                   [ :XEdges, (0,-1), (-1,0)],
+                   [ :YEdges, (-1,0), (0,-1)]
 
-macro wraparray(wrapper, field, N)
-    S = eval(wrapper)
-    @assert S <: AbstractArray "Wrapped type must be a subtype of AbstractArray"
-    while supertype(S) <: AbstractArray
-        S = supertype(S)
-    end
-    #T = supertype(eval(wrapper))
-    #@assert T <: AbstractArray "Wrapped type must be a subtype of AbstractArray"
-    #el_type, N = S.parameters
+# List of collection grid types. This specifies the list of different types
+# to create regularization and coordinates routines for.
+const VECTORLIST = [:Edges, [:Primal]],
+                   [:Edges, [:Dual]],
+                   [:NodePair, [:Primal,:Dual]],
+                   [:NodePair, [:Dual,:Primal]]
 
-    quote
-        Base.parent(A::$wrapper) = A.$field
-        Base.size(A::$wrapper) = size(A.$field)
-        parentindices(A::$wrapper) = parentindices(A.$field)
+const TENSORLIST = [:EdgeGradient, [:Dual,:Primal]],
+                   [:EdgeGradient, [:Primal,:Dual]]
 
-        if $N > 1
-          function Base.show(io::IO, m::MIME"text/plain", A::$wrapper)
-            println(io, "$(typeof(A)) data")
-            println(io, "Printing in grid orientation (lower left is (1,1))")
-            show(io,m, reverse(transpose(A.$field),dims=1))
-          end
-          #function Base.summary(io::IO, A::$wrapper)
-          #  println(io, "$(typeof(A)) data")
-          #  print(io, "Printing in grid orientation (lower left is (1,1))")
-          #end
-        end
-
-        @propagate_inbounds Base.getindex(A::$wrapper, i::Int) = A.$field[i]
-        @propagate_inbounds Base.setindex!(A::$wrapper, v, i::Int) = A.$field[i] = convert(eltype(A.$field), v)
-        if $N > 1
-          @propagate_inbounds Base.getindex(A::$wrapper, I::Vararg{Int, $N}) = A.$field[I...]
-          @propagate_inbounds Base.setindex!(A::$wrapper, v, I::Vararg{Int, $N}) = A.$field[I...] = convert(eltype(A.$field), v)
-        end
-    end
-end
-
-celltype(w::GridData) = typeof(w).parameters[1]
 
 function othertype end
 
@@ -145,77 +122,22 @@ end
 @othertype Dual Primal
 @othertype CellType CellType
 
-# This macro allows us to access scalar grid data via just the wrapper itself
-@wraparray ScalarGridData data 2
+#@wraparray ScalarGridData data 2
 
-include("fields/nodes.jl")
-include("fields/edges.jl")
+include("fields/fieldmacros.jl")
+include("fields/scalargrid.jl")
+
+# Generate the scalar grid field types and associated functions
+for (wrapper,primaldn,dualdn) in SCALARLIST
+    @eval @scalarfield $wrapper $primaldn $dualdn
+end
+
 include("fields/collections.jl")
-
-# (ctype,dnx,dny,shiftx,shifty)
-scalarlist = ((:(Nodes{Primal,NX,NY,T}), 1,1,0.0,0.0),
-              (:(Nodes{Dual,NX,NY,T}),   0,0,0.5,0.5),
-              (:(XEdges{Primal,NX,NY,T}),0,1,0.5,0.0),
-              (:(YEdges{Primal,NX,NY,T}),1,0,0.0,0.5),
-              (:(XEdges{Dual,NX,NY,T}),  1,0,0.0,0.5),
-              (:(YEdges{Dual,NX,NY,T}),  0,1,0.5,0.0))
-
-# (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy)
-vectorlist = ((:(Edges{Primal,NX,NY,T}),          0,1,1,0,0.5,0.0,0.0,0.5),
-              (:(Edges{Dual,NX,NY,T}),            1,0,0,1,0.0,0.5,0.5,0.0),
-              (:(NodePair{Dual,Dual,NX,NY,T}),    0,0,0,0,0.5,0.5,0.5,0.5),
-              (:(NodePair{Primal,Dual,NX,NY,T}),  1,1,0,0,0.0,0.0,0.5,0.5),
-              (:(NodePair{Dual,Primal,NX,NY,T}),  0,0,1,1,0.5,0.5,0.0,0.0),
-              (:(NodePair{Primal,Primal,NX,NY,T}),1,1,1,1,0.0,0.0,0.0,0.0))
-
-tensorlist = ((:(EdgeGradient{Dual,Primal,NX,NY,T}), 0,0,1,1,0.5,0.5,0.0,0.0),
-              (:(EdgeGradient{Primal,Dual,NX,NY,T}), 1,1,0,0,0.0,0.0,0.5,0.5))
 
 include("fields/basicoperations.jl")
 include("fields/points.jl")
 
-
-CollectedData = Union{EdgeGradient{R,S,NX,NY,T},NodePair{R,S,NX,NY,T}} where {R,S,NX,NY,T}
-
-"""
-    coordinates(w::GridData;[dx=1.0],[I0=(1,1)])
-
-Return a tuple of the ranges of the physical coordinates in each direction for grid
-data `w`. If `w` is of `Nodes` type, then it returns a tuple of the form
-`xg,yg`. If `w` is of `Edges` or `NodePair` type, then it returns a tuple of
-the form `xgu,ygu,xgv,ygv`.
-
-The optional keyword argument `dx` sets the grid spacing; its default is `1.0`. The
-optional keyword `I0` accepts a tuple of integers to set the index pair of the
-primal nodes that coincide with the origin. The default is `(1,1)`.
-
-# Example
-
-```jldoctest
-julia> w = Nodes(Dual,(12,22));
-
-julia> xg, yg = coordinates(w,dx=0.1)
-(-0.05:0.1:1.05, -0.05:0.1:2.0500000000000003)
-```
-"""
-function coordinates end
-
-for (ctype,dnx,dny,shiftx,shifty) in scalarlist
-   @eval coordinates(w::$ctype;dx::Float64=1.0,I0::Tuple{Int,Int}=(1,1)) where {NX,NY,T} =
-    dx.*((1-I0[1]-$shiftx):(NX-$dnx-I0[1]-$shiftx),
-         (1-I0[2]-$shifty):(NY-$dny-I0[2]-$shifty))
-
-end
-
-for (ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
-   @eval coordinates(w::$ctype;dx::Float64=1.0,I0::Tuple{Int,Int}=(1,1)) where {NX,NY,T} =
-    dx.*((1-I0[1]-$shiftux):(NX-$dunx-I0[1]-$shiftux),
-         (1-I0[2]-$shiftuy):(NY-$duny-I0[2]-$shiftuy),
-         (1-I0[1]-$shiftvx):(NX-$dvnx-I0[1]-$shiftvx),
-         (1-I0[2]-$shiftvy):(NY-$dvny-I0[2]-$shiftvy))
-
-
-end
+#CollectedData = Union{EdgeGradient{R,S,NX,NY,T},NodePair{R,S,NX,NY,T}} where {R,S,NX,NY,T}
 
 include("fields/physicalgrid.jl")
 include("fields/operators.jl")

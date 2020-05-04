@@ -11,9 +11,9 @@ export DoubleLayer, SingleLayer, MaskType, Mask, ComplementaryMask
 
 abstract type LayerType{N,NX,NY} end
 
-struct DoubleLayer{N,NX,NY,G,T,DT} <: LayerType{N,NX,NY}
+struct DoubleLayer{N,NX,NY,G,T,DT,DDT} <: LayerType{N,NX,NY}
     nds :: VectorData{N,Float64,DT}
-    H :: RegularizationMatrix{Edges{G,NX,NY,T},VectorData{N,T,DT}}
+    H :: RegularizationMatrix{Edges{G,NX,NY,T,DDT},VectorData{N,T,DT}}
 end
 
 function DoubleLayer(body::Union{Body,BodyList},H::RegularizationMatrix;weight::Float64 = 1.0)
@@ -30,21 +30,21 @@ end
 
 (μ::DoubleLayer{N})(p::ScalarData{N}) where {N} = divergence(μ.H*(p∘μ.nds))
 
-function (μ::DoubleLayer{N,NX,NY,G,T,DT})(p::Number) where {N,NX,NY,G,T,DT}
+function (μ::DoubleLayer{N,NX,NY,G,T,DT,DDT})(p::Number) where {N,NX,NY,G,T,DT,DDT}
   ϕ = ScalarData(N,dtype=T)
   ϕ .= p
   return μ(ϕ)
 end
 
-function Base.show(io::IO, H::DoubleLayer{N,NX,NY,G,T,DT}) where {N,NX,NY,G,T,DT}
+function Base.show(io::IO, H::DoubleLayer{N,NX,NY,G,T,DT,DDT}) where {N,NX,NY,G,T,DT,DDT}
     println(io, "Double-layer potential mapping")
     println(io, "  from $N scalar-valued point data of $T type")
     println(io, "  to a $NX x $NY grid of $G nodal data")
 end
 
-struct SingleLayer{N,NX,NY,G,T,DT} <: LayerType{N,NX,NY}
+struct SingleLayer{N,NX,NY,G,T,DT,DDT} <: LayerType{N,NX,NY}
     ds :: ScalarData{N,Float64,DT}
-    H :: RegularizationMatrix{Nodes{G,NX,NY,T},ScalarData{N,T,DT}}
+    H :: RegularizationMatrix{Nodes{G,NX,NY,T,DDT},ScalarData{N,T,DT}}
 end
 
 function SingleLayer(body::Union{Body,BodyList},H::RegularizationMatrix)
@@ -60,7 +60,7 @@ end
 
 (μ::SingleLayer{N})(p::ScalarData{N}) where {N} = μ.H*(p∘μ.ds)
 
-function (μ::SingleLayer{N,NX,NY,G,T,DT})(p::Number) where {N,NX,NY,G,T,DT}
+function (μ::SingleLayer{N,NX,NY,G,T,DT,DDT})(p::Number) where {N,NX,NY,G,T,DT,DDT}
   ϕ = ScalarData(N,dtype=T)
   ϕ .= p
   return μ(ϕ)
@@ -90,7 +90,7 @@ Returns a `Nodes` mask that sets every grid point equal to 1 if it lies inside t
 `b` and 0 outside. Returns grid data of the same type as `w`. Uses regularization
 defined by `reg`.
 """
-function Mask(dlayer::DoubleLayer{N,NX,NY,G,T,DT}) where {N,NX,NY,G,T,DT}
+function Mask(dlayer::DoubleLayer{N,NX,NY,G,T,DT,DDT}) where {N,NX,NY,G,T,DT,DDT}
   L = plan_laplacian(NX,NY,with_inverse=true,dtype=T)
   return Mask{N,NX,NY,G}(L\dlayer(1))
 end

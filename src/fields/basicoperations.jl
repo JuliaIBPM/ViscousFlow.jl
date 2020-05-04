@@ -4,26 +4,26 @@ import Base: -, +, *, /, ∘, zero, conj, real, imag, abs
 
 
 # Set it to negative of itself
-function (-)(p_in::ScalarGridData)
+function (-)(p_in::Union{ScalarGridData,VectorGridData})
   p = deepcopy(p_in)
   p.data .= -p.data
   return p
 end
 
-function (-)(p1::T,p2::T) where {T <: ScalarGridData}
+function (-)(p1::T,p2::T) where {T <: Union{ScalarGridData,VectorGridData}}
    return T(p1.data .- p2.data)
  end
 
-function (+)(p1::T,p2::T) where {T <: ScalarGridData}
+function (+)(p1::T,p2::T) where {T <: Union{ScalarGridData,VectorGridData}}
   return T(p1.data .+ p2.data)
 end
 
 # Multiply and divide by a constant
-function (*)(p::T,c::Number) where {T<:ScalarGridData}
+function (*)(p::T,c::Number) where {T<:Union{ScalarGridData,VectorGridData}}
   return T(c*p.data)
 end
 
-function (/)(p::T,c::Number) where {T<:ScalarGridData}
+function (/)(p::T,c::Number) where {T<:Union{ScalarGridData,VectorGridData}}
   return T(p.data ./ c)
 end
 
@@ -49,30 +49,7 @@ end
 (*)(c::Number,p::T) where {T<:GridData} = *(p,c)
 
 
-### On vector grid data ####
-
-function (-)(p_in::VectorGridData)
-  p = deepcopy(p_in)
-  p.u .= -p.u
-  p.v .= -p.v
-  return p
-end
-
-function (-)(p1::T,p2::T) where {T<:VectorGridData}
-  return T(p1.u - p2.u, p1.v - p2.v)
-end
-
-function (+)(p1::T,p2::T) where {T<:VectorGridData}
-  return T(p1.u + p2.u, p1.v + p2.v)
-end
-
-function (*)(p::T,c::Number) where {T<:VectorGridData}
-  return T(c*p.u,c*p.v)
-end
-
-function (/)(p::T,c::Number) where {T<:VectorGridData}
-  return T(p.u / c, p.v / c)
-end
+### On vector grid data - NEED TO MERGE WITH ScalarGridData ####
 
 
 """

@@ -35,6 +35,13 @@ import Base: to_indices, uncolon, tail, _maybetail
   @test typeof(dualfacezero.u) <: XEdges{Dual}
   @test typeof(dualfacezero.v) <: YEdges{Dual}
 
+  @test celltype(cellzero) == Dual
+  @test celltype(facezero) == Primal
+  @test griddatatype(dualfacezero) == Edges
+
+  @test griddatatype(NodePair(Dual,dualfacezero)) == NodePair
+  @test griddatatype(EdgeGradient(Dual,cellzero)) == EdgeGradient
+
 
   cellunit = deepcopy(cellzero)
   cellunit[i,j] = 1.0
@@ -64,6 +71,22 @@ import Base: to_indices, uncolon, tail, _maybetail
     q .= facexunit
     @test q.u[i,j] == 1.0
     @test iszero(q.v)
+
+    # providing a vector of data to GridData
+    data = zeros(Float64,length(w))
+    w2 = typeof(w)(data)
+    w2[1,1] = 2.0
+    @test vec(w2) == data
+
+    data = zeros(Float64,length(q))
+    q2 = typeof(q)(data)
+    @test all(q2 .== 0.0)
+    @test vec(q2) == data
+
+    q2.u .= 2.0
+    @test all(data[1:length(q2.u)] .== 2.0)
+
+
   end
 
   @testset "Inner products and norms" begin
@@ -555,13 +578,13 @@ end
     end
 
     @testset "Discrete Divergence" begin
-        s = Nodes{Dual, 5, 4, Float64}()
+        s = Nodes(Dual,(5,4))
         s .= rand(5, 4)
 
         @test iszero(divergence(curl(s)))
 
-        s = Nodes{Primal, 5, 4, Float64}()
-        q′ = Edges{Primal, 5, 4, Float64}()
+        s = Nodes(Primal,s)
+        q′ = Edges(Primal,s)
         q′.u .= reshape(1:15, 5, 3)
         q′.v .= reshape(1:16, 4, 4)
 
@@ -577,7 +600,7 @@ end
     end
 
     @testset "Discrete Curl" begin
-        s = Nodes{Dual, 5, 4, Float64}()
+        s = Nodes(Dual,(5,4))
         s .= reshape(1:20, 4, 5)'
 
         q = curl(s)
@@ -596,10 +619,10 @@ end
 
     @testset "Shifting Primal Edges to Dual Edges" begin
 
-        q = Edges{Primal, 5, 4, Float64}()
+        q = Edges(Primal,(5,4))
         q.u .= reshape(1:15, 5, 3)
         q.v .= reshape(1:16, 4, 4)
-        Qq = Edges{Dual, 5, 4, Float64}()
+        Qq = Edges(Dual,q)
 
         grid_interpolate!(Qq,q)
         @test Qq.u == [ 0.0  4.0  9.0  0.0
@@ -617,10 +640,10 @@ end
 
     @testset "Shifting Dual Edges to Primal Edges" begin
 
-        q = Edges{Dual, 5, 4, Float64}()
+        q = Edges(Dual,(5,4))
         q.u .= reshape(1:16, 4, 4)
         q.v .= reshape(1:15, 5, 3)
-        v = Edges{Primal, 5, 4, Float64}()
+        v = Edges(Primal,q)
         grid_interpolate!(v,q)
 
         @test v.u == [ 0.0  0.0   0.0
@@ -638,10 +661,10 @@ end
 
     @testset "Shifting Dual Nodes to Dual Edges" begin
 
-        w = Nodes{Dual, 5, 4, Float64}()
+        w = Nodes(Dual,(5,4))
         w .= reshape(1:20, 5, 4)
 
-        Ww = Edges{Dual, 5, 4, Float64}()
+        Ww = Edges(Dual,w)
         grid_interpolate!(Ww,w)
 
         @test Ww.u == [ 0.0  6.5  11.5  0.0
