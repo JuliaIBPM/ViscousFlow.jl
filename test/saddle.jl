@@ -178,6 +178,23 @@ using LinearAlgebra
 
   end
 
+  Ẽ = Regularize(X,dx;weights=ds,filter=true)
+  H̃mat = RegularizationMatrix(Ẽ,ψb,w)
+  Ẽmat = InterpolationMatrix(Ẽ,w,ψb)
+  Pmat = Ẽmat*H̃mat
+
+  @testset "Filtering" begin
+
+    rhs = SaddleVector(w,ψb)
+    Afilt = SaddleSystem(L,Emat,Hmat,rhs,filter=Pmat)
+
+    sol = Afilt\rhs
+
+    fex = -2*cos.(θ[1:n])
+    @test norm(constraint(sol)-fex*ds) < 0.01
+
+  end
+
   @testset "Reduction to unconstrained system" begin
 
     op = SaddlePointSystems.linear_map(nothing,nada)

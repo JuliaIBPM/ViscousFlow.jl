@@ -9,9 +9,10 @@ Still to do:
 using LinearMaps
 using RecursiveArrayTools
 using IterativeSolvers
+using UnPack
 
 using LinearAlgebra
-import LinearAlgebra: ldiv!, mul!, *, \
+import LinearAlgebra: ldiv!, mul!, *, \, I
 
 import Base: size, eltype
 

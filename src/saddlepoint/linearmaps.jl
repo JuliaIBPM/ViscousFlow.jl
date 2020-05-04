@@ -11,6 +11,8 @@ linear_map(A::AbstractMatrix{T},input::AbstractVector{T};eltype=Float64) where {
 
 linear_map(A::SaddleSystem{T,Ns,Nc},::Any;eltype=Float64) where {T,Ns,Nc} = LinearMap{T}(x->A*x,Ns+Nc)
 
+linear_map(A::UniformScaling,input;eltype=Float64) = LinearMap{eltype}(x->A*x,length(input))
+
 function linear_inverse_map(A,input;eltype=Float64)
     hasmethod(\,Tuple{typeof(A),typeof(input)}) || error("No such backslash operator exists")
     return LinearMap{eltype}(_create_vec_backslash(A,input),length(input))

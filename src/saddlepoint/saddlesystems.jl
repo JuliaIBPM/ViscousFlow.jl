@@ -12,6 +12,7 @@ struct SaddleSystem{T,Ns,Nc,TF,TU,TS<:SchurSolverType}
     B₂A⁻¹r₁ :: Vector{T}
     _u_buf :: Vector{T}
     _f_buf :: Vector{T}
+    P :: LinearMap{T}
     S :: LinearMap{T}
     S⁻¹ :: LinearMap{T}
 end
@@ -55,15 +56,15 @@ The list of vectors in any of these constructors can be replaced by a `SaddleVec
 e.g. `SaddleSystem(A,B₂,B₁ᵀ,SaddleVector(u,f))`.
 """
 function SaddleSystem(A::LinearMap{T},B₂::LinearMap{T},B₁ᵀ::LinearMap{T},C::LinearMap{T},
-                      A⁻¹::LinearMap{T},TU,TF;solver::Type{TS}=Direct,kwargs...) where {T,TS<:SchurSolverType}
+                      A⁻¹::LinearMap{T},P::LinearMap{T},TU,TF;solver::Type{TS}=Direct,kwargs...) where {T,TS<:SchurSolverType}
 
-    ns, nc = _check_sizes(A,B₂,B₁ᵀ,C)
+    ns, nc = _check_sizes(A,B₂,B₁ᵀ,C,P)
 
     S = C - B₂*A⁻¹*B₁ᵀ
 
     S⁻¹ = _schur_inverse_function(S,T,nc,solver,kwargs...)
 
-    return SaddleSystem{T,ns,nc,TU,TF,solver}(A,B₂,B₁ᵀ,C,A⁻¹,zeros(T,ns),zeros(T,nc),zeros(T,ns),zeros(T,nc),S,S⁻¹)
+    return SaddleSystem{T,ns,nc,TU,TF,solver}(A,B₂,B₁ᵀ,C,A⁻¹,zeros(T,ns),zeros(T,nc),zeros(T,ns),zeros(T,nc),P,S,S⁻¹)
 end
 
 ##### Schur complement solver functions #####
@@ -99,41 +100,43 @@ end
 ### Other constructors
 
 function SaddleSystem(A::AbstractMatrix{T},B₂::AbstractMatrix{T},B₁ᵀ::AbstractMatrix{T},
-                      C::AbstractMatrix{T};solver::Type{TS}=Direct,kwargs...) where {T,TS<:SchurSolverType}
+                      C::AbstractMatrix{T};solver::Type{TS}=Direct,filter=I,kwargs...) where {T,TS<:SchurSolverType}
 
     Afact = factorize(A)
     Ainv = LinearMap{T}(x -> Afact\x,size(A,1))
 
     return SaddleSystem(LinearMap{T}(A),LinearMap{T}(B₂),LinearMap{T}(B₁ᵀ),
-                        LinearMap{T}(C),Ainv,Vector{T},Vector{T};solver=solver,kwargs...)
+                        LinearMap{T}(C),Ainv,linear_map(filter,zeros(T,size(C,1)),eltype=T),
+                        Vector{T},Vector{T};solver=solver,kwargs...)
 end
 
 # For cases in which C is zero, no need to pass along the argument
-SaddleSystem(A::AbstractMatrix{T},B₂::AbstractMatrix{T},B₁ᵀ::AbstractMatrix{T};solver::Type{TS}=Direct,kwargs...) where {T,TS<:SchurSolverType} =
-        SaddleSystem(A,B₂,B₁ᵀ,zeros(T,size(B₂,1),size(B₁ᵀ,2));solver=solver,kwargs...)
+SaddleSystem(A::AbstractMatrix{T},B₂::AbstractMatrix{T},B₁ᵀ::AbstractMatrix{T};solver::Type{TS}=Direct,filter=I,kwargs...) where {T,TS<:SchurSolverType} =
+        SaddleSystem(A,B₂,B₁ᵀ,zeros(T,size(B₂,1),size(B₁ᵀ,2));solver=solver,filter=filter,kwargs...)
 
 # This version should take in functions or function-like objects that act upon given
 # data types u and f. Should transform them into operators that act on abstract vectors
 # of the same size
 # There should already be an \ operator associated with A
 # NOTE: should change default value of eltype to eltype(u)
-function SaddleSystem(A,B₂,B₁ᵀ,C,u::TU,f::TF;eltype=Float64,solver::Type{TS}=Direct,kwargs...) where {TU,TF,TS<:SchurSolverType}
+function SaddleSystem(A,B₂,B₁ᵀ,C,u::TU,f::TF;eltype=Float64,filter=I,solver::Type{TS}=Direct,kwargs...) where {TU,TF,TS<:SchurSolverType}
 
     return SaddleSystem(linear_map(A,u,eltype=eltype),linear_map(B₂,u,f,eltype=eltype),
                         linear_map(B₁ᵀ,f,u,eltype=eltype),
                         linear_map(C,f,eltype=eltype),
-                        linear_inverse_map(A,u,eltype=eltype),TU,TF;solver=solver,kwargs...)
+                        linear_inverse_map(A,u,eltype=eltype),
+                        linear_map(filter,f,eltype=eltype),TU,TF;solver=solver,kwargs...)
 end
 
-SaddleSystem(A,B₂,B₁ᵀ,u::TU,f::TF;eltype=Float64,solver::Type{TS}=Direct,kwargs...) where {TU,TF,TS<:SchurSolverType} =
-    SaddleSystem(A,B₂,B₁ᵀ,C_zero(f,eltype),u,f;eltype=eltype,solver=solver,kwargs...)
+SaddleSystem(A,B₂,B₁ᵀ,u::TU,f::TF;eltype=Float64,filter=I,solver::Type{TS}=Direct,kwargs...) where {TU,TF,TS<:SchurSolverType} =
+    SaddleSystem(A,B₂,B₁ᵀ,C_zero(f,eltype),u,f;eltype=eltype,filter=filter,solver=solver,kwargs...)
 
 
-SaddleSystem(A,u::TU;eltype=Float64,solver::Type{TS}=Direct,kwargs...) where {TU,TS<:SchurSolverType} = SaddleSystem(A,nothing,nothing,u,Type{eltype}[];eltype=eltype,solver=solver,kwargs...)
+SaddleSystem(A,u::TU;eltype=Float64,filter=I,solver::Type{TS}=Direct,kwargs...) where {TU,TS<:SchurSolverType} = SaddleSystem(A,nothing,nothing,u,Type{eltype}[];eltype=eltype,filter=filter,solver=solver,kwargs...)
 
-SaddleSystem(A,B₂,B₁ᵀ,C,v::ArrayPartition;eltype=Float64,solver::Type{TS}=Direct,kwargs...) where {TS<:SchurSolverType} = SaddleSystem(A,B₂,B₁ᵀ,C,v.x[1],v.x[2];eltype=eltype,solver=solver,kwargs...)
-SaddleSystem(A,B₂,B₁ᵀ,v::ArrayPartition;eltype=Float64,solver::Type{TS}=Direct,kwargs...) where {TS<:SchurSolverType} = SaddleSystem(A,B₂,B₁ᵀ,v.x[1],v.x[2];eltype=eltype,solver=solver,kwargs...)
-SaddleSystem(A,v::ArrayPartition;eltype=Float64,solver::Type{TS}=Direct,kwargs...) where {TS<:SchurSolverType} = SaddleSystem(A,v.x[1];eltype=eltype,solver=solver,kwargs...)
+SaddleSystem(A,B₂,B₁ᵀ,C,v::ArrayPartition;eltype=Float64,filter=I,solver::Type{TS}=Direct,kwargs...) where {TS<:SchurSolverType} = SaddleSystem(A,B₂,B₁ᵀ,C,v.x[1],v.x[2];eltype=eltype,filter=filter,solver=solver,kwargs...)
+SaddleSystem(A,B₂,B₁ᵀ,v::ArrayPartition;eltype=Float64,filter=I,solver::Type{TS}=Direct,kwargs...) where {TS<:SchurSolverType} = SaddleSystem(A,B₂,B₁ᵀ,v.x[1],v.x[2];eltype=eltype,filter=filter,solver=solver,kwargs...)
+SaddleSystem(A,v::ArrayPartition;eltype=Float64,filter=I,solver::Type{TS}=Direct,kwargs...) where {TS<:SchurSolverType} = SaddleSystem(A,v.x[1];eltype=eltype,filter=filter,solver=solver,kwargs...)
 
 ### AUXILIARY ROUTINES
 
@@ -150,11 +153,12 @@ eltype(::SaddleSystem{T,Ns,Nc}) where {T,Ns,Nc} = T
 
 C_zero(f,eltype) = zeros(eltype,length(f),length(f))
 
-function _check_sizes(A,B₂,B₁ᵀ,C)
+function _check_sizes(A,B₂,B₁ᵀ,C,P)
     mA, nA = size(A)
     mB1, nB1 = size(B₁ᵀ)
     mB2, nB2 = size(B₂)
     mC, nC = size(C)
+    mP, nP = size(P)
 
     # check compatibility of sizes
     mA == nA  || error("A is not square")
@@ -162,6 +166,7 @@ function _check_sizes(A,B₂,B₁ᵀ,C)
     nA == nB2 || error("Incompatible number of columns in A and B₂")
     mC == mB2 || error("Incompatible number of rows in C and B₂")
     nC == nB1 || error("Incompatible number of columns in C and B₁ᵀ")
+    mP == nP == mC  || error("Filter has incompatible dimensions")
 
     ns = nA
     nc = nB1
