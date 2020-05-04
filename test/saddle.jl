@@ -206,6 +206,17 @@ using LinearAlgebra
     @test ψ == L\w
     @test fnull == nada
 
+    q.u .= 3;
+    rhsqnc = SaddleVector(q,nada)
+    Aqnc = SaddleSystem(I,rhsqnc)
+
+    sol = Aqnc\rhsqnc
+
+    q2 = state(sol)
+    fnull = constraint(sol)
+
+    @test all(q2.u .== 3.0) && all(q2.v .== 0.0)
+
   end
 
   @testset "Tuple of saddle point systems" begin
