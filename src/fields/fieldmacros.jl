@@ -1,6 +1,6 @@
 ## Field data macros
 
-export show_scalarlist
+export show_scalarlist, show_vectorlist
 
 """
     @griddata(wrapper,nctypes)
@@ -21,8 +21,12 @@ macro griddata(wrapper, nctypes)
     export $wrapper
 
     celltype(::$wrapper{C}) where {C<:CellType} = C
-    celltype(::Type{$wrapper{C}}) where {C<:CellType} = C
-    griddatatype(::$wrapper{C}) where {C<:CellType} = $wrapper
+    celltype(::Type{<:$wrapper{$(ctype...),NX,NY}}) where {$(ctype...),NX,NY} = $(ctype...)
+
+    gridsize(::Type{<:$wrapper{$(ctype...),NX,NY}}) where {$(ctype...),NX,NY} = NX, NY
+
+    griddatatype(::$wrapper) = $wrapper
+    griddatatype(::Type{T}) where {T<:$wrapper{$(ctype...),NX,NY,T,DT} where {$(ctype...),NX,NY,T,DT}} = $wrapper
 
     # This allows easy construction from existing GridData on the same grid.
     $wrapper(C, ::GridData{NX,NY,T};dtype=T) where {NX, NY,T <: Number} = $wrapper(C, (NX, NY),dtype=dtype )
@@ -78,6 +82,46 @@ macro generate_scalarlist(list)
 end
 
 show_scalarlist() = @generate_scalarlist SCALARLIST
+
+"""
+    @generate_vectorlist(list)
+
+Process a list of vector grid types and generate an expanded form of the list,
+complete with cell shifts. Used for constructing the regularization functions
+and coordinate functions.
+"""
+macro generate_vectorlist(list)
+    return quote
+        newlist = []
+        for (i,l) in enumerate($(esc(list)))
+            wrapper, celltypes = l
+            gtype = eval(wrapper){eval.(celltypes)...}
+
+            row = (l...,)
+            for f in fieldnames(gtype)
+                ft = fieldtype(gtype,f)
+                if ft <: GridData
+                    dn = 0 .- indexshift(ft)
+                    row = (row...,dn...)
+                end
+            end
+            for f in fieldnames(gtype)
+                ft = fieldtype(gtype,f)
+                if ft <: GridData
+                    dn = 0 .- indexshift(ft)
+                    cshift = 0.5.*(1 .- abs.(dn))
+                    row = (row...,cshift...)
+                end
+            end
+            push!(newlist,row)
+        end
+        newlist
+    end
+end
+
+show_vectorlist() = @generate_vectorlist VECTORLIST
+
+
 
 """
     @wrapparay(wrapper,field,N)

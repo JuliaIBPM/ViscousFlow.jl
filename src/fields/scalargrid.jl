@@ -58,6 +58,14 @@ macro scalarfield(wrapper,primaldn,dualdn)
     $indexfcn(::Type{Dual},   dualnodedims) = dualnodedims .+ $dualdn
     $indexfcn(::Type{Primal}, dualnodedims) = dualnodedims .+ $primaldn
 
+    Base.size(::Type{<:$wrapper{C,NX,NY}}) where {C,NX,NY} = $indexfcn(C,(NX,NY))
+
+    # Provide the correction to be applied to the reference grid's number
+    # of indices in each direction
+    indexshift(::$wrapper{Dual}) = $dualdn
+    indexshift(::$wrapper{Primal}) = $primaldn
+    indexshift(::Type{T}) where {T<:$wrapper{Dual,NX,NY,T,DT} where {NX,NY,T,DT}} = $dualdn
+    indexshift(::Type{T}) where {T<:$wrapper{Primal,NX,NY,T,DT} where {NX,NY,T,DT}} = $primaldn
 
     # Constructors
 

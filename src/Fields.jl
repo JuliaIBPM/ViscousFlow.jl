@@ -66,7 +66,7 @@ const GAMMA = MathConstants.γ
 
 export Primal, Dual, ScalarGridData, VectorGridData, GridData,
        Points, ScalarData, VectorData, TensorData,
-       celltype, griddatatype,
+       celltype, griddatatype, indexshift,
        diff!,grid_interpolate!,
        curl, curl!, Curl, divergence, divergence!, Divergence,
        grad, grad!, Grad,
@@ -123,14 +123,13 @@ end
 
 include("fields/collections.jl")
 
+# List of vector grid types. This specifies the list of different types
+# to create regularization and coordinates routines for.
+const VECTORLIST = [:Edges, [:Primal]],
+                   [:Edges, [:Dual]],
+                   [:NodePair, [:Primal,:Dual]],
+                   [:NodePair, [:Dual,:Primal]]
 
-# The information in this list (after the cell types) follows directly from
-# the known component types.
-# (gtype,ctype(s),dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy)
-vectorlist = ((:Edges, [:Primal],      0,1,1,0,0.5,0.0,0.0,0.5),
-              (:Edges, [:Dual],            1,0,0,1,0.0,0.5,0.5,0.0),
-              (:NodePair, [:Primal,:Dual],  1,1,0,0,0.0,0.0,0.5,0.5),
-              (:NodePair, [:Dual,:Primal],  0,0,1,1,0.5,0.5,0.0,0.0))
 
 tensorlist = ((:EdgeGradient, [:Dual,:Primal], 0,0,1,1,0.5,0.5,0.0,0.0),
               (:EdgeGradient, [:Primal,:Dual], 1,1,0,0,0.0,0.0,0.5,0.5))

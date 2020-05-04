@@ -30,7 +30,7 @@ for (gridtype,ctype,dnx,dny,shiftx,shifty) in @generate_scalarlist(SCALARLIST)
 
 end
 
-for (gridtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in vectorlist
+for (gridtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in @generate_vectorlist(VECTORLIST)
    @eval coordinates(w::$gridtype{$(ctype...),NX,NY,T};dx::Float64=1.0,I0::Tuple{Int,Int}=(1,1)) where {NX,NY,T,DDT} =
     dx.*((1-I0[1]-$shiftux):(NX-$dunx-I0[1]-$shiftux),
          (1-I0[2]-$shiftuy):(NY-$duny-I0[2]-$shiftuy),

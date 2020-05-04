@@ -1,6 +1,56 @@
-# Collections of data
-
 # Collections of ScalarGridData
+
+macro collectionfield(wrapper,nctypes)
+
+  ctype = Symbol[]
+  ctypetype = Expr[]
+  crtype = Expr[]
+  for i in 1:eval(nctypes)
+    c = Symbol("C",string(i))
+    push!(ctype,c)
+    push!(ctypetype,:(::Type{$c}))
+    push!(crtype,:($c<:CellType))
+  end
+
+  return esc(quote
+
+    # This is the basic function that uses reshape(view()) of an input vector
+    # to provide the components of this type
+    function (::Type{$wrapper{$(ctype...),NX,NY,T,DT}})(data::AbstractVector{R}) where
+                              {$(ctype...),NX,NY,T<:Number,DT,R}
+      n0 = 0
+      flist = []
+      gtype = $wrapper{$(ctype...),NX,NY,R,typeof(data)}
+      for ft in fieldtypes(gtype)
+        if ft <: GridData
+          ftype = griddatatype(ft)
+          dims = size(ft)
+          dn = prod(dims)
+          fdata = reshape(view(data,n0+1:n0+dn),dims)
+          n0 += dn
+          push!(flist,ftype{celltype(ft),NX,NY,R,typeof(fdata)}(fdata))
+        end
+      end
+      gtype(data,flist...)
+    end
+
+    function $wrapper($(ctypetype...), dualnodedims::Tuple{Int, Int};dtype=Float64) where {$(crtype...)}
+        len = 0
+        for ft in fieldtypes($wrapper{$(ctype...),dualnodedims...,dtype})
+          if ft <: GridData
+            len += prod(size(ft))
+          end
+        end
+        data = zeros(dtype,len)
+        $wrapper{$(ctype...),dualnodedims...,dtype,typeof(data)}(data)
+    end
+
+    # Create several basic functions for this type
+    @griddata($wrapper,$nctypes)
+
+
+  end)
+end
 
 """
     Edges
@@ -25,36 +75,11 @@ struct Edges{C <: CellType, NX, NY, T <: Number, DT} <: VectorGridData{NX,NY,T}
     v::YEdges{C,NX,NY,T}
 end
 
+@collectionfield Edges 1
+
 # Based on number of dual nodes, return the number of edges
 edge_inds(::Type{C},   dualnodedims) where {C <: CellType} =
             xedge_inds(C,dualnodedims), yedge_inds(C,dualnodedims)
-
-
-function (::Type{Edges{C,NX,NY,T,DT}})(data::AbstractVector{R}) where {C<: CellType,NX,NY,T<:Number,DT,R}
-    udims = xedge_inds(C, (NX, NY))
-    vdims = yedge_inds(C, (NX, NY))
-    n0 = 0
-    dims = udims
-    dn = prod(dims)
-    u = reshape(view(data,n0+1:n0+dn),dims)
-    n0 += dn
-    dims = vdims
-    dn = prod(dims)
-    v = reshape(view(data,n0+1:n0+dn),dims)
-    Edges{C, NX, NY,R,typeof(data)}(data, XEdges{C,NX,NY,R,typeof(u)}(u),
-                                          YEdges{C,NX,NY,R,typeof(v)}(v))
-end
-
-function Edges(::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {C <: CellType}
-    udims = xedge_inds(C, dualnodedims)
-    vdims = yedge_inds(C, dualnodedims)
-    data = zeros(dtype,prod(udims)+prod(vdims))
-    Edges{C,dualnodedims...,dtype,typeof(data)}(data)
-end
-
-@griddata(Edges,1)
-
-#Base.IndexStyle(::Type{<:Edges}) = IndexLinear() # necessary?
 
 function Base.show(io::IO, edges::Edges{C, NX, NY, T, DT}) where {C, NX, NY, T, DT}
     nodedims = "(nx = $NX, ny = $NY)"
@@ -102,44 +127,12 @@ struct EdgeGradient{C <: CellType,D <: CellType, NX,NY, T<: Number, DT} <: GridD
 end
 
 
-# Should be able to clean these up...
+@collectionfield EdgeGradient 2
 
-function (::Type{EdgeGradient{C,D,NX,NY,T,DT}})(data::AbstractVector{R}) where {C<: CellType,D<:CellType,NX,NY,T<:Number,DT,R}
-    dudxdims = dvdydims = node_inds(C, (NX,NY))
-    dudydims = dvdxdims = node_inds(D, (NX,NY))
+# Only provide one of the cell types -- the other cell type is set automatically
+EdgeGradient(::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {C <: CellType} =
+    EdgeGradient(C,othertype(C),dualnodedims,dtype=dtype)
 
-    n0 = 0
-    dims = dudxdims
-    dn = prod(dims)
-    dudx = reshape(view(data,n0+1:n0+dn),dims)
-    n0 += dn
-    dims = dudydims
-    dn = prod(dims)
-    dudy = reshape(view(data,n0+1:n0+dn),dims)
-    n0 += dn
-    dims = dvdxdims
-    dn = prod(dims)
-    dvdx = reshape(view(data,n0+1:n0+dn),dims)
-    n0 += dn
-    dims = dvdydims
-    dn = prod(dims)
-    dvdy = reshape(view(data,n0+1:n0+dn),dims)
-    EdgeGradient{C,D,NX, NY,R,typeof(data)}(data, Nodes{C,NX,NY,R,typeof(dudx)}(dudx),
-                                                  Nodes{D,NX,NY,R,typeof(dudy)}(dudy),
-                                                  Nodes{D,NX,NY,R,typeof(dvdx)}(dvdx),
-                                                  Nodes{C,NX,NY,R,typeof(dvdy)}(dvdy))                        
-end
-
-function EdgeGradient(::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {C <: CellType}
-    dudxdims = dvdydims = node_inds(C, dualnodedims)
-    dudydims = dvdxdims = node_inds(othertype(C), dualnodedims)
-    data = zeros(dtype,prod(dudxdims)+prod(dudydims)+prod(dvdxdims)+prod(dvdydims))
-    EdgeGradient{C,othertype(C),dualnodedims...,dtype,typeof(data)}(data)
-end
-
-@griddata(EdgeGradient,2)
-
-#Base.IndexStyle(::Type{<:EdgeGradient}) = IndexLinear()
 
 function Base.show(io::IO, nodes::EdgeGradient{R, S, NX, NY, T, DT}) where {R, S, NX, NY, T, DT}
     nodedims = "(nx = $NX, ny = $NY)"
@@ -190,31 +183,12 @@ struct NodePair{C <: CellType,D <: CellType, NX,NY,T, DT} <: GridData{NX,NY,T}
   v :: Nodes{D,NX,NY,T}
 end
 
-function (::Type{NodePair{C,D,NX,NY,T,DT}})(data::AbstractVector{R}) where {C<: CellType,D<: CellType,NX,NY,T<:Number,DT,R}
-    udims = node_inds(C, (NX,NY))
-    vdims = node_inds(D, (NX,NY))
-    n0 = 0
-    dims = udims
-    dn = prod(dims)
-    u = reshape(view(data,n0+1:n0+dn),dims)
-    n0 += dn
-    dims = vdims
-    dn = prod(dims)
-    v = reshape(view(data,n0+1:n0+dn),dims)
-    NodePair{C, D, NX, NY,R,typeof(data)}(data, Nodes{C,NX,NY,R,typeof(u)}(u),
-                                                Nodes{D,NX,NY,R,typeof(v)}(v))
-end
+@collectionfield NodePair 2
 
-function NodePair(::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {C <: CellType}
-    udims = node_inds(C, dualnodedims)
-    vdims = node_inds(othertype(C), dualnodedims)
-    data = zeros(dtype,prod(udims)+prod(vdims))
-    NodePair{C,othertype(C),dualnodedims...,dtype,typeof(data)}(data)
-end
+# Only provide one of the cell types -- the other cell type is set automatically
+NodePair(::Type{C}, dualnodedims::Tuple{Int, Int};dtype=Float64) where {C <: CellType} =
+    NodePair(C,othertype(C),dualnodedims,dtype=dtype)
 
-@griddata(NodePair,2)
-
-#Base.IndexStyle(::Type{<:NodePair}) = IndexLinear() # necessary?
 
 function Base.show(io::IO, nodes::NodePair{R, S, NX, NY, T}) where {R, S, NX, NY, T}
     nodedims = "(nx = $NX, ny = $NY)"
