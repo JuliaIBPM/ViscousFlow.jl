@@ -2,6 +2,12 @@
 
 export show_scalarlist, show_vectorlist, show_tensorlist
 
+_negate(a::NTuple{M,Int64}) where {M} = map(x -> -x,a)
+_cellshift(a::NTuple{M,Int64}) where {M} = map(x -> 0.5*(1-abs(x)),a)
+
+# for Julia < 1.1
+_fieldtypes(T::Type) = ntuple(i -> fieldtype(T, i), fieldcount(T))
+
 """
     @griddata(wrapper,nctypes)
 
@@ -68,12 +74,12 @@ macro generate_scalarlist(list)
             wrapper, primaldn, dualdn = l
 
             # negative index shifts become positive values in this list
-            pdn = 0 .- primaldn
-            ddn = 0 .- dualdn
+            pdn = _negate(primaldn)
+            ddn = _negate(dualdn)
 
             # grid cell shifts: dn = 0 implies shift by half-cell, dn = 1 implies no shift
-            pshift = 0.5.*(1 .- abs.(pdn))
-            dshift = 0.5.*(1 .- abs.(ddn))
+            pshift = _cellshift(pdn)
+            dshift = _cellshift(ddn)
             push!(newlist,(Symbol(wrapper),:Primal,pdn...,pshift...))
             push!(newlist,(Symbol(wrapper),:Dual,ddn...,dshift...))
         end
@@ -98,16 +104,16 @@ macro generate_collectionlist(list)
             gtype = eval(wrapper){eval.(celltypes)...}
 
             row = (l...,)
-            for ft in unique(fieldtypes(gtype))
+            for ft in unique(_fieldtypes(gtype))
                 if ft <: GridData
-                    dn = 0 .- indexshift(ft)
+                    dn = _negate(indexshift(ft))
                     row = (row...,dn...)
                 end
             end
-            for ft in unique(fieldtypes(gtype))
+            for ft in unique(_fieldtypes(gtype))
                 if ft <: GridData
-                    dn = 0 .- indexshift(ft)
-                    cshift = 0.5.*(1 .- abs.(dn))
+                    dn = _negate(indexshift(ft))
+                    cshift = _cellshift(dn)
                     row = (row...,cshift...)
                 end
             end

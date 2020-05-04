@@ -21,7 +21,7 @@ macro collectionfield(wrapper,nctypes)
       n0 = 0
       flist = []
       gtype = $wrapper{$(ctype...),NX,NY,R,typeof(data)}
-      for ft in fieldtypes(gtype)
+      for ft in _fieldtypes(gtype)
         if ft <: GridData
           ftype = griddatatype(ft)
           dims = size(ft)
@@ -38,7 +38,7 @@ macro collectionfield(wrapper,nctypes)
     # above to deal with the split between components
     function $wrapper($(ctypetype...), dualnodedims::Tuple{Int, Int};dtype=Float64) where {$(crtype...)}
         len = 0
-        for ft in fieldtypes($wrapper{$(ctype...),dualnodedims...,dtype})
+        for ft in _fieldtypes($wrapper{$(ctype...),dualnodedims...,dtype})
           if ft <: GridData
             len += prod(size(ft))
           end
