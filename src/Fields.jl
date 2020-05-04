@@ -98,6 +98,17 @@ const SCALARLIST = [ :Nodes, (-1,-1), (0,0)],
                    [ :XEdges, (0,-1), (-1,0)],
                    [ :YEdges, (-1,0), (0,-1)]
 
+# List of collection grid types. This specifies the list of different types
+# to create regularization and coordinates routines for.
+const VECTORLIST = [:Edges, [:Primal]],
+                   [:Edges, [:Dual]],
+                   [:NodePair, [:Primal,:Dual]],
+                   [:NodePair, [:Dual,:Primal]]
+
+const TENSORLIST = [:EdgeGradient, [:Dual,:Primal]],
+                   [:EdgeGradient, [:Primal,:Dual]]
+
+
 function othertype end
 
 macro othertype(celltype, k)
@@ -122,17 +133,6 @@ for (wrapper,primaldn,dualdn) in SCALARLIST
 end
 
 include("fields/collections.jl")
-
-# List of vector grid types. This specifies the list of different types
-# to create regularization and coordinates routines for.
-const VECTORLIST = [:Edges, [:Primal]],
-                   [:Edges, [:Dual]],
-                   [:NodePair, [:Primal,:Dual]],
-                   [:NodePair, [:Dual,:Primal]]
-
-
-tensorlist = ((:EdgeGradient, [:Dual,:Primal], 0,0,1,1,0.5,0.5,0.0,0.0),
-              (:EdgeGradient, [:Primal,:Dual], 1,1,0,0,0.0,0.0,0.5,0.5))
 
 include("fields/basicoperations.jl")
 include("fields/points.jl")

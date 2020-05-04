@@ -34,6 +34,8 @@ macro collectionfield(wrapper,nctypes)
       gtype(data,flist...)
     end
 
+    # This provides the most straightforward constructor, calling upon the constructor
+    # above to deal with the split between components
     function $wrapper($(ctypetype...), dualnodedims::Tuple{Int, Int};dtype=Float64) where {$(crtype...)}
         len = 0
         for ft in fieldtypes($wrapper{$(ctype...),dualnodedims...,dtype})
@@ -45,9 +47,8 @@ macro collectionfield(wrapper,nctypes)
         $wrapper{$(ctype...),dualnodedims...,dtype,typeof(data)}(data)
     end
 
-    # Create several basic functions for this type
+    # Create several other basic functions for this type
     @griddata($wrapper,$nctypes)
-
 
   end)
 end

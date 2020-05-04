@@ -354,7 +354,7 @@ end
 
 # ===== Regularization and interpolation operators of vector data to edges ===== #
 pointtype = :VectorData
-for (gridtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in @generate_vectorlist(VECTORLIST)
+for (gridtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in @generate_collectionlist(VECTORLIST)
 
 # Regularization
   @eval function (H::Regularize{N,F})(target::$gridtype{$(ctype...),NX,NY,T,DDT},source::$pointtype{N,S,DT}) where {N,F,NX,NY,S,T,DT,DDT}
@@ -411,7 +411,7 @@ end
 # the same ddf evaluation, so this saves us quite a bit of time.
 
 pointtype = :TensorData
-for (gridtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in tensorlist
+for (gridtype,ctype,dunx,duny,dvnx,dvny,shiftux,shiftuy,shiftvx,shiftvy) in @generate_collectionlist(TENSORLIST)
 
 # Regularization
   @eval function (H::Regularize{N,F})(target::$gridtype{$(ctype...),NX,NY,T,DDT},source::$pointtype{N,S,DT}) where {N,F,NX,NY,S,T,DT,DDT}

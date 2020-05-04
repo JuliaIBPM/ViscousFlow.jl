@@ -1,6 +1,6 @@
 ## Field data macros
 
-export show_scalarlist, show_vectorlist
+export show_scalarlist, show_vectorlist, show_tensorlist
 
 """
     @griddata(wrapper,nctypes)
@@ -90,7 +90,7 @@ Process a list of vector grid types and generate an expanded form of the list,
 complete with cell shifts. Used for constructing the regularization functions
 and coordinate functions.
 """
-macro generate_vectorlist(list)
+macro generate_collectionlist(list)
     return quote
         newlist = []
         for (i,l) in enumerate($(esc(list)))
@@ -98,15 +98,13 @@ macro generate_vectorlist(list)
             gtype = eval(wrapper){eval.(celltypes)...}
 
             row = (l...,)
-            for f in fieldnames(gtype)
-                ft = fieldtype(gtype,f)
+            for ft in unique(fieldtypes(gtype))
                 if ft <: GridData
                     dn = 0 .- indexshift(ft)
                     row = (row...,dn...)
                 end
             end
-            for f in fieldnames(gtype)
-                ft = fieldtype(gtype,f)
+            for ft in unique(fieldtypes(gtype))
                 if ft <: GridData
                     dn = 0 .- indexshift(ft)
                     cshift = 0.5.*(1 .- abs.(dn))
@@ -119,8 +117,9 @@ macro generate_vectorlist(list)
     end
 end
 
-show_vectorlist() = @generate_vectorlist VECTORLIST
+show_vectorlist() = @generate_collectionlist VECTORLIST
 
+show_tensorlist() = @generate_collectionlist TENSORLIST
 
 
 """
