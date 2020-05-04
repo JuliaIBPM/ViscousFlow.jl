@@ -10,7 +10,6 @@ struct SaddleSystem{T,Ns,Nc,TF,TU,TS<:SchurSolverType}
     A⁻¹ :: LinearMap{T}
     A⁻¹B₁ᵀf :: Vector{T}
     B₂A⁻¹r₁ :: Vector{T}
-    _u_buf :: Vector{T}
     _f_buf :: Vector{T}
     P :: LinearMap{T}
     S :: LinearMap{T}
@@ -64,7 +63,7 @@ function SaddleSystem(A::LinearMap{T},B₂::LinearMap{T},B₁ᵀ::LinearMap{T},C
 
     S⁻¹ = _schur_inverse_function(S,T,nc,solver,kwargs...)
 
-    return SaddleSystem{T,ns,nc,TU,TF,solver}(A,B₂,B₁ᵀ,C,A⁻¹,zeros(T,ns),zeros(T,nc),zeros(T,ns),zeros(T,nc),P,S,S⁻¹)
+    return SaddleSystem{T,ns,nc,TU,TF,solver}(A,B₂,B₁ᵀ,C,A⁻¹,zeros(T,ns),zeros(T,nc),zeros(T,nc),P,S,S⁻¹)
 end
 
 ##### Schur complement solver functions #####
