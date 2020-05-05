@@ -55,6 +55,9 @@ function _create_fcn(A,input)
     # or if A is a function or function-like object, then use this
     elseif hasmethod(A,Tuple{typeof(input)})
         fcn = _create_vec_function(A,input)
+    # or just quit
+    else
+        error("No function exists for this operator to act upon this type of data")
     end
     return fcn
 end
@@ -64,16 +67,14 @@ _create_vec_function(A,u::TU) where {TU} = (x -> _unwrap_vec(A(_wrap_vec(x,u))))
 _create_vec_backslash(A,u::TU) where {TU} = (x -> _unwrap_vec(A\_wrap_vec(x,u)))
 
 #### WRAPPERS ####
-# wrap the vector x in type u, unless u is already a subtype of AbstractVector
+# wrap the vector x in type u, unless u is already a subtype of AbstractVector,
+# in which case it just keeps it as is.
 _wrap_vec(x::AbstractVector{T},u::TU) where {T,TU} = TU(reshape(x,size(u)...))
-#_wrap_vec(x::AbstractVector{T},u::TU) where {T,TU <: AbstractVector} = x
 
 # if the vector x is simply a reshaped form of type u, then just get the
 # parent of x
 _wrap_vec(x::Base.ReshapedArray,u::TU) where {TU} = parent(x)
 
-# not sure if this one is needed
-#_wrap_vec(x,u::TU) where {TU <: Tuple} = x
 
 #### UNWRAPPERS ####
 # Usually vec suffices

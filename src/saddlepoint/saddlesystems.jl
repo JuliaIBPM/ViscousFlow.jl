@@ -51,8 +51,8 @@ If called as `SaddleSystem(A,B₂,B₁ᵀ,u,f)`, the `C` block is omitted and as
 If called with `SaddleSystem(A,u)`, this is equivalent to calling `SaddleSystem(A,nothing,nothing,u,[])`, then this reverts
 to the unconstrained system described by operator `A`.
 
-The list of vectors in any of these constructors can be replaced by a `SaddleVector`,
-e.g. `SaddleSystem(A,B₂,B₁ᵀ,SaddleVector(u,f))`.
+The list of vectors `u` and `f` in any of these constructors can be bundled together
+as a [`SaddleVector`](@ref), e.g. `SaddleSystem(A,B₂,B₁ᵀ,SaddleVector(u,f))`.
 """
 function SaddleSystem(A::LinearMap{T},B₂::LinearMap{T},B₁ᵀ::LinearMap{T},C::LinearMap{T},
                       A⁻¹::LinearMap{T},P::LinearMap{T},TU,TF;solver::Type{TS}=Direct,kwargs...) where {T,TS<:SchurSolverType}
@@ -96,8 +96,9 @@ end
 ###########
 
 
-### Other constructors
+### OTHER CONSTRUCTORS
 
+### Matrix operators
 function SaddleSystem(A::AbstractMatrix{T},B₂::AbstractMatrix{T},B₁ᵀ::AbstractMatrix{T},
                       C::AbstractMatrix{T};solver::Type{TS}=Direct,filter=I,kwargs...) where {T,TS<:SchurSolverType}
 
@@ -113,6 +114,7 @@ end
 SaddleSystem(A::AbstractMatrix{T},B₂::AbstractMatrix{T},B₁ᵀ::AbstractMatrix{T};solver::Type{TS}=Direct,filter=I,kwargs...) where {T,TS<:SchurSolverType} =
         SaddleSystem(A,B₂,B₁ᵀ,zeros(T,size(B₂,1),size(B₁ᵀ,2));solver=solver,filter=filter,kwargs...)
 
+### Operators are functions or function-like operators
 # This version should take in functions or function-like objects that act upon given
 # data types u and f. Should transform them into operators that act on abstract vectors
 # of the same size
@@ -127,15 +129,29 @@ function SaddleSystem(A,B₂,B₁ᵀ,C,u::TU,f::TF;eltype=Float64,filter=I,solve
                         linear_map(filter,f,eltype=eltype),TU,TF;solver=solver,kwargs...)
 end
 
-SaddleSystem(A,B₂,B₁ᵀ,u::TU,f::TF;eltype=Float64,filter=I,solver::Type{TS}=Direct,kwargs...) where {TU,TF,TS<:SchurSolverType} =
-    SaddleSystem(A,B₂,B₁ᵀ,C_zero(f,eltype),u,f;eltype=eltype,filter=filter,solver=solver,kwargs...)
+# No C operator provided, so set it to zero
+SaddleSystem(A,B₂,B₁ᵀ,u::TU,f::TF;
+            eltype=Float64,filter=I,solver::Type{TS}=Direct,kwargs...) where {TU,TF,TS<:SchurSolverType} =
+            SaddleSystem(A,B₂,B₁ᵀ,C_zero(f,eltype),u,f;eltype=eltype,filter=filter,solver=solver,kwargs...)
 
-
+# Unconstrained system
 SaddleSystem(A,u::TU;eltype=Float64,filter=I,solver::Type{TS}=Direct,kwargs...) where {TU,TS<:SchurSolverType} = SaddleSystem(A,nothing,nothing,u,Type{eltype}[];eltype=eltype,filter=filter,solver=solver,kwargs...)
 
-SaddleSystem(A,B₂,B₁ᵀ,C,v::ArrayPartition;eltype=Float64,filter=I,solver::Type{TS}=Direct,kwargs...) where {TS<:SchurSolverType} = SaddleSystem(A,B₂,B₁ᵀ,C,v.x[1],v.x[2];eltype=eltype,filter=filter,solver=solver,kwargs...)
-SaddleSystem(A,B₂,B₁ᵀ,v::ArrayPartition;eltype=Float64,filter=I,solver::Type{TS}=Direct,kwargs...) where {TS<:SchurSolverType} = SaddleSystem(A,B₂,B₁ᵀ,v.x[1],v.x[2];eltype=eltype,filter=filter,solver=solver,kwargs...)
-SaddleSystem(A,v::ArrayPartition;eltype=Float64,filter=I,solver::Type{TS}=Direct,kwargs...) where {TS<:SchurSolverType} = SaddleSystem(A,v.x[1];eltype=eltype,filter=filter,solver=solver,kwargs...)
+### For handling ArrayPartition arguments for the solution/rhs
+SaddleSystem(A,B₂,B₁ᵀ,C,v::ArrayPartition;
+            eltype=Float64,filter=I,solver::Type{TS}=Direct,kwargs...) where {TS<:SchurSolverType} =
+            SaddleSystem(A,B₂,B₁ᵀ,C,v.x[1],v.x[2];eltype=eltype,filter=filter,solver=solver,kwargs...)
+
+# No C operator
+SaddleSystem(A,B₂,B₁ᵀ,v::ArrayPartition;
+            eltype=Float64,filter=I,solver::Type{TS}=Direct,kwargs...) where {TS<:SchurSolverType} =
+            SaddleSystem(A,B₂,B₁ᵀ,v.x[1],v.x[2];eltype=eltype,filter=filter,solver=solver,kwargs...)
+
+# Unconstrained system
+SaddleSystem(A,v::ArrayPartition;
+            eltype=Float64,filter=I,solver::Type{TS}=Direct,kwargs...) where {TS<:SchurSolverType} =
+            SaddleSystem(A,v.x[1];eltype=eltype,filter=filter,solver=solver,kwargs...)
+
 
 ### AUXILIARY ROUTINES
 
@@ -147,7 +163,18 @@ function Base.show(io::IO, S::SaddleSystem{T,Ns,Nc,TU,TF,TS}) where {T,Ns,Nc,TU,
      println(io, "using a $TS solver")
 end
 
+"""
+    Base.size(::SaddleSystem)
+
+Report the size of a [`SaddleSystem`](@ref).
+"""
 size(::SaddleSystem{T,Ns,Nc}) where {T,Ns,Nc} = (Ns+Nc,Ns+Nc)
+
+"""
+    Base.eltype(::SaddleSystem)
+
+Report the element type of a [`SaddleSystem`](@ref).
+"""
 eltype(::SaddleSystem{T,Ns,Nc}) where {T,Ns,Nc} = T
 
 C_zero(f,eltype) = zeros(eltype,length(f),length(f))
