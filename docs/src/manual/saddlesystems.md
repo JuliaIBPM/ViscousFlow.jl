@@ -34,9 +34,9 @@ rigid-body mechanics.
 
 A general saddle-point system has the form
 
-$$\left[ \begin{array}{cc} A & B_1^T \\ B_2 & 0\end{array}\right] \left(\begin{array}{c}u\\f \end{array}\right) = \left(\begin{array}{c}r_1\\r_2 \end{array}\right)$$
+$$\left[ \begin{array}{cc} A & B_1^T \\ B_2 & C\end{array}\right] \left(\begin{array}{c}u\\f \end{array}\right) = \left(\begin{array}{c}r_1\\r_2 \end{array}\right)$$
 
-We are primarily interested in cases when the operator $A$ is symmetric and positive definite,
+We are primarily interested in cases when the operator $A$ is symmetric and positive semi-definite,
 which is fairly typical. It is also fairly common for $B_1 = B_2$, so that the
 whole system is symmetric.
 
@@ -64,9 +64,9 @@ Let us solve this problem on a staggered grid, using the tools discussed in
 the Fields section, including the regularization and interpolation methods to
 immerse the body shape on the grid. Then our saddle-point system has the form
 
-$$\left[ \begin{array}{cc} L & H \\ E & 0\end{array}\right] \left(\begin{array}{c}\psi\\f \end{array}\right) = \left(\begin{array}{c}0\\\psi_b \end{array}\right)$$
+$$\left[ \begin{array}{cc} L & R \\ E & 0\end{array}\right] \left(\begin{array}{c}\psi\\f \end{array}\right) = \left(\begin{array}{c}0\\\psi_b \end{array}\right)$$
 
-where $L$ is the discrete Laplacian, $H$ is the regularization operator, and
+where $L$ is the discrete Laplacian, $R$ is the regularization operator, and
 $E$ is the interpolation operator.
 
 Physically, $f$ isn't really a force here, but
@@ -89,7 +89,7 @@ pyplot()
 n = 128; θ = range(0,stop=2π,length=n+1);
 xb = 1.0 .+ 0.5*cos.(θ[1:n]); yb = 1.0 .+ 0.5*sin.(θ[1:n]);
 X = VectorData(xb,yb);
-f = ScalarData(X);
+ψb = ScalarData(X);
 ```
 
 Now let's set up a grid of size $102\times 102$ (including the usual layer
@@ -103,41 +103,37 @@ w = Nodes(Dual,(nx,ny));
 We need to set up the operators now. First, the Laplacian:
 ```@repl saddle
 L = plan_laplacian(size(w),with_inverse=true)
-L⁻¹(w::T) where {T} = L\w
 ```
-The last line just defines another operator for computing the inverse of $L$. We
-have called it `L⁻¹` for useful shorthand.
-This operator acts upon dual nodal data and returns data of the same type, e.g.
-`ψ = L⁻¹(w)`. The saddle point system structure requires operators that have this
-sort of form.
+Note that we have made sure that this operator has an inverse. It is important
+that this operator, which represents the `A` matrix in our saddle system, comes
+with an associated backslash `\\` operation to carry out the inverse.
 
-Now we need to set up the regularization `H` and interpolation `E` operators.
+Now we need to set up the regularization `R` and interpolation `E` operators.
 ```@repl saddle
 regop = Regularize(X,dx;issymmetric=true)
-Hmat, Emat = RegularizationMatrix(regop,f,w);
+Rmat, Emat = RegularizationMatrix(regop,ψb,w);
 ```
 
-Now we are ready to set up the system.
+Now we are ready to set up the system. The solution and right-hand side vectors
+are set up using `SaddleVector`:
+
 ```@repl saddle
-S = SaddleSystem((w,f),(L⁻¹,Hmat,Emat),issymmetric=true,isposdef=true)
+rhs = SaddleVector(w,ψb)
 ```
-Note that we have provided a tuple of the types of data, `w` and `f`, that we want the solver
-to work with, along with a tuple of the definitions of the three operators. The operators
-can be in the form of a function acting on its data (as for `L⁻¹`) or in the form of a
-matrix (or matrix-like) operator (as for `Hmat` and `Emat`); the constructor sorts it
-out. However, the order is important: we must supply $A^{-1}$, $B_1^T$, and $B_2$, in
-that order.
+and the saddle system is then set up with the three operators; the $C$ operator
+is presumed to be zero when it is not provided.
 
-We have also
-set two optional flags, to specify that the system is symmetric and positive definite.
-This instructs on which solver to use. (This is actually not quite true for the Laplacian: it is only positive semi-definite, since this operator has a null space. It is
-  adequate criteria for using the conjugate gradient method, but we will have to
-  be careful of some aspects of the solution, we we will see below.)
-
-Let's solve the system. We need to supply the right-hand side.
 ```@repl saddle
-w = Nodes(Dual,(nx,ny));
-ψb = ScalarData(X);
+A = SaddleSystem(L,Emat,Rmat,rhs)
+```
+
+Note that all of the operators we have provided are either matrices (like `Emat` and `Rmat`)
+or functions or function-like operators (like `L`). The `SaddleSystem` constructor
+allows either. However, the order is important: we must supply $A$, $B_2$, $B_1^T$, and possibly $C$, in that order.
+
+Let's solve the system. We need to set the right-hand side. We will set `ψb`,
+but this will also change `rhs`, since that vector is pointing to the same object.
+```@repl saddle
 ψb .= -(xb.-1);
 ```
 The right-hand side of the Laplace equation is zero. The right-hand side of the
@@ -146,16 +142,20 @@ subtracted the circle center from the $x$ positions on the body. The reason for
 this will be discussed in a moment.
 
 We solve the system with the convenient shorthand of the backslash:
+
 ```@repl saddle
-@time ψ,f = S\(w,ψb)
+@time sol = A\rhs
 ```
 Just to point out how fast it can be, we have also timed it. It's pretty fast.
+
+We can obtain the state vector and the constraint vector from `sol` using some
+convenience functions `state(sol)` and `constraint(sol)`.
 
 Now, let's plot the solution in physical space. We'll plot the body shape for
 reference, also.
 ```@repl saddle
-xg, yg = coordinates(ψ,dx=dx)
-plot(xg,yg,ψ)
+xg, yg = coordinates(w,dx=dx)
+plot(xg,yg,xlim=(-Inf,Inf),ylim=(-Inf,Inf),state(sol))
 plot!(xb,yb,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black)
 savefig("sfunc.svg"); nothing # hide
 ```

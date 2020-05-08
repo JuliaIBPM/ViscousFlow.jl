@@ -1,5 +1,11 @@
 # IFHERK
 
+# To do
+# * Need to take better advantage of SaddleSystem form for unconstrained problems
+# * Should be able to pass in `nothing` for operators that are not needed, or
+#   omit them altogether
+# * Use SaddleVector type for entering data types
+
 """
     IFHERK(u,f,Δt,plan_intfact,B₁ᵀ,B₂,r₁,r₂;[tol=1e-3],[issymmetric=false],[rk::RKParams=RK31])
 
@@ -58,7 +64,7 @@ struct IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF}
   _issymmetric :: Bool # is the system matrix symmetric?
   _isstaticconstraints :: Bool  # do the system constraint operators stay unchanged?
   _isstaticmatrix :: Bool # is the upper left-hand matrix static?
-  _isstored :: Bool # is the Schur complement matrix (inverse) stored?
+  _schursolver :: DataType # method for solving Schur complement matrix
 
 end
 
@@ -71,7 +77,7 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
                           issymmetric::Bool=false,
                           isstaticconstraints::Bool=true,
                           isstaticmatrix::Bool=true,
-                          isstored::Bool=false,
+                          schursolver=Direct,
                           rk::RKParams{NS}=RK31) where {TU,TF,FI,FC,FR1,FR2,FP,NS}
 
 
@@ -118,7 +124,7 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
     # preform the saddle-point systems
     # these are overwritten if B₁ᵀ and B₂ vary with time
     Slist = [construct_saddlesys(plan_constraints,Hi,u,f,0.0,
-                    tol,issymmetric,isstored,precompile=false)[1] for Hi in Hlist]
+                    tol,issymmetric,schursolver,precompile=false) for Hi in Hlist]
     S = [Slist[i] for i in indexin(dclist,unique(dclist))]
 
     #S,_ = construct_saddlesys(plan_constraints,rk,H,u,f,0.0,tol,issymmetric,isstored,precompile=false)
@@ -137,7 +143,7 @@ function (::Type{IFHERK})(u::TU,f::TF,Δt::Float64,
                                 H,r₁,r₂,
                                 plan_constraints,S,
                                 qᵢ,ubuffer,w,fbuffer,
-                                tol,issymmetric,isstaticconstraints,isstaticmatrix,isstored)
+                                tol,issymmetric,isstaticconstraints,isstaticmatrix,schursolver)
 
     # pre-compile
     #ifherksys(0.0,u)
@@ -152,59 +158,69 @@ function Base.show(io::IO, scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF}) where {NS,
     println(io, "   Time step size $(scheme.Δt)")
 end
 
+struct IFOperator
+    op
+end
+import Base: \, *
+\(A::IFOperator,w) = A.op*w
+*(A::IFOperator,w) = w
+
 # this function will call the plan_constraints function and return the
 # saddle point system for a single instance of H, (and B₁ᵀ and B₂)
 # plan_constraints should only compute B₁ᵀ and B₂ (and P if needed)
 function construct_saddlesys(plan_constraints::FC,H::FH,
-                           u::TU,f::TF,t::Float64,tol::Float64,issymmetric::Bool,isstored::Bool;
+                           u::TU,f::TF,t::Float64,tol::Float64,issymmetric::Bool,schursolver;
                            precompile::Bool=false) where {FC,FH,TU,TF}
 
     sys = plan_constraints(u,t) # sys contains B₁ᵀ and B₂ before fixing them up
+    B₁ᵀ, B₂ = sys
 
-    # B₁ᵀ acts on type TF
-    # B₂ acts on TU
-    optypes = ((TF,),(TU,))
-    opnames = ("B₁ᵀ","B₂")
-    ops = []
-    # check for methods for B₁ᵀ and B₂
-    for (i,typ) in enumerate(optypes)
-      if TU <: Tuple
-        opsi = ()
-        for el in eachindex(sys[i])
-          typI = (typ[1].parameters[el],)
-          if hasmethod(sys[i][el],typI)
-            opsi = (opsi...,sys[i][el])
-          elseif hasmethod(*,(typeof(sys[i][el]),typI...))
-            # generate a method that acts on TU
-            opsi = (opsi...,x->sys[i][el]*x)
-          else
-            error("No valid operator for $(opnames[i]) supplied")
-          end
-        end
-        push!(ops,opsi)
-      else
-        if hasmethod(sys[i],typ)
-          push!(ops,sys[i])
-        elseif hasmethod(*,(typeof(sys[i]),typ...))
-          # generate a method that acts on TU
-          push!(ops,x->sys[i]*x)
-        else
-          error("No valid operator for $(opnames[i]) supplied")
-        end
-      end
-    end
-    B₁ᵀ, B₂ = ops
+    # # B₁ᵀ acts on type TF
+    # # B₂ acts on TU
+    # optypes = ((TF,),(TU,))
+    # opnames = ("B₁ᵀ","B₂")
+    # ops = []
+    # # check for methods for B₁ᵀ and B₂
+    # for (i,typ) in enumerate(optypes)
+    #   if TU <: Tuple
+    #     opsi = ()
+    #     for el in eachindex(sys[i])
+    #       typI = (typ[1].parameters[el],)
+    #       if hasmethod(sys[i][el],typI)
+    #         opsi = (opsi...,sys[i][el])
+    #       elseif hasmethod(*,(typeof(sys[i][el]),typI...))
+    #         # generate a method that acts on TU
+    #         opsi = (opsi...,x->sys[i][el]*x)
+    #       else
+    #         error("No valid operator for $(opnames[i]) supplied")
+    #       end
+    #     end
+    #     push!(ops,opsi)
+    #   else
+    #     if hasmethod(sys[i],typ)
+    #       push!(ops,sys[i])
+    #     elseif hasmethod(*,(typeof(sys[i]),typ...))
+    #       # generate a method that acts on TU
+    #       push!(ops,x->sys[i]*x)
+    #     else
+    #       error("No valid operator for $(opnames[i]) supplied")
+    #     end
+    #   end
+    # end
+    # B₁ᵀ, B₂ = ops
 
     if TU <: Tuple
       S = map((ui,fi,Hi,B₁ᵀi,B₂i) ->
-                  SaddleSystem((ui,fi),(Hi,B₁ᵀi,B₂i),tol=tol,issymmetric=issymmetric,isposdef=true,store=isstored,precompile=precompile),
+                  SaddleSystem(IFOperator(Hi),B₂i,B₁ᵀi,SaddleVector(ui,fi),solver=schursolver,tol=tol),
+                  #SaddleSystem((ui,fi),(Hi,B₁ᵀi,B₂i),tol=tol,issymmetric=issymmetric,isposdef=true,store=isstored,precompile=precompile),
                     u,f,H,B₁ᵀ,B₂)
     else
-      S = SaddleSystem((u,f),(H,B₁ᵀ,B₂),tol=tol,
-                issymmetric=issymmetric,isposdef=true,store=isstored,precompile=precompile)
+      #S = SaddleSystem((u,f),(H,B₁ᵀ,B₂),tol=tol,
+      #          issymmetric=issymmetric,isposdef=true,store=isstored,precompile=precompile)
+      S = SaddleSystem(IFOperator(H),B₂,B₁ᵀ,SaddleVector(u,f),solver=schursolver,tol=tol)
     end
 
-    return S, ops
+    return S
 
 
 
@@ -215,12 +231,18 @@ end
 function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
                           {NS,FH,FR1,FR2,FC,FS,TU<:Tuple,TF<:Tuple}
   @get scheme (rk,rkdt,H,plan_constraints,r₁,r₂,qᵢ,w,fbuffer,ubuffer,tol,
-                _isstaticconstraints,_issymmetric,_isstored)
+                _isstaticconstraints,_issymmetric,_schursolver)
 
   # H[i] corresponds to H(i,i+1) = H((cᵢ - cᵢ₋₁)Δt)
   # Each of the coefficients includes the time step size
 
   f = deepcopy(fbuffer)
+
+  # Create objects that point to each of the entries in u and f
+  sol = ()
+  for el in eachindex(u)
+    sol = (sol...,SaddleVector(u[el],f[el]))
+  end
 
   i = 1
   tᵢ₊₁ = t
@@ -230,7 +252,7 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
   end
 
   if !_isstaticconstraints
-    S,_ = construct_saddlesys(plan_constraints,H[i],u,f,tᵢ₊₁,tol,_issymmetric,_isstored)
+    S = construct_saddlesys(plan_constraints,H[i],u,f,tᵢ₊₁,tol,_issymmetric,_schursolver)
   else
     S = scheme.S[i]
   end
@@ -247,7 +269,7 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
       fbuffer[el] .= ftmp[el]
       # could solve this system for the whole tuple, too...
       fill!(f[el],0.0)
-      ldiv!((u[el],f[el]),S[el],(ubuffer[el],fbuffer[el]))
+      ldiv!(sol[el],S[el],SaddleVector(ubuffer[el],fbuffer[el]))
       ubuffer[el] .= S[el].A⁻¹B₁ᵀf
       #tmp = S[i][el]\(ubuffer[el],fbuffer[el])  # solve saddle point system
       #u[el] .= tmp[1]
@@ -265,7 +287,7 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
     for i = 2:NS-1
 
       if !_isstaticconstraints
-        S,_ = construct_saddlesys(plan_constraints,H[i],u,f,tᵢ₊₁,tol,_issymmetric,_isstored)
+        S = construct_saddlesys(plan_constraints,H[i],u,f,tᵢ₊₁,tol,_issymmetric,_schursolver)
       else
         S = scheme.S[i]
       end
@@ -284,7 +306,7 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
         end
         fbuffer[el] .= ftmp[el]
         fill!(f[el],0.0)
-        ldiv!((u[el],f[el]),S[el],(ubuffer[el],fbuffer[el]))
+        ldiv!(sol[el],S[el],SaddleVector(ubuffer[el],fbuffer[el]))
         ubuffer[el] .= S[el].A⁻¹B₁ᵀf
 
         #tmp = S[i][el]\(ubuffer[el],fbuffer[el])  # solve saddle point system
@@ -302,7 +324,7 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
     end
     i = NS
     if !_isstaticconstraints
-      S,_ = construct_saddlesys(plan_constraints,H[i],u,f,tᵢ₊₁,tol,_issymmetric,_isstored)
+      S = construct_saddlesys(plan_constraints,H[i],u,f,tᵢ₊₁,tol,_issymmetric,_schursolver)
     else
       S = scheme.S[i]
     end
@@ -325,7 +347,7 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
     end
     fbuffer[el] .= ftmp[el]
     fill!(f[el],0.0)
-    ldiv!((u[el],f[el]),S[el],(ubuffer[el],fbuffer[el]))
+    ldiv!(sol[el],S[el],SaddleVector(ubuffer[el],fbuffer[el]))
     #tmp = S[i][el]\(ubuffer[el],fbuffer[el])  # solve saddle point system
     #u[el] .= tmp[1]
     #f[el] .= tmp[2]
@@ -342,10 +364,11 @@ end
 function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
                       {NS,FH,FR1,FR2,FC,FS,TU,TF}
   @get scheme (rk,rkdt,H,plan_constraints,r₁,r₂,qᵢ,w,fbuffer,ubuffer,tol,
-                    _isstaticconstraints,_issymmetric,_isstored)
-
+                    _isstaticconstraints,_issymmetric,_schursolver)
 
   f = deepcopy(fbuffer)
+  sol = SaddleVector(u,f)
+
 
   # H[i] corresponds to H(i,i+1) = H((cᵢ - cᵢ₋₁)Δt)
   # Each of the coefficients includes the time step size
@@ -356,7 +379,7 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
   qᵢ .= u
 
   if !_isstaticconstraints
-    S,_ = construct_saddlesys(plan_constraints,H[i],u,f,tᵢ₊₁,tol,_issymmetric,_isstored)
+    S = construct_saddlesys(plan_constraints,H[i],u,f,tᵢ₊₁,tol,_issymmetric,_schursolver)
   else
     S = scheme.S[i]
   end
@@ -368,7 +391,8 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
     w[i] .= rkdt.a[i,i].*r₁(u,tᵢ₊₁) # gᵢ
     ubuffer .+= w[i] # r₁ = qᵢ + gᵢ
     fbuffer .= r₂(u,tᵢ₊₁) # r₂
-    u, f = S\(ubuffer,fbuffer)  # solve saddle point system
+    sol .= S\SaddleVector(ubuffer,fbuffer)  # solve saddle point system
+
     ubuffer .= S.A⁻¹B₁ᵀf
     tᵢ₊₁ = t + rkdt.c[i]
 
@@ -377,11 +401,10 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
     w[i] .= H[i]*w[i] # H(i,i+1)gᵢ
 
 
-
     # stages 2 through NS-1
     for i = 2:NS-1
       if !_isstaticconstraints
-        S,_ = construct_saddlesys(plan_constraints,H[i],u,f,tᵢ₊₁,tol,_issymmetric,_isstored)
+        S = construct_saddlesys(plan_constraints,H[i],u,f,tᵢ₊₁,tol,_issymmetric,_schursolver)
       else
         S = scheme.S[i]
       end
@@ -393,7 +416,7 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
         ubuffer .+= rkdt.a[i,j]*w[j] # r₁
       end
       fbuffer .= r₂(u,tᵢ₊₁) # r₂
-      u, f = S\(ubuffer,fbuffer)  # solve saddle point system
+      sol .= S\SaddleVector(ubuffer,fbuffer)  # solve saddle point system
       ubuffer .= S.A⁻¹B₁ᵀf
       tᵢ₊₁ = t + rkdt.c[i]
 
@@ -410,7 +433,7 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
     end
     i = NS
     if !_isstaticconstraints
-      S,_ = construct_saddlesys(plan_constraints,H[i],u,f,tᵢ₊₁,tol,_issymmetric,_isstored)
+      S = construct_saddlesys(plan_constraints,H[i],u,f,tᵢ₊₁,tol,_issymmetric,_schursolver)
     else
       S = scheme.S[i]
     end
@@ -424,7 +447,7 @@ function (scheme::IFHERK{NS,FH,FR1,FR2,FC,FS,TU,TF})(t::Float64,u::TU) where
     ubuffer .+= rkdt.a[i,j]*w[j] # r₁
   end
   fbuffer .= r₂(u,tᵢ₊₁) # r₂
-  u, f = S\(ubuffer,fbuffer)  # solve saddle point system
+  sol .= S\SaddleVector(ubuffer,fbuffer)  # solve saddle point system
   #ldiv!((u,f),S[i],(ubuffer,fbuffer)) # solve saddle point system
   f ./= rkdt.a[i,i]
   t = t + rkdt.c[i]
