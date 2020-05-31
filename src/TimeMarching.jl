@@ -1,5 +1,9 @@
 module TimeMarching
 
+# To do
+# - Make use of in-place rhs operators, using same form as OrdinaryDiffEq
+
+
 import ViscousFlow:@get
 
 #using Compat
