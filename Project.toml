@@ -38,7 +38,7 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 [compat]
 ColorTypes = "<0.10.1"
 Dierckx = "^0"
-DiffRules = ">=0"
+DiffRules = "0,1"
 DocStringExtensions = "^0"
 Documenter = "^0"
 FFTW = "^1"

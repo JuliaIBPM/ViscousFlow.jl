@@ -18,7 +18,7 @@ of the fluid-body interaction are based on the immersed boundary projection meth
 developed by Taira and Colonius [^2]. The coupled fluid-body interactions are based
 on the work of Wang and Eldredge [^3].
 
-![](https://github.com/jdeldre/ViscousFlow.jl/raw/master/cylinderRe400.gif)
+![](https://github.com/JuliaIBPM/ViscousFlow.jl/raw/master/cylinderRe400.gif)
 
 ## Installation
 
