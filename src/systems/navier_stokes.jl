@@ -51,7 +51,7 @@ mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
 
     # Discretization
     "Grid metadata"
-    grid::Fields.PhysicalGrid{2}
+    grid::CartesianGrids.PhysicalGrid{2}
     #"Grid spacing"
     #Δx::Float64
     #"Indices of the primal node corresponding to the physical origin"
@@ -63,7 +63,7 @@ mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
 
     # Operators
     "Laplacian operator"
-    L::Fields.Laplacian{NX,NY}
+    L::CartesianGrids.Laplacian{NX,NY}
 
     # Body coordinate data, if present
     # if a static problem, these coordinates are in inertial coordinates
@@ -100,7 +100,7 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
                        isasymptotic = false,
                        isfilter = false,
                        rk::TimeMarching.RKParams=TimeMarching.RK31,
-                       ddftype=Fields.Yang3)
+                       ddftype=CartesianGrids.Yang3)
 
     g = PhysicalGrid(xlimits,ylimits,Δx)
     NX, NY = size(g)
@@ -126,10 +126,10 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
     if length(N) > 0 && isstore && isstatic
       # in this case, X̃ is assumed to be in inertial coordinates
 
-      regop = Regularize(X̃,Δx;I0=Fields.origin(g),issymmetric=true,ddftype=ddftype)
+      regop = Regularize(X̃,Δx;I0=CartesianGrids.origin(g),issymmetric=true,ddftype=ddftype)
       Hmat, Emat = RegularizationMatrix(regop,Vb,Fq)
       if isfilter
-        regopfilt = Regularize(X̃,Δx;I0=Fields.origin(g),filter=true,weights=Δx^2,ddftype=ddftype)
+        regopfilt = Regularize(X̃,Δx;I0=CartesianGrids.origin(g),filter=true,weights=Δx^2,ddftype=ddftype)
         Ẽmat = InterpolationMatrix(regopfilt,Fq,Vb)
         Cmat = sparse(Ẽmat*Hmat)
       end
@@ -175,7 +175,7 @@ size(sys::NavierStokes{NX,NY}) where {NX,NY} = (size(sys,1),size(sys,2))
 
 Return the grid cell size of system `sys`
 """
-Fields.cellsize(sys::NavierStokes) = cellsize(sys.grid)
+CartesianGrids.cellsize(sys::NavierStokes) = cellsize(sys.grid)
 
 """
     origin(sys::NavierStokes) -> Tuple{Int,Int}
@@ -186,13 +186,13 @@ indices need not lie inside the range of indices occupied by the grid.
 For example, if the range of physical coordinates occupied by the grid
 is (1.0,3.0) x (2.0,4.0), then the origin is not inside the grid.
 """
-Fields.origin(sys::Systems.NavierStokes) = origin(sys.grid)
+CartesianGrids.origin(sys::Systems.NavierStokes) = origin(sys.grid)
 
 # Basic operators for any Navier-Stokes system
 
 # Integrating factor -- rescale the time-step size
-Fields.plan_intfact(Δt,w,sys::NavierStokes{NX,NY}) where {NX,NY} =
-        Fields.plan_intfact(Δt/(sys.Re*cellsize(sys)^2),w)
+CartesianGrids.plan_intfact(Δt,w,sys::NavierStokes{NX,NY}) where {NX,NY} =
+        CartesianGrids.plan_intfact(Δt/(sys.Re*cellsize(sys)^2),w)
 
 # RHS of Navier-Stokes (non-linear convective term)
 function TimeMarching.r₁(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY}) where {NX,NY,T}
@@ -261,7 +261,7 @@ TimeMarching.plan_constraints(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N
 
 # Constructor using non-stored operators
 function TimeMarching.plan_constraints(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,T,N}
-  regop = Regularize(sys.X̃,Fields.cellsize(sys);I0=Fields.origin(sys),issymmetric=true)
+  regop = Regularize(sys.X̃,CartesianGrids.cellsize(sys);I0=CartesianGrids.origin(sys),issymmetric=true)
 
   return f -> TimeMarching.B₁ᵀ(f,regop,sys),w -> TimeMarching.B₂(w,regop,sys)
 end
