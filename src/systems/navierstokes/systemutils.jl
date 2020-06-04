@@ -31,7 +31,7 @@ function PointForce(w₀::T,x0::Tuple{Float64,Float64},
     Xf = VectorData([x0[1]],[x0[2]])
     Ff = (T <: Nodes) ? ScalarData(Xf) : VectorData(Xf)
     Ff .= f0
-    regop = Regularize(Xf,Fields.cellsize(sys);I0=Fields.origin(sys),issymmetric=true)
+    regop = Regularize(Xf,CartesianGrids.cellsize(sys);I0=CartesianGrids.origin(sys),issymmetric=true)
     is_spatial = typeof(σx)<:Float64
     if is_spatial
         xbuffer = zero(w₀)

@@ -8,8 +8,6 @@ using Test
 
 #@test isempty(detect_ambiguities(ViscousFlow))
 include("pointforce.jl")
-include("fields.jl")
-include("points.jl")
 include("layers.jl")
 include("saddle.jl")
 include("timemarching.jl")

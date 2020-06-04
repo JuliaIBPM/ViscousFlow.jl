@@ -1,4 +1,4 @@
-import ViscousFlow: Fields, TimeMarching
+import ViscousFlow: TimeMarching
 import ViscousFlow.TimeMarching:RK31
 
 using LinearAlgebra
@@ -35,7 +35,7 @@ using LinearAlgebra
   u₀ = 1.0
   uex(t) = u₀*exp(-α*t) + (α*(cos(ω*t)-exp(-α*t))+ω*sin(ω*t))/(α^2+ω^2)
 
-  Fields.plan_intfact(t::Float64,u::Vector{Float64}) = exp(-α*t)
+  CartesianGrids.plan_intfact(t::Float64,u::Vector{Float64}) = exp(-α*t)
 
   Δt = 0.005
   T = 0:Δt:10
@@ -66,7 +66,7 @@ using LinearAlgebra
   TimeMarching.r₁(u::Vector{Float64},t::Float64) = cos(ω*t)
   TimeMarching.r₂(u::Vector{Float64},t::Float64) = Vector{Float64}()
   TimeMarching.plan_constraints(u::Vector{Float64},t::Float64) = f -> zeros(Float64,1), u -> Vector{Float64}()
-  Fields.plan_intfact(t::Float64,u::Vector{Float64}) = Matrix(1.0I,1,1)
+  CartesianGrids.plan_intfact(t::Float64,u::Vector{Float64}) = Matrix(1.0I,1,1)
   ifherk = IFHERK(u,f,Δt,plan_intfact,plan_constraints,(r₁,r₂),rk=TimeMarching.RK31)
 
   u = [u₀]

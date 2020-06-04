@@ -61,7 +61,7 @@ points inside or on the surface of the body. Thus, the streamfunction field outs
 this body is governed by Laplace's equation subject to the constraint.
 
 Let us solve this problem on a staggered grid, using the tools discussed in
-the Fields section, including the regularization and interpolation methods to
+[CartesianGrids](@ref), including the regularization and interpolation methods to
 immerse the body shape on the grid. Then our saddle-point system has the form
 
 $$\left[ \begin{array}{cc} L & R \\ E & 0\end{array}\right] \left(\begin{array}{c}\psi\\f \end{array}\right) = \left(\begin{array}{c}0\\\psi_b \end{array}\right)$$
