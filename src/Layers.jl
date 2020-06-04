@@ -4,7 +4,7 @@
 
 module Layers
 
-using ..Fields
+using CartesianGrids
 using ..Bodies
 
 export DoubleLayer, SingleLayer, MaskType, Mask, ComplementaryMask

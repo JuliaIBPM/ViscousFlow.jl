@@ -12,9 +12,7 @@ using Reexport
 include("Utils.jl")
 @reexport using .Utils
 
-include("Fields.jl")
-
-@reexport using .Fields
+@reexport using CartesianGrids
 
 include("Bodies.jl")
 

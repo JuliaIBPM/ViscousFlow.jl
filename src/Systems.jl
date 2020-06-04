@@ -4,7 +4,7 @@ using DocStringExtensions
 
 export NavierStokes, PointForce, SpatialGauss, Gaussian!, Gaussian, vorticity, velocity, streamfunction, nl
 
-using ..Fields
+using CartesianGrids
 using ..TimeMarching
 using ..RigidBodyMotions
 using ..Bodies
