@@ -1,4 +1,4 @@
-import ViscousFlow: Fields, SaddlePointSystems
+import ViscousFlow: SaddlePointSystems
 
 using LinearAlgebra
 
