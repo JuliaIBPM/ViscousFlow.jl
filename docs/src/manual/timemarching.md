@@ -38,7 +38,7 @@ The operator $A$ may be a matrix or a scalar, but is generally independent of ti
   equation by Runge-Kutta method to account for the remaining part $r_1$.
 
   We discussed the construction
-  of the integrating factor in the context of fields in [CartesianGrids](@ref). But first, let's
+  of the integrating factor in the context of fields in [CartesianGrids](https://juliaibpm.github.io/CartesianGrids.jl/latest/). But first, let's
   give an example of how we can solve a simpler problem with just a single scalar-valued
   $u$. The example we will solve is
 
@@ -69,8 +69,8 @@ uex(t) = u₀*exp(-α*t) + (α*(cos(ω*t)-exp(-α*t))+ω*sin(ω*t))/(α^2+ω^2)
 ```
 
 The first steps are to define operators that provide the integrating factor and the right-hand side
-of the equations. For the integrating factor, we extend the definition of [`plan_intfact`](@ref)
-from [CartesianGrids](@ref).
+of the equations. For the integrating factor, we extend the definition of `plan_intfact`
+from [CartesianGrids](https://juliaibpm.github.io/CartesianGrids.jl/latest/).
 
 ```@repl march
 ViscousFlow.plan_intfact(t::Float64,u::Vector{Float64}) = exp(-α*t);
@@ -119,7 +119,7 @@ for ti in T
   push!(uhist,u[1]) # storage
   global t, u = ifrk(t,u) # advancement by one step by the integrator
 end
-```  
+```
 
 Now we can plot the result and compare it with the exact solution.
 

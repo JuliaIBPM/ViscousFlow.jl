@@ -61,7 +61,7 @@ points inside or on the surface of the body. Thus, the streamfunction field outs
 this body is governed by Laplace's equation subject to the constraint.
 
 Let us solve this problem on a staggered grid, using the tools discussed in
-[CartesianGrids](@ref), including the regularization and interpolation methods to
+[CartesianGrids](https://juliaibpm.github.io/CartesianGrids.jl/latest/), including the regularization and interpolation methods to
 immerse the body shape on the grid. Then our saddle-point system has the form
 
 $$\left[ \begin{array}{cc} L & R \\ E & 0\end{array}\right] \left(\begin{array}{c}\psi\\f \end{array}\right) = \left(\begin{array}{c}0\\\psi_b \end{array}\right)$$
@@ -144,6 +144,7 @@ this will be discussed in a moment.
 We solve the system with the convenient shorthand of the backslash:
 
 ```@repl saddle
+#sol = A\rhs
 @time sol = A\rhs
 ```
 Just to point out how fast it can be, we have also timed it. It's pretty fast.
@@ -155,7 +156,7 @@ Now, let's plot the solution in physical space. We'll plot the body shape for
 reference, also.
 ```@repl saddle
 xg, yg = coordinates(w,dx=dx)
-plot(xg,yg,xlim=(-Inf,Inf),ylim=(-Inf,Inf),state(sol))
+plot(xg,yg,state(sol),xlim=(-Inf,Inf),ylim=(-Inf,Inf))
 plot!(xb,yb,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black)
 savefig("sfunc.svg"); nothing # hide
 ```

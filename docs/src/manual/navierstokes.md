@@ -45,7 +45,7 @@ will write it by using the discrete divergence,
 
 $$N(v,w) = D(vw).$$
 
-The `Systems` module has a function that is set up to compute this term; we will discuss it below. The right-hand side contains the viscous term, proportional to $1/Re$, where $Re$ is the Reynolds number. For this, we will use the integrating factor, described in [The integrating factor](@ref). For purposes of calculation, it is better to express the problem as
+The `Systems` module has a function that is set up to compute this term; we will discuss it below. The right-hand side contains the viscous term, proportional to $1/Re$, where $Re$ is the Reynolds number. For this, we will use the integrating factor. For purposes of calculation, it is better to express the problem as
 
 $$\ddt w - \frac{1}{Re} L w = r_1(w),$$
 
@@ -269,7 +269,7 @@ plan_constraints(u,t) = TimeMarching.plan_constraints(u,t,sys)
 r₁(u,t) = TimeMarching.r₁(u,t,sys) + wforce(t)
 r₂(u,t) = TimeMarching.r₂(u,t,sys)
 @time ifherk = IFHERK(w₀,f,sys.Δt,plan_intfact,plan_constraints,(r₁,r₂),
-        rk=TimeMarching.RK31,isstored=true)
+        rk=TimeMarching.RK31)
 ```
 
 Now set the initial conditions, and initialize some vectors for storing results
