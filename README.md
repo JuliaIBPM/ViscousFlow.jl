@@ -8,12 +8,12 @@ _A framework for simulating viscous incompressible flows_
 
 ## About the package
 
-The purpose of this package is to enable easy setup and solution of viscous incompressible flows. Documentation can be found at https://JuliaIBPM.github.io/ViscousFlow.jl/latest.
+The purpose of this package is to enable easy setup and solution of viscous incompressible flows about bodies of various shapes. Documentation can be found at https://JuliaIBPM.github.io/ViscousFlow.jl/latest.
 
-**ViscousFlow.jl** is registered in the general Julia registry. To install, enter the package manager by typing `]` and then type,
+**ViscousFlow.jl** is registered in the general Julia registry. To install, type
 e.g.,
 ```julia
-(v1.2) pkg> add ViscousFlow
+] add ViscousFlow
 ```
 
 Then, in any version, type
