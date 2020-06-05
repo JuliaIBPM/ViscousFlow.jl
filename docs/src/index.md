@@ -6,12 +6,11 @@ The objective of this package is to allow easy setup and fast simulation of inco
 flows, particularly those past bodies in motion. The package provides
 tools for
 - constructing grids and body shapes,
-- using the operators on those grids,
 - specifying the relevant parameters and setting their values,
 - solving the problem, and finally,
 - visualizing and analyzing the results.
 
-The underlying grids are uniform and Cartesian, allowing the use of the lattice
+The underlying grids are uniform and Cartesian, making use of the [CartesianGrids](https://github.com/JuliaIBPM/CartesianGrids.jl) package. This package allows the use of the lattice
 Green's function (LGF) for inverting the Poisson equation; the diffusion operators are
 solved with the integrating factor (Liska and Colonius [^1]). Many of the core aspects
 of the fluid-body interaction are based on the immersed boundary projection method,
@@ -22,16 +21,10 @@ on the work of Wang and Eldredge [^3].
 
 ## Installation
 
-This package works on Julia `0.6`, `0.7` and `1.0` and is registered in the general Julia registry. To install in julia `0.6`, type
-```julia
-julia> Pkg.add("ViscousFlow")
-```
-in the Julia REPL.
-
-In julia `0.7` or `1.0`, enter the package manager by typing `]` and then type,
+This package works on Julia `1.0` and above and is registered in the general Julia registry. To install from the REPL, type
 e.g.,
 ```julia
-(v1.0) pkg> add ViscousFlow
+] add ViscousFlow
 ```
 
 Then, in any version, type
