@@ -5,7 +5,7 @@
 module Layers
 
 using CartesianGrids
-using ..Bodies
+using RigidBodyTools
 
 export DoubleLayer, SingleLayer, MaskType, Mask, ComplementaryMask
 

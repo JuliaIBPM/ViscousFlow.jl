@@ -3,7 +3,7 @@ import ViscousFlow: Layers
 Δx = 0.02
 xlim = (-5.98,5.98)
 ylim = (-5.98,5.98)
-g = CartesianGrids.PhysicalGrid(xlim,ylim,Δx)
+g = PhysicalGrid(xlim,ylim,Δx)
 
 w = Nodes(Dual,size(g))
 dq = Edges(Dual,w)

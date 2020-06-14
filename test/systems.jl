@@ -1,4 +1,3 @@
-import ViscousFlow: Systems
 
 using LinearAlgebra
 
@@ -19,8 +18,8 @@ using LinearAlgebra
     Δx = 0.015  #Lx/(ny-1)
     Δt = min(0.5*Δx,0.5*Δx^2*Re)
 
-    #sys = Systems.NavierStokes((nx,ny),Re,Δx,Δt,U∞ = U∞)
-    sys = Systems.NavierStokes(Re,Δx,(0.0,3.0),(0.0,2.0),Δt,U∞ = U∞)
+    #sys = NavierStokes((nx,ny),Re,Δx,Δt,U∞ = U∞)
+    sys = NavierStokes(Re,Δx,(0.0,3.0),(0.0,2.0),Δt,U∞ = U∞)
 
     w₀ = Nodes(Dual,size(sys))
     xg,yg = coordinates(w₀,dx=Δx)
@@ -30,7 +29,7 @@ using LinearAlgebra
 
     ifrk = IFRK(w₀,sys.Δt,
                 (t,w) -> plan_intfact(t,w,sys),
-                (w,t) -> r₁(w,t,sys) ,rk=TimeMarching.RK31)
+                (w,t) -> r₁(w,t,sys) ,rk=ConstrainedSystems.RK31)
 
     t = 0.0
     w₀ .= wexact(t)
@@ -55,7 +54,7 @@ using LinearAlgebra
     U∞ = (U,0.0)
 
     n = 100
-    body = Bodies.Circle(0.5,n)
+    body = Circle(0.5,n)
 
     xlim = (-1.0,3.0)
     ylim = (-1.0,1.0)
@@ -65,18 +64,18 @@ using LinearAlgebra
     Δx = 0.02
     Δt = min(0.5*Δx,0.5*Δx^2*Re)
 
-    sys = Systems.NavierStokes(Re,Δx,xlim,ylim,Δt,U∞ = U∞, X̃ = X, isstore = true)
+    sys = NavierStokes(Re,Δx,xlim,ylim,Δt,U∞ = U∞, X̃ = X, isstore = true)
 
     @test size(sys,1) == 208
     @test size(sys,2) == 104
     @test size(sys) == (208,104)
 
-    @test Systems.origin(sys) == (54,52)
+    @test origin(sys) == (54,52)
 
-    wf = Systems.PointForce(Nodes(Dual,size(sys)),(1.5,0.0),10.0,1.5,1.0,sys)
+    wf = PointForce(Nodes(Dual,size(sys)),(1.5,0.0),10.0,1.5,1.0,sys)
     @test sum(wf(1.5)) ≈ 10
 
-    qf = Systems.PointForce(Edges(Primal,size(sys)),(1.5,0.0),(10.0,-10.0),1.5,1.0,sys)
+    qf = PointForce(Edges(Primal,size(sys)),(1.5,0.0),(10.0,-10.0),1.5,1.0,sys)
     @test sum(qf(1.5).u) ≈ 10
     @test sum(qf(1.5).v) ≈ -10
 

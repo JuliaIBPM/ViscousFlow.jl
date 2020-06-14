@@ -6,10 +6,7 @@ makedocs(
     clean = true,
     pages = [
         "Home" => "index.md",
-        "Manual" => ["manual/bodies.md",
-                     "manual/saddlesystems.md",
-                     "manual/timemarching.md",
-                     "manual/navierstokes.md"
+        "Manual" => ["manual/navierstokes.md"
                      ]
         #"Internals" => [ "internals/properties.md"]
     ],

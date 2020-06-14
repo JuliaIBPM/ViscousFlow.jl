@@ -15,7 +15,8 @@ Green's function (LGF) for inverting the Poisson equation; the diffusion operato
 solved with the integrating factor (Liska and Colonius [^1]). Many of the core aspects
 of the fluid-body interaction are based on the immersed boundary projection method,
 developed by Taira and Colonius [^2]. The coupled fluid-body interactions are based
-on the work of Wang and Eldredge [^3].
+on the work of Wang and Eldredge [^3]. These are implemented with the [ConstrainedSystems](https://github.com/JuliaIBPM/ConstrainedSystems.jl) package. Tools for creating bodies and
+their motions are based on the [RigidBodyTools](https://github.com/JuliaIBPM/RigidBodyTools.jl) package.
 
 ![](https://github.com/JuliaIBPM/ViscousFlow.jl/raw/master/cylinderRe400.gif)
 
