@@ -1,7 +1,6 @@
 # Navier-Stokes systems
 
 ```@meta
-CurrentModule = ViscousFlow.Systems
 DocTestSetup = quote
 using ViscousFlow
 end
@@ -45,7 +44,7 @@ will write it by using the discrete divergence,
 
 $$N(v,w) = D(vw).$$
 
-The `Systems` module has a function that is set up to compute this term; we will discuss it below. The right-hand side contains the viscous term, proportional to $1/Re$, where $Re$ is the Reynolds number. For this, we will use the integrating factor. For purposes of calculation, it is better to express the problem as
+The package has a function that is set up to compute this term; we will discuss it below. The right-hand side contains the viscous term, proportional to $1/Re$, where $Re$ is the Reynolds number. For this, we will use the integrating factor. For purposes of calculation, it is better to express the problem as
 
 $$\ddt w - \frac{1}{Re} L w = r_1(w),$$
 
@@ -95,20 +94,20 @@ w₀ = Nodes(Dual,size(sys));
 The physical grid coordinates of these dual nodes can be generated with the `coordinates` function:
 
 ```@repl corotate
-xg, yg = coordinates(w₀,dx=Systems.cellsize(sys),I0=Systems.origin(sys))
+xg, yg = coordinates(w₀,dx=cellsize(sys),I0=origin(sys))
 ```
 
-Now we are ready to set up the integrator for this problem. To account for the viscous diffusion, we need the integrating factor. There are no body constraints to enforce, so we will use the integrating factor Runge-Kutta method (`IFRK`). For this, we need to set up plans for the integrating factor and for the right-hand side ($r_1$). The `Systems` module has functions that do both for us, using the system data in `sys`. We just need to change their argument list so that they fit the template for the `IFRK` scheme:
+Now we are ready to set up the integrator for this problem. To account for the viscous diffusion, we need the integrating factor. There are no body constraints to enforce, so we will use the integrating factor Runge-Kutta method (`IFRK`). For this, we need to set up plans for the integrating factor and for the right-hand side ($r_1$). The package has functions that do both for us, using the system data in `sys`. We just need to change their argument list so that they fit the template for the `IFRK` scheme:
 
 ```@repl corotate
-plan_intfact(t,w) = Systems.plan_intfact(t,w,sys)
-r₁(w,t) = Systems.r₁(w,t,sys)
+plan_intfact(t,w) = CartesianGrids.plan_intfact(t,w,sys)
+r₁(w,t) = r₁(w,t,sys)
 ```
 
 Now we can construct the integrator. We will use 3rd-order Runge-Kutta:
 
 ```@repl corotate
-ifrk = IFRK(w₀,sys.Δt,plan_intfact,r₁,rk=TimeMarching.RK31)
+ifrk = IFRK(w₀,sys.Δt,plan_intfact,r₁,rk=ConstrainedSystems.RK31)
 ```
 
 Note that we have only passed in `w₀` to this scheme to provide the form of data to be used for the state vector in the integrator. It does not matter that the data are still zeros.
@@ -241,7 +240,7 @@ X = VectorData(body.x,body.y);
 Create the Navier-Stokes system:
 
 ```@repl cylflow
-sys = Systems.NavierStokes(Re,Δx,xlim,ylim,Δt,U∞ = U∞, X̃ = X, isstore = true)
+sys = NavierStokes(Re,Δx,xlim,ylim,Δt,U∞ = U∞, X̃ = X, isstore = true)
 ```
 
 Now set up the basic data structures for use in the problem.
@@ -264,12 +263,12 @@ wforce = PointForce(w₀,xf,Ff,t0,σ,sys)
 Now we can set up the integrator. For this, we use `IFHERK`, since we need both the integrating factor and the constraint applications. We use ready-made functions for each of these. For the right-hand side of the Navier-Stokes equations `r₁`, we add the point force at time `t`.
 
 ```@repl cylflow
-plan_intfact(t,u) = Systems.plan_intfact(t,u,sys)
-plan_constraints(u,t) = TimeMarching.plan_constraints(u,t,sys)
-r₁(u,t) = TimeMarching.r₁(u,t,sys) + wforce(t)
-r₂(u,t) = TimeMarching.r₂(u,t,sys)
+plan_intfact(t,u) = CartesianGrids.plan_intfact(t,u,sys)
+plan_constraints(u,t) = ConstrainedSystems.plan_constraints(u,t,sys)
+r₁(u,t) = ConstrainedSystems.r₁(u,t,sys) + wforce(t)
+r₂(u,t) = ConstrainedSystems.r₂(u,t,sys)
 @time ifherk = IFHERK(w₀,f,sys.Δt,plan_intfact,plan_constraints,(r₁,r₂),
-        rk=TimeMarching.RK31)
+        rk=ConstrainedSystems.RK31)
 ```
 
 Now set the initial conditions, and initialize some vectors for storing results
@@ -299,7 +298,7 @@ end
 Plot the solution:
 
 ```@repl cylflow
-xg, yg = coordinates(w₀,dx=Δx,I0=Systems.origin(sys))
+xg, yg = coordinates(w₀,dx=Δx,I0=origin(sys))
 plot(xg,yg,u,levels=range(-0.25,stop=0.25,length=30), color = :RdBu,width=1,
         xlim=(-1+Δx,3-Δx),ylim=(-1+Δx,1-Δx))
 plot!(body)
@@ -359,7 +358,7 @@ savefig("cylforce.svg"); nothing # hide
 ## Methods
 
 ```@autodocs
-Modules = [Systems]
+Modules = [ViscousFlow]
 ```
 
 
