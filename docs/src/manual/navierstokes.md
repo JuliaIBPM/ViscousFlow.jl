@@ -101,7 +101,7 @@ Now we are ready to set up the integrator for this problem. To account for the v
 
 ```@repl corotate
 plan_intfact(t,w) = CartesianGrids.plan_intfact(t,w,sys)
-r₁(w,t) = r₁(w,t,sys)
+r₁(w,t) = ConstrainedSystems.r₁(w,t,sys)
 ```
 
 Now we can construct the integrator. We will use 3rd-order Runge-Kutta:
@@ -190,7 +190,7 @@ We will start by constructing the body points,
 
 ```@repl cylflow
 n = 100;
-body = Bodies.Circle(0.5,n)
+body = Circle(0.5,n)
 ```
 
 We will leave it at the origin. However, to show how we can place it in different orientations, we will construct a rigid-body transformation for demonstration:
