@@ -1,13 +1,12 @@
-module Systems
 
 using DocStringExtensions
 
 export NavierStokes, PointForce, SpatialGauss, Gaussian!, Gaussian, vorticity, velocity, streamfunction, nl
 
 using CartesianGrids
-using ..TimeMarching
-using ..RigidBodyMotions
-using ..Bodies
+using ConstrainedSystems
+using RigidBodyTools
+
 #import ViscousFlow: r₁
 #import ViscousFlow: plan_intfact
 
@@ -41,5 +40,3 @@ include("systems/rigidbodies.jl")
 include("systems/navier_stokes.jl")
 include("systems/histories.jl")
 include("systems/utils.jl")
-
-end

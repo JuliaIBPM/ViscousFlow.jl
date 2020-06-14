@@ -15,7 +15,7 @@ using LinearAlgebra
     ReΔ = 16
     Δx = ReΔ/Re
     Δt = min(0.25*Δx,0.5*Δx^2*Re);
-    sys = Systems.NavierStokes(Re, Δx, xlim, ylim, Δt)
+    sys = NavierStokes(Re, Δx, xlim, ylim, Δt)
 
     w = Nodes(Dual,size(sys));
     wbuffer =  Nodes(Dual,size(sys));
