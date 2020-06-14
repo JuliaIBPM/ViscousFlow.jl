@@ -1,4 +1,3 @@
-import ViscousFlow: Systems
 
 using LinearAlgebra
 
@@ -30,7 +29,7 @@ using LinearAlgebra
 
     ifrk = IFRK(w₀,sys.Δt,
                 (t,w) -> plan_intfact(t,w,sys),
-                (w,t) -> r₁(w,t,sys) ,rk=TimeMarching.RK31)
+                (w,t) -> r₁(w,t,sys) ,rk=ConstrainedSystems.RK31)
 
     t = 0.0
     w₀ .= wexact(t)

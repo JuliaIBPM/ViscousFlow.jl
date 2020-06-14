@@ -73,14 +73,14 @@ Gaussian(σ) = r -> Gaussian!(r, σ)
 function SpatialGauss(buffer::T, w₀::T,x0::Tuple{Float64,Float64},σx::Float64,sys::NavierStokes) where {T <: Union{Nodes,Edges}}
 
 if T<: Nodes
-        xx, yy = coordinates(w₀,dx=sys.grid.Δx,I0=Systems.origin(sys))
+        xx, yy = coordinates(w₀,dx=sys.grid.Δx,I0=origin(sys))
         for (i, xi) in enumerate(xx)
             for (j, yj) in enumerate(yy)
                 buffer[i,j] = Gaussian(σx)(norm([xi-x0[1]; yj-x0[2]]))
             end
         end
 else
-    xx, xy, yx, yy = coordinates(w₀,dx=sys.grid.Δx,I0=Systems.origin(sys))
+    xx, xy, yx, yy = coordinates(w₀,dx=sys.grid.Δx,I0=origin(sys))
     for (i, xi) in enumerate(xx)
         for (j, yj) in enumerate(xy)
             buffer.u[i,j] = Gaussian(σx)(norm([xi-x0[1]; yj-x0[2]]))

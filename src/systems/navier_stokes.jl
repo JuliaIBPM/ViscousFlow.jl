@@ -32,7 +32,7 @@ grid.
 `NavierStokes(Re,Δx,xlimits,ylimits,Δt
               [,U∞ = (0.0, 0.0)][,X̃ = VectorData{0}()]
               [,isstore=false][,isstatic=true][,isfilter=false]
-              [,rk=TimeMarching.RK31]
+              [,rk=ConstrainedSystems.RK31]
               [,ddftype=CartesianGrids.Yang3])` specifies the Reynolds number `Re`, the grid
               spacing `Δx`, the dimensions of the domain in the tuples `xlimits`
               and `ylimits` (excluding the ghost cells), and the time step size `Δt`.
@@ -59,7 +59,7 @@ mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
     "Time step"
     Δt::Float64
     "Runge-Kutta method"
-    rk::TimeMarching.RKParams
+    rk::ConstrainedSystems.RKParams
 
     # Operators
     "Laplacian operator"
@@ -99,7 +99,7 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
                        isstatic = true,
                        isasymptotic = false,
                        isfilter = false,
-                       rk::TimeMarching.RKParams=TimeMarching.RK31,
+                       rk::ConstrainedSystems.RKParams=ConstrainedSystems.RK31,
                        ddftype=CartesianGrids.Yang3)
 
     g = PhysicalGrid(xlimits,ylimits,Δx)
@@ -186,7 +186,7 @@ indices need not lie inside the range of indices occupied by the grid.
 For example, if the range of physical coordinates occupied by the grid
 is (1.0,3.0) x (2.0,4.0), then the origin is not inside the grid.
 """
-CartesianGrids.origin(sys::Systems.NavierStokes) = origin(sys.grid)
+CartesianGrids.origin(sys::NavierStokes) = origin(sys.grid)
 
 # Basic operators for any Navier-Stokes system
 
@@ -195,7 +195,7 @@ CartesianGrids.plan_intfact(Δt,w,sys::NavierStokes{NX,NY}) where {NX,NY} =
         CartesianGrids.plan_intfact(Δt/(sys.Re*cellsize(sys)^2),w)
 
 # RHS of Navier-Stokes (non-linear convective term)
-function TimeMarching.r₁(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY}) where {NX,NY,T}
+function ConstrainedSystems.r₁(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY}) where {NX,NY,T}
 
   Ww = sys.Ww
   Qq = sys.Qq
@@ -211,7 +211,7 @@ function TimeMarching.r₁(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY}) wh
 end
 
 # RHS of Navier-Stokes (non-linear convective term)
-function TimeMarching.r₁(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY},U∞::RigidBodyMotions.RigidBodyMotion) where {NX,NY,T}
+function ConstrainedSystems.r₁(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY},U∞::RigidBodyTools.RigidBodyMotion) where {NX,NY,T}
 
   Ww = sys.Ww
   Qq = sys.Qq
@@ -230,14 +230,14 @@ end
 # Operators for a system with a body
 
 # RHS of a stationary body with no surface velocity
-function TimeMarching.r₂(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,true}) where {NX,NY,N,T}
+function ConstrainedSystems.r₂(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,true}) where {NX,NY,N,T}
     ΔV = VectorData(sys.X̃)
     ΔV.u .-= sys.U∞[1]
     ΔV.v .-= sys.U∞[2]
     return ΔV
 end
 
-function TimeMarching.r₂(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,true},U∞::RigidBodyMotions.RigidBodyMotion) where {NX,NY,N,T}
+function ConstrainedSystems.r₂(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,true},U∞::RigidBodyTools.RigidBodyMotion) where {NX,NY,N,T}
     ΔV = VectorData(sys.X̃)
     _,ċ,_,_,_,_ = U∞(t)
     ΔV.u .-= real(ċ)
@@ -247,30 +247,30 @@ end
 
 # Constraint operators, using stored regularization and interpolation operators
 # B₁ᵀ = CᵀEᵀ, B₂ = -ECL⁻¹
-TimeMarching.B₁ᵀ(f::VectorData{N},sys::NavierStokes{NX,NY,N,C}) where {NX,NY,N,C} = Curl()*(sys.Hmat*f)
-TimeMarching.B₂(w::Nodes{Dual,NX,NY,T},sys::NavierStokes{NX,NY,N,C}) where {NX,NY,T,N,C} = -(sys.Emat*(Curl()*(sys.L\w)))
+ConstrainedSystems.B₁ᵀ(f::VectorData{N},sys::NavierStokes{NX,NY,N,C}) where {NX,NY,N,C} = Curl()*(sys.Hmat*f)
+ConstrainedSystems.B₂(w::Nodes{Dual,NX,NY,T},sys::NavierStokes{NX,NY,N,C}) where {NX,NY,T,N,C} = -(sys.Emat*(Curl()*(sys.L\w)))
 
 # Constraint operators, using non-stored regularization and interpolation operators
-TimeMarching.B₁ᵀ(f::VectorData{N},regop::Regularize,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,N} = Curl()*regop(sys.Fq,f)
-TimeMarching.B₂(w::Nodes{Dual,NX,NY,T},regop::Regularize,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,T,N} = -(regop(sys.Vb,Curl()*(sys.L\w)))
+ConstrainedSystems.B₁ᵀ(f::VectorData{N},regop::Regularize,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,N} = Curl()*regop(sys.Fq,f)
+ConstrainedSystems.B₂(w::Nodes{Dual,NX,NY,T},regop::Regularize,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,T,N} = -(regop(sys.Vb,Curl()*(sys.L\w)))
 
 # Constraint operator constructors
 # Constructor using stored operators
-TimeMarching.plan_constraints(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,true}) where {NX,NY,T,N} =
-                    (f -> TimeMarching.B₁ᵀ(f,sys),w -> TimeMarching.B₂(w,sys))
+ConstrainedSystems.plan_constraints(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,true}) where {NX,NY,T,N} =
+                    (f -> ConstrainedSystems.B₁ᵀ(f,sys),w -> ConstrainedSystems.B₂(w,sys))
 
 # Constructor using non-stored operators
-function TimeMarching.plan_constraints(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,T,N}
+function ConstrainedSystems.plan_constraints(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,T,N}
   regop = Regularize(sys.X̃,CartesianGrids.cellsize(sys);I0=CartesianGrids.origin(sys),issymmetric=true)
 
-  return f -> TimeMarching.B₁ᵀ(f,regop,sys),w -> TimeMarching.B₂(w,regop,sys)
+  return f -> ConstrainedSystems.B₁ᵀ(f,regop,sys),w -> ConstrainedSystems.B₂(w,regop,sys)
 end
 
 # compute physical values of fields
 vorticity(w::Nodes{Dual},sys) = w/cellsize(sys)
 velocity(w::Nodes{Dual},sys) = -curl(sys.L\w)
 streamfunction(w::Nodes{Dual},sys) = -cellsize(sys)*(sys.L\w)
-nl(w::Nodes{Dual},sys) = TimeMarching.r₁(w,0.0,sys)/cellsize(sys)
+nl(w::Nodes{Dual},sys) = ConstrainedSystems.r₁(w,0.0,sys)/cellsize(sys)
 
 
 

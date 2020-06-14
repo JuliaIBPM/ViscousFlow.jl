@@ -23,7 +23,7 @@ using LinearAlgebra
     σx = 2.0
 
     SpatialGauss(wbuffer, w, x0, σx, sys)
-    xx, yy = coordinates(w,dx=sys.grid.Δx,I0=Systems.origin(sys))
+    xx, yy = coordinates(w,dx=sys.grid.Δx,I0=origin(sys))
     @test wbuffer[10, 20] ≈ exp(-0.5*σx^(-2)*((xx[10]-x0[1])^2+(yy[20]-x0[2])^2))
   end
 
@@ -35,7 +35,7 @@ using LinearAlgebra
     ReΔ = 16
     Δx = ReΔ/Re
     Δt = min(0.25*Δx,0.5*Δx^2*Re);
-    sys = Systems.NavierStokes(Re, Δx, xlim, ylim, Δt)
+    sys = NavierStokes(Re, Δx, xlim, ylim, Δt)
 
     q = Edges(Primal,size(sys));
     qbuffer =  Edges(Primal,size(sys));
@@ -43,7 +43,7 @@ using LinearAlgebra
     σx = 2.0
 
     SpatialGauss(qbuffer, q, x0, σx, sys)
-    xx, xy, yx, yy = coordinates(q,dx=sys.grid.Δx,I0=Systems.origin(sys))
+    xx, xy, yx, yy = coordinates(q,dx=sys.grid.Δx,I0=origin(sys))
     @test qbuffer.u[10, 20] ≈ exp(-0.5*σx^(-2)*((xx[10]-x0[1])^2+(xy[20]-x0[2])^2))
 
     @test qbuffer.v[60, 41] ≈ exp(-0.5*σx^(-2)*((yx[60]-x0[1])^2+(yy[41]-x0[2])^2))
@@ -57,11 +57,11 @@ using LinearAlgebra
   ReΔ = 16
   Δx = ReΔ/Re
   Δt = min(0.25*Δx,0.5*Δx^2*Re);
-  sys = Systems.NavierStokes(Re, Δx, xlim, ylim, Δt)
+  sys = NavierStokes(Re, Δx, xlim, ylim, Δt)
 
   q = Edges(Primal,size(sys));
   qbuffer =  Edges(Primal,size(sys));
-  xx, xy, yx, yy = coordinates(q,dx=sys.grid.Δx,I0=Systems.origin(sys))
+  xx, xy, yx, yy = coordinates(q,dx=sys.grid.Δx,I0=origin(sys))
   x0 = (xx[10], xy[30])
   f0 = (1.0, 2.0)
   σx = 2.0
@@ -90,11 +90,11 @@ end
         ReΔ = 16
         Δx = ReΔ/Re
         Δt = min(0.25*Δx,0.5*Δx^2*Re);
-        sys = Systems.NavierStokes(Re, Δx, xlim, ylim, Δt)
+        sys = NavierStokes(Re, Δx, xlim, ylim, Δt)
 
         q = Edges(Primal,size(sys));
         qbuffer =  Edges(Primal,size(sys));
-        xx, xy, yx, yy = coordinates(q,dx=sys.grid.Δx,I0=Systems.origin(sys))
+        xx, xy, yx, yy = coordinates(q,dx=sys.grid.Δx,I0=origin(sys))
         x0 = (xx[10], xy[30])
         f0 = (1.0, 2.0)
         σx = 2.0

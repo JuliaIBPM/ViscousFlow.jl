@@ -22,7 +22,7 @@ Assign the components of rigid body velocity for every body (in inertial coordin
 at time `t` in the overall data structure `V`, using coordinates described by `X` (also in inertial
 coordinate system), based on array of supplied motion `mlist` for each body.
 """
-function RigidBodyMotions.assign_velocity!(V::VectorData{N},X::VectorData{N},
+function RigidBodyTools.assign_velocity!(V::VectorData{N},X::VectorData{N},
                                            bl::BodyList,tlist::Vector{RigidTransform},
                                            mlist::Vector{RigidBodyMotion},t::Real) where {N}
     N == numpts(bl) || error("Inconsistent size of data structures")
