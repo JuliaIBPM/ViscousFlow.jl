@@ -1,7 +1,6 @@
 
 using DocStringExtensions
 
-export NavierStokes, PointForce, SpatialGauss, Gaussian!, Gaussian, vorticity, velocity, streamfunction, nl
 
 using CartesianGrids
 using ConstrainedSystems
@@ -12,6 +11,10 @@ using RigidBodyTools
 
 using LinearAlgebra
 using SparseArrays
+
+export NavierStokes, PointForce, SpatialGauss, Gaussian!, Gaussian,
+       set_navierstokes_params,
+       vorticity, velocity, streamfunction, nl
 
 """
     assign_velocity!(V::VectorData,X::VectorData,

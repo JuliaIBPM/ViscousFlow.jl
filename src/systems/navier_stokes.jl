@@ -151,6 +151,13 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
                                         Vb, Fq, Ww, Qq, isstore)
 end
 
+function set_navierstokes_params(Re::Real; grid_Re = 2.0, cfl = 0.5, fourier = 0.25)
+    Δx = grid_Re/Re
+    Δt = min(fourier*Δx,cfl*Δx^2*Re)
+    return Δx, Δt
+end
+
+
 function Base.show(io::IO, sys::NavierStokes{NX,NY,N,isstatic}) where {NX,NY,N,isstatic}
     print(io, "Navier-Stokes system on a grid of size $NX x $NY")
 end
