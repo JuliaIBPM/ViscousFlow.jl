@@ -1,4 +1,3 @@
-module Utils
 
 export @submodule, @get, MappedVector
 
@@ -64,7 +63,7 @@ macro get(object, fields...)
     end
 end
 
-# Based on Tim Holy's JuliaCon 2016 Keynote 
+# Based on Tim Holy's JuliaCon 2016 Keynote
 """
 A wrapper around an array that applies a function to any index element
 
@@ -112,6 +111,3 @@ function Base.show(io::IO, M::MIME"text/plain", m::MappedVector{T, A, F}) where 
     print(io, "$A → $F ($(1-m.offset):$(length(m.data)-m.offset))")
 end
 Base.show(io::IO, m::MappedVector) = Base.show(io, MIME("text/plain"), m)
-
-end
-
