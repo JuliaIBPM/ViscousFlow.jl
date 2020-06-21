@@ -6,21 +6,14 @@ module ViscousFlow
 
 using Reexport
 
+@reexport using CartesianGrids
+@reexport using RigidBodyTools
+@reexport using ConstrainedSystems
 
 #== Imports/Exports ==#
 
-include("Utils.jl")
-@reexport using .Utils
-
-@reexport using CartesianGrids
-
-@reexport using RigidBodyTools
-
-@reexport using ConstrainedSystems
-
-
-include("Systems.jl")
-
+include("utils.jl")
+include("systems.jl")
 
 
 #== Plot Recipes ==#
