@@ -8,7 +8,6 @@ using Test
 
 #@test isempty(detect_ambiguities(ViscousFlow))
 include("pointforce.jl")
-include("layers.jl")
 include("systems.jl")
 
 

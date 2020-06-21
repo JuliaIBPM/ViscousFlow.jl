@@ -16,11 +16,6 @@ include("Utils.jl")
 
 @reexport using RigidBodyTools
 
-
-include("Layers.jl")
-
-@reexport using .Layers
-
 @reexport using ConstrainedSystems
 
 
