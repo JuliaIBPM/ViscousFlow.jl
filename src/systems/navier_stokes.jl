@@ -195,6 +195,9 @@ is (1.0,3.0) x (2.0,4.0), then the origin is not inside the grid.
 """
 CartesianGrids.origin(sys::NavierStokes) = origin(sys.grid)
 
+_hasfilter(sys::NavierStokes) = !(sys.Cmat == nothing)
+
+
 # Basic operators for any Navier-Stokes system
 
 # Integrating factor -- rescale the time-step size
@@ -276,9 +279,27 @@ end
 # compute physical values of fields
 vorticity(w::Nodes{Dual},sys) = w/cellsize(sys)
 velocity(w::Nodes{Dual},sys) = -curl(sys.L\w)
-streamfunction(w::Nodes{Dual},sys) = -cellsize(sys)*(sys.L\w)
+
+function streamfunction(w::Nodes{Dual},sys)
+  ψ = -cellsize(sys)*(sys.L\w)
+
+  xg, yg = coordinates(ψ,sys.grid)
+  ψ .+= sys.U∞[1]*yg' .- sys.U∞[2]*xg
+  return ψ
+end
+
 nl(w::Nodes{Dual},sys) = ConstrainedSystems.r₁(w,0.0,sys)/cellsize(sys)
 
+force(f::VectorData{N},sys) where {N} = f*cellsize(sys)^2
+
+function pressurejump(fds::VectorData{N},b::Union{Body,BodyList},sys::NavierStokes) where {N}
+    @assert N == numpts(b)
+
+    _hasfilter(sys) ? (fdsf = similar(fds); fdsf .= sys.Cmat*fds) : fdsf = deepcopy(fds)
+
+    nrm = VectorData(normalmid(b))
+    return (nrm.u*fdsf.u + nrm.v*fdsf.v)./dlengthmid(b) # This might need some modification
+end
 
 
 include("navierstokes/systemutils.jl")

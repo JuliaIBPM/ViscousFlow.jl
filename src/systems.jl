@@ -14,7 +14,7 @@ using SparseArrays
 
 export NavierStokes, PointForce, SpatialGauss, Gaussian!, Gaussian,
        set_navierstokes_params,
-       vorticity, velocity, streamfunction, nl
+       vorticity, velocity, streamfunction, nl, force, pressurejump
 
 """
     assign_velocity!(V::VectorData,X::VectorData,
