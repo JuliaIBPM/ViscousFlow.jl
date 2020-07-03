@@ -151,8 +151,8 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
                                         Vb, Fq, Ww, Qq, isstore)
 end
 
-function set_navierstokes_params(Re::Real; grid_Re = 2.0, cfl = 0.5, fourier = 0.25)
-    Δx = grid_Re/Re
+function set_stepsizes(Re::Real; gridRe = 2.0, cfl = 0.5, fourier = 0.25)
+    Δx = gridRe/Re
     Δt = min(fourier*Δx,cfl*Δx^2*Re)
     return Δx, Δt
 end
@@ -183,6 +183,13 @@ size(sys::NavierStokes{NX,NY}) where {NX,NY} = (size(sys,1),size(sys,2))
 Return the grid cell size of system `sys`
 """
 CartesianGrids.cellsize(sys::NavierStokes) = cellsize(sys.grid)
+
+"""
+    timestep(sys::NavierStokes) -> Float64
+
+Return the time step size of system `sys`
+"""
+timestep(sys::NavierStokes) = sys.Δt
 
 """
     origin(sys::NavierStokes) -> Tuple{Int,Int}
@@ -301,7 +308,30 @@ function pressurejump(fds::VectorData{N},b::Union{Body,BodyList},sys::NavierStok
     return (nrm.u*fdsf.u + nrm.v*fdsf.v)./dlengthmid(b) # This might need some modification
 end
 
+"""
+    assign_velocity!(V::VectorData,X::VectorData,
+                     xc::Real,yc::Real,α::Real,
+                     mlist::Vector{RigidBodyMotion},t::Real)
+
+Assign the components of rigid body velocity for every body (in inertial coordinate system)
+at time `t` in the overall data structure `V`, using coordinates described by `X` (also in inertial
+coordinate system), based on array of supplied motion `mlist` for each body.
+"""
+function RigidBodyTools.assign_velocity!(V::VectorData{N},X::VectorData{N},
+                                           bl::BodyList,tlist::Vector{RigidTransform},
+                                           mlist::Vector{RigidBodyMotion},t::Real) where {N}
+    N == numpts(bl) || error("Inconsistent size of data structures")
+    for i in 1:length(bl)
+        ui = view(V.u,bl,i)
+        vi = view(V.v,bl,i)
+        xi = view(X.u,bl,i)
+        yi = view(X.v,bl,i)
+        Ti = tlist[i]
+        assign_velocity!(ui,vi,xi,yi,Ti.trans[1],Ti.trans[2],Ti.α,mlist[i],t)
+    end
+end
+
 
 include("navierstokes/systemutils.jl")
-
+include("navierstokes/rigidbodies.jl")
 include("navierstokes/movingbody.jl")

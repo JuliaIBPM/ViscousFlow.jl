@@ -4,20 +4,22 @@ The `ViscousFlow` module is here
 """
 module ViscousFlow
 
+using DocStringExtensions
 using Reexport
 
 @reexport using CartesianGrids
 @reexport using RigidBodyTools
 @reexport using ConstrainedSystems
 
-#== Imports/Exports ==#
+using LinearAlgebra
+using SparseArrays
 
-include("utils.jl")
-include("systems.jl")
+export NavierStokes, PointForce, SpatialGauss, Gaussian!, Gaussian,
+       set_stepsizes, timestep,
+       vorticity, velocity, streamfunction, nl, force, pressurejump
 
 
-#== Plot Recipes ==#
-
+include("navier_stokes.jl")
 include("plot_recipes.jl")
 
 

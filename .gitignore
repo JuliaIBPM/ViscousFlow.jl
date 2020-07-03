@@ -19,4 +19,5 @@ docs/build/
 !docs/src/assets/*.png
 # vim swap files
 *.swp
+*.gif
 
