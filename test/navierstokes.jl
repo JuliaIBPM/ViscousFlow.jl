@@ -63,6 +63,8 @@ using LinearAlgebra
 
     Δx = 0.02
     Δt = min(0.5*Δx,0.5*Δx^2*Re)
+    Δx2, Δt2 = setstepsizes(Re,gridRe=4)
+    @test Δx == Δx2 && Δt == Δt2
 
     sys = NavierStokes(Re,Δx,xlim,ylim,Δt,U∞ = U∞, X̃ = X, isstore = true)
 
@@ -79,6 +81,26 @@ using LinearAlgebra
     @test sum(qf(1.5).u) ≈ 10
     @test sum(qf(1.5).v) ≈ -10
 
+    w₀ = Nodes(Dual,size(sys))
+    f = VectorData(X)
+
+    plan_intfact(t,u) = CartesianGrids.plan_intfact(t,u,sys)
+    plan_constraints(u,t) = ConstrainedSystems.plan_constraints(u,t,sys)
+    r₁(u,t) = ConstrainedSystems.r₁(u,t,sys)
+    r₂(u,t) = ConstrainedSystems.r₂(u,t,sys)
+
+
+    solver = IFHERK(w₀,f,timestep(sys),plan_intfact,plan_constraints,(r₁,r₂),rk=ConstrainedSystems.RK31)
+
+    t = 0.0
+    u = zero(w₀)
+
+    tsim = 0.2
+    @test timerange(tsim,sys) == Δt:Δt:tsim
+
+    for ti in timerange(tsim,sys)
+      t, u, f = solver(t,u)
+    end
 
   end
 

@@ -1,5 +1,7 @@
 import Base: size
 
+import ConstrainedSystems: r₁, r₂, B₁ᵀ, B₂, plan_constraints
+import CartesianGrids: cellsize, origin
 
 """
 $(TYPEDEF)
@@ -151,16 +153,34 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
                                         Vb, Fq, Ww, Qq, isstore)
 end
 
-function set_stepsizes(Re::Real; gridRe = 2.0, cfl = 0.5, fourier = 0.25)
+
+function Base.show(io::IO, sys::NavierStokes{NX,NY,N,isstatic}) where {NX,NY,N,isstatic}
+    print(io, "Navier-Stokes system on a grid of size $NX x $NY")
+end
+
+"""
+    setstepsizes(Re[,gridRe=2][,cfl=0.5][,fourier=0.5]) -> Float64, Float64
+
+Set the grid cell spacing and time step size based on the Reynolds number `Re`,
+the grid Reynolds number `gridRe`, cfl number `cfl`, and grid Fourier number `fourier`.
+The last three parameters all have default values.
+
+# Example
+
+Here is an example of setting parameters based on Reynolds number 100 (with
+  default choices for grid Reynolds number, CFL number, and Fourier number):
+```jldoctest
+julia> Δx, Δt = setstepsizes(100)
+(0.02, 0.01)
+```
+"""
+function setstepsizes(Re::Real; gridRe = 2.0, cfl = 0.5, fourier = 0.5)
     Δx = gridRe/Re
     Δt = min(fourier*Δx,cfl*Δx^2*Re)
     return Δx, Δt
 end
 
 
-function Base.show(io::IO, sys::NavierStokes{NX,NY,N,isstatic}) where {NX,NY,N,isstatic}
-    print(io, "Navier-Stokes system on a grid of size $NX x $NY")
-end
 
 # some convenience functions
 """
@@ -182,7 +202,7 @@ size(sys::NavierStokes{NX,NY}) where {NX,NY} = (size(sys,1),size(sys,2))
 
 Return the grid cell size of system `sys`
 """
-CartesianGrids.cellsize(sys::NavierStokes) = cellsize(sys.grid)
+cellsize(sys::NavierStokes) = cellsize(sys.grid)
 
 """
     timestep(sys::NavierStokes) -> Float64
@@ -200,138 +220,24 @@ indices need not lie inside the range of indices occupied by the grid.
 For example, if the range of physical coordinates occupied by the grid
 is (1.0,3.0) x (2.0,4.0), then the origin is not inside the grid.
 """
-CartesianGrids.origin(sys::NavierStokes) = origin(sys.grid)
+origin(sys::NavierStokes) = origin(sys.grid)
 
+
+"""
+    timerange(tf,sys::NavierStokes)
+
+Create a range of times, starting at the t = Δt (the time step of `sys`),
+and ending at t = `tf`.
+"""
+timerange(tf,sys) = timestep(sys):timestep(sys):tf
+
+
+# Other functions
 _hasfilter(sys::NavierStokes) = !(sys.Cmat == nothing)
 
 
-# Basic operators for any Navier-Stokes system
-
-# Integrating factor -- rescale the time-step size
-CartesianGrids.plan_intfact(Δt,w,sys::NavierStokes{NX,NY}) where {NX,NY} =
-        CartesianGrids.plan_intfact(Δt/(sys.Re*cellsize(sys)^2),w)
-
-# RHS of Navier-Stokes (non-linear convective term)
-function ConstrainedSystems.r₁(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY}) where {NX,NY,T}
-
-  Ww = sys.Ww
-  Qq = sys.Qq
-  L = sys.L
-  Δx⁻¹ = 1/cellsize(sys)
-
-  grid_interpolate!(Qq,curl(L\w)) # -velocity, on dual edges
-  Qq.u .-= sys.U∞[1]
-  Qq.v .-= sys.U∞[2]
-
-  return rmul!(divergence(Qq∘grid_interpolate!(Ww,w)),Δx⁻¹) # -∇⋅(wu)
-
-end
-
-# RHS of Navier-Stokes (non-linear convective term)
-function ConstrainedSystems.r₁(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY},U∞::RigidBodyTools.RigidBodyMotion) where {NX,NY,T}
-
-  Ww = sys.Ww
-  Qq = sys.Qq
-  L = sys.L
-  Δx⁻¹ = 1/cellsize(sys)
-
-  grid_interpolate!(Qq,curl(L\w)) # -velocity, on dual edges
-  _,ċ,_,_,_,_ = U∞(t)
-  Qq.u .-= real(ċ)
-  Qq.v .-= imag(ċ)
-
-  return rmul!(divergence(Qq∘grid_interpolate!(Ww,w)),Δx⁻¹) # -∇⋅(wu)
-
-end
-
-# Operators for a system with a body
-
-# RHS of a stationary body with no surface velocity
-function ConstrainedSystems.r₂(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,true}) where {NX,NY,N,T}
-    ΔV = VectorData(sys.X̃)
-    ΔV.u .-= sys.U∞[1]
-    ΔV.v .-= sys.U∞[2]
-    return ΔV
-end
-
-function ConstrainedSystems.r₂(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,true},U∞::RigidBodyTools.RigidBodyMotion) where {NX,NY,N,T}
-    ΔV = VectorData(sys.X̃)
-    _,ċ,_,_,_,_ = U∞(t)
-    ΔV.u .-= real(ċ)
-    ΔV.v .-= imag(ċ)
-    return ΔV
-end
-
-# Constraint operators, using stored regularization and interpolation operators
-# B₁ᵀ = CᵀEᵀ, B₂ = -ECL⁻¹
-ConstrainedSystems.B₁ᵀ(f::VectorData{N},sys::NavierStokes{NX,NY,N,C}) where {NX,NY,N,C} = Curl()*(sys.Hmat*f)
-ConstrainedSystems.B₂(w::Nodes{Dual,NX,NY,T},sys::NavierStokes{NX,NY,N,C}) where {NX,NY,T,N,C} = -(sys.Emat*(Curl()*(sys.L\w)))
-
-# Constraint operators, using non-stored regularization and interpolation operators
-ConstrainedSystems.B₁ᵀ(f::VectorData{N},regop::Regularize,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,N} = Curl()*regop(sys.Fq,f)
-ConstrainedSystems.B₂(w::Nodes{Dual,NX,NY,T},regop::Regularize,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,T,N} = -(regop(sys.Vb,Curl()*(sys.L\w)))
-
-# Constraint operator constructors
-# Constructor using stored operators
-ConstrainedSystems.plan_constraints(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,true}) where {NX,NY,T,N} =
-                    (f -> ConstrainedSystems.B₁ᵀ(f,sys),w -> ConstrainedSystems.B₂(w,sys))
-
-# Constructor using non-stored operators
-function ConstrainedSystems.plan_constraints(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,T,N}
-  regop = Regularize(sys.X̃,CartesianGrids.cellsize(sys);I0=CartesianGrids.origin(sys),issymmetric=true)
-
-  return f -> ConstrainedSystems.B₁ᵀ(f,regop,sys),w -> ConstrainedSystems.B₂(w,regop,sys)
-end
-
-# compute physical values of fields
-vorticity(w::Nodes{Dual},sys) = w/cellsize(sys)
-velocity(w::Nodes{Dual},sys) = -curl(sys.L\w)
-
-function streamfunction(w::Nodes{Dual},sys)
-  ψ = -cellsize(sys)*(sys.L\w)
-
-  xg, yg = coordinates(ψ,sys.grid)
-  ψ .+= sys.U∞[1]*yg' .- sys.U∞[2]*xg
-  return ψ
-end
-
-nl(w::Nodes{Dual},sys) = ConstrainedSystems.r₁(w,0.0,sys)/cellsize(sys)
-
-force(f::VectorData{N},sys) where {N} = f*cellsize(sys)^2
-
-function pressurejump(fds::VectorData{N},b::Union{Body,BodyList},sys::NavierStokes) where {N}
-    @assert N == numpts(b)
-
-    _hasfilter(sys) ? (fdsf = similar(fds); fdsf .= sys.Cmat*fds) : fdsf = deepcopy(fds)
-
-    nrm = VectorData(normalmid(b))
-    return (nrm.u*fdsf.u + nrm.v*fdsf.v)./dlengthmid(b) # This might need some modification
-end
-
-"""
-    assign_velocity!(V::VectorData,X::VectorData,
-                     xc::Real,yc::Real,α::Real,
-                     mlist::Vector{RigidBodyMotion},t::Real)
-
-Assign the components of rigid body velocity for every body (in inertial coordinate system)
-at time `t` in the overall data structure `V`, using coordinates described by `X` (also in inertial
-coordinate system), based on array of supplied motion `mlist` for each body.
-"""
-function RigidBodyTools.assign_velocity!(V::VectorData{N},X::VectorData{N},
-                                           bl::BodyList,tlist::Vector{RigidTransform},
-                                           mlist::Vector{RigidBodyMotion},t::Real) where {N}
-    N == numpts(bl) || error("Inconsistent size of data structures")
-    for i in 1:length(bl)
-        ui = view(V.u,bl,i)
-        vi = view(V.v,bl,i)
-        xi = view(X.u,bl,i)
-        yi = view(X.v,bl,i)
-        Ti = tlist[i]
-        assign_velocity!(ui,vi,xi,yi,Ti.trans[1],Ti.trans[2],Ti.α,mlist[i],t)
-    end
-end
-
-
+include("navierstokes/fields.jl")
 include("navierstokes/systemutils.jl")
-include("navierstokes/rigidbodies.jl")
-include("navierstokes/movingbody.jl")
+include("navierstokes/basicoperators.jl")
+include("navierstokes/rigidbodyoperators.jl")
+include("navierstokes/movingbodyoperators.jl")

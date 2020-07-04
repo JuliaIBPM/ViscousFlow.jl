@@ -8,7 +8,7 @@ using Test
 
 #@test isempty(detect_ambiguities(ViscousFlow))
 include("pointforce.jl")
-include("systems.jl")
+include("navierstokes.jl")
 
 
 #@testset ExtendedTestSet "All tests" begin
