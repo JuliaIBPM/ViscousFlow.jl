@@ -237,7 +237,7 @@ _hasfilter(sys::NavierStokes) = !(sys.Cmat == nothing)
 
 
 include("navierstokes/fields.jl")
-include("navierstokes/systemutils.jl")
+include("navierstokes/pulses.jl")
 include("navierstokes/basicoperators.jl")
 include("navierstokes/rigidbodyoperators.jl")
 include("navierstokes/movingbodyoperators.jl")
