@@ -14,6 +14,10 @@ function PointForce(u::GridData,x0::Vector{Float64},f0,t0,σt,sys::NavierStokes)
   return PointForce{typeof(u)}(x0,f0,t0,σt,pulse)
 end
 
+PointForce(u::GridData,x0::Tuple{Float64,Float64},f0,t0,σt,sys::NavierStokes) =
+        PointForce(u,[x0...],f0,t0,σt,sys)
+
+
 function _createfields(f0::Vector{T},x0,sys) where {T<:Real}
   fieldvec = AbstractSpatialField[]
   for f in f0
