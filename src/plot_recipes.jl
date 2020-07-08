@@ -3,5 +3,5 @@ using ColorTypes
 using LaTeXStrings
 import PlotUtils: cgrad
 
-#using Compat
-#using Compat: range
+
+@recipe f(w::T,sys::NavierStokes) where {T<:GridData} = w, sys.grid
