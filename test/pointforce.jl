@@ -7,6 +7,7 @@ using LinearAlgebra
   Δx,Δt = setstepsizes(Re,gridRe=4)
 
   sys = NavierStokes(Re,Δx,xlim,ylim,Δt)
+  w₀ = Nodes(Dual,size(sys))
 
   x0 = [1.5,0.0]
   f0 = 10.0
