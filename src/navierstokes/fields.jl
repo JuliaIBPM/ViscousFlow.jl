@@ -21,5 +21,5 @@ function pressurejump(fds::VectorData{N},b::Union{Body,BodyList},sys::NavierStok
     _hasfilter(sys) ? (fdsf = similar(fds); fdsf .= sys.Cmat*fds) : fdsf = deepcopy(fds)
 
     nrm = VectorData(normalmid(b))
-    return (nrm.u*fdsf.u + nrm.v*fdsf.v)./dlengthmid(b) # This might need some modification
+    return (nrm.u∘fdsf.u + nrm.v∘fdsf.v)./dlengthmid(b) # This might need some modification
 end
