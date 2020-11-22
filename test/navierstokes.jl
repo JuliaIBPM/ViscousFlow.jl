@@ -19,7 +19,7 @@ using LinearAlgebra
     Δt = min(0.5*Δx,0.5*Δx^2*Re)
 
     #sys = NavierStokes((nx,ny),Re,Δx,Δt,U∞ = U∞)
-    sys = NavierStokes(Re,Δx,(0.0,3.0),(0.0,2.0),Δt,U∞ = U∞)
+    sys = NavierStokes(Re,Δx,(0.0,3.0),(0.0,2.0),Δt,freestream = U∞)
 
     w₀ = Nodes(Dual,size(sys))
     xg,yg = coordinates(w₀,dx=Δx)
@@ -66,7 +66,7 @@ using LinearAlgebra
     Δx2, Δt2 = setstepsizes(Re,gridRe=4)
     @test Δx == Δx2 && Δt == Δt2
 
-    sys = NavierStokes(Re,Δx,xlim,ylim,Δt,U∞ = U∞, X̃ = X, isstore = true)
+    sys = NavierStokes(Re,Δx,xlim,ylim,Δt,freestream = U∞, points = X)
 
     @test size(sys,1) == 208
     @test size(sys,2) == 104

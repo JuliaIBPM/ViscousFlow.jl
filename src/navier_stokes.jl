@@ -8,7 +8,7 @@ $(TYPEDEF)
 
 A system type that utilizes a grid of `NX` x `NY` dual cells and `N` Lagrange forcing
 points to solve the discrete Navier-Stokes equations in vorticity form. The
-parameter `isstatic` specifies whether the forcing points remain static in the
+parameter `static_points` specifies whether the forcing points remain static in the
 grid.
 
 # Fields
@@ -19,20 +19,15 @@ grid.
 - `Δt`: Time step
 - `rk`: Runge-Kutta coefficients
 - `L`: Pre-planned discrete Laplacian operator and inverse
-- `X̃`: Lagrange point coordinate data (if present), expressed in inertial coordinates
+- `points`: Lagrange point coordinate data (if present), expressed in inertial coordinates
         (if static) or in body-fixed coordinates (if moving)
-- `Hmat`: Pre-computed regularization matrix (if present)
-- `Emat`: Pre-computed interpolation matrix (if present)
-- `Vb`: Buffer space for vector data on Lagrange points
-- `Fq`: Buffer space for primal cell edge data
-- `Ww`: Buffer space for dual cell edge data
 - `Qq`: More buffer space for dual cell edge data
 - `_isstore`: flag to specify whether to store regularization/interpolation matrices
 
 # Constructors:
 
 `NavierStokes(Re,Δx,xlimits,ylimits,Δt
-              [,U∞ = (0.0, 0.0)][,X̃ = VectorData{0}()]
+              [,U∞ = (0.0, 0.0)][,points = VectorData{0}()]
               [,isstore=false][,isstatic=true][,isfilter=false]
               [,rk=ConstrainedSystems.RK31]
               [,ddftype=CartesianGrids.Yang3])` specifies the Reynolds number `Re`, the grid
@@ -44,7 +39,7 @@ grid.
               the regularization relies on a filtered version.
 
 """
-mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
+mutable struct NavierStokes{NX, NY, N, MT<:MotionType}
     # Physical Parameters
     "Reynolds number"
     Re::Float64
@@ -70,17 +65,14 @@ mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
     # Body coordinate data, if present
     # if a static problem, these coordinates are in inertial coordinates
     # if a non-static problem, in their own coordinate systems
-    X̃::VectorData{N,Float64}
+    points::VectorData{N,Float64}
 
     # Pre-stored regularization and interpolation matrices (if present)
     Hmat::Union{RegularizationMatrix,Nothing}
     Emat::Union{InterpolationMatrix,Nothing}
-    Hmat_grad::Union{RegularizationMatrix,Nothing}
-    Emat_grad::Union{InterpolationMatrix,Nothing}
 
     # Conditioner matrices
     Cmat::Union{AbstractMatrix,Nothing}
-    Cmat_grad::Union{AbstractMatrix,Nothing}
 
     # Scratch space
 
@@ -91,16 +83,14 @@ mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
     Qq::Edges{Dual, NX, NY,Float64}
 
     # Flags
-    _isstore :: Bool
+    _isstored :: Bool
 
 end
 
 function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Real}, Δt;
-                       U∞ = (0.0, 0.0), X̃ = VectorData(0),
-                       isstore = false,
-                       isstatic = true,
-                       isasymptotic = false,
-                       isfilter = false,
+                       freestream = (0.0, 0.0), points = VectorData(0),
+                       store_operators = true,
+                       static_points = true,
                        rk::ConstrainedSystems.RKParams=ConstrainedSystems.RK31,
                        ddftype=CartesianGrids.Yang3)
 
@@ -111,50 +101,34 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
 
     L = plan_laplacian((NX,NY),with_inverse=true)
 
-    Vb = VectorData(X̃)
+    Vb = VectorData(points)
     Fq = Edges{Primal,NX,NY,Float64}()
     Ww = Edges{Dual, NX, NY,Float64}()
     Qq = Edges{Dual, NX, NY,Float64}()
-    N = length(X̃)÷2
+    N = length(points)÷2
 
     Hmat = nothing
     Emat = nothing
     Cmat = nothing
 
-    Hmat_grad = nothing
-    Emat_grad = nothing
-    Cmat_grad = nothing
+    if N > 0 && store_operators && static_points
+      # in this case, points are assumed to be in inertial coordinates
 
-    if length(N) > 0 && isstore && isstatic
-      # in this case, X̃ is assumed to be in inertial coordinates
-
-      regop = Regularize(X̃,Δx;I0=CartesianGrids.origin(g),issymmetric=true,ddftype=ddftype)
+      regop = Regularize(points,Δx;I0=CartesianGrids.origin(g),issymmetric=true,ddftype=ddftype)
       Hmat, Emat = RegularizationMatrix(regop,Vb,Fq)
-      if isfilter
-        regopfilt = Regularize(X̃,Δx;I0=CartesianGrids.origin(g),filter=true,weights=Δx^2,ddftype=ddftype)
-        Ẽmat = InterpolationMatrix(regopfilt,Fq,Vb)
-        Cmat = sparse(Ẽmat*Hmat)
-      end
-      if isasymptotic
-        Hmat_grad, Emat_grad = RegularizationMatrix(regop,TensorData{N}(),grad(Fq))
-        if isfilter
-          Ẽmat_grad = InterpolationMatrix(regopfilt,grad(Fq),TensorData{N}())
-          Cmat_grad = sparse(Ẽmat_grad*Hmat_grad)
-        end
-      end
+      regopfilt = Regularize(points,Δx;I0=CartesianGrids.origin(g),filter=true,weights=Δx^2,ddftype=ddftype)
+      Ẽmat = InterpolationMatrix(regopfilt,Fq,Vb)
+      Cmat = sparse(Ẽmat*Hmat)
     end
 
-    # should be able to set up time marching operator here...
-
-    #NavierStokes{NX, NY, N, isstatic}(Re, U∞, Δx, I0, Δt, rk, L, X̃, Hmat, Emat, Vb, Fq, Ww, Qq, isstore)
-    NavierStokes{NX, NY, N, isstatic}(Re, U∞, g, Δt, rk, L, X̃, Hmat, Emat,
-                                        Hmat_grad, Emat_grad,
-                                        Cmat,Cmat_grad,
-                                        Vb, Fq, Ww, Qq, isstore)
+    NavierStokes{NX, NY, N, _motiontype(static_points)}(Re, freestream, g, Δt, rk,
+                                        L,
+                                        points, Hmat, Emat,Cmat,
+                                        Vb, Fq, Ww, Qq, store_operators)
 end
 
 
-function Base.show(io::IO, sys::NavierStokes{NX,NY,N,isstatic}) where {NX,NY,N,isstatic}
+function Base.show(io::IO, sys::NavierStokes{NX,NY,N}) where {NX,NY,N}
     print(io, "Navier-Stokes system on a grid of size $NX x $NY")
 end
 
@@ -234,7 +208,7 @@ timerange(tf,sys) = timestep(sys):timestep(sys):tf
 
 # Other functions
 _hasfilter(sys::NavierStokes) = !(sys.Cmat == nothing)
-
+_motiontype(isstatic::Bool) = isstatic ? StaticBodies : MovingBodies
 
 include("navierstokes/fields.jl")
 include("navierstokes/pulses.jl")

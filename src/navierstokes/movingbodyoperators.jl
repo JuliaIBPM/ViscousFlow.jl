@@ -36,15 +36,15 @@ r₁(u::Tuple{Nodes{Dual,NX,NY},Vector{Float64}},t,sys::NavierStokes{NX,NY},
 
 ## Constraint equations ##
 
-function r₂(u::Tuple{Nodes{Dual,NX,NY},Vector{Float64}},t,sys::NavierStokes{NX,NY,N,false},
+function r₂(u::Tuple{Nodes{Dual,NX,NY},Vector{Float64}},t,sys::NavierStokes{NX,NY,N,MovingBodies},
                             motion::RigidBodyMotion) where {NX,NY,N}
 
   # for now, just assume that there is only one body. will fix later.
   xc, yc, α = u[2]
   T = RigidBodyTools.RigidTransform((xc,yc),α)
-  x, y = T(sys.X̃.u,sys.X̃.v)
+  x, y = T(sys.points.u,sys.points.v)
 
-  ΔV = VectorData(sys.X̃)
+  ΔV = VectorData(sys.points)
   _,ċ,_,_,α̇,_ = motion(t)
   for i = 1:N
       Δz = (x[i]-xc)+im*(y[i]-yc)
@@ -57,14 +57,14 @@ function r₂(u::Tuple{Nodes{Dual,NX,NY},Vector{Float64}},t,sys::NavierStokes{NX
   return ΔV, Vector{Float64}()
 end
 
-function plan_constraints(u::Tuple{Nodes{Dual,NX,NY},Vector{Float64}},t,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,N}
+function plan_constraints(u::Tuple{Nodes{Dual,NX,NY},Vector{Float64}},t,sys::NavierStokes{NX,NY,N,MovingBodies}) where {NX,NY,N}
 
   # for now, just assume that there is only one body. will fix later.
 
   xc, yc, α = u[2]
   T = RigidBodyTools.RigidTransform((xc,yc),α)
   # should be able to save some time and memory allocation here...
-  x, y = T(sys.X̃.u,sys.X̃.v)
+  x, y = T(sys.points.u,sys.points.v)
   X = VectorData(x,y)
   regop = Regularize(X,cellsize(sys);issymmetric=true,I0=origin(sys))
   if sys._isstore
