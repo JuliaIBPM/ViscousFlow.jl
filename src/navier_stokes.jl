@@ -1,5 +1,7 @@
 import Base: size
 
+const NDIM = 2
+
 import ConstrainedSystems: r₁, r₂, B₁ᵀ, B₂, plan_constraints
 import CartesianGrids: cellsize, origin
 
@@ -52,7 +54,13 @@ mutable struct NavierStokes{NX, NY, N, MT<:MotionType}
 
     # Operators
     "Laplacian operator"
-    L::CartesianGrids.Laplacian{NX,NY}
+    L::CartesianGrids.Laplacian
+    Lc::CartesianGrids.Laplacian
+
+    # Layers
+    df::Union{DoubleLayer,Nothing}
+    sc::Union{SingleLayer,Nothing}
+    sn::Union{SingleLayer,Nothing}
 
     # Body coordinate data, if present
     # if a static problem, these coordinates are in inertial coordinates
@@ -60,19 +68,26 @@ mutable struct NavierStokes{NX, NY, N, MT<:MotionType}
     points::VectorData{N,Float64}
 
     # Pre-stored regularization and interpolation matrices (if present)
-    Hmat::Union{RegularizationMatrix,Nothing}
-    Emat::Union{InterpolationMatrix,Nothing}
+    Rf::Union{RegularizationMatrix,Nothing} # faces (edges)
+    Ef::Union{InterpolationMatrix,Nothing}
+    Rc::Union{RegularizationMatrix,Nothing} # cell centers
+    Ec::Union{InterpolationMatrix,Nothing}
+    Rn::Union{RegularizationMatrix,Nothing} # cell nodes
+    En::Union{InterpolationMatrix,Nothing}
 
     # Conditioner matrices
-    Cmat::Union{AbstractMatrix,Nothing}
+    Cf::Union{AbstractMatrix,Nothing}
 
     # Scratch space
 
     ## Pre-allocated space for intermediate values
     Vb::VectorData{N,Float64}
-    Fq::Edges{Primal, NX, NY, Float64}
+    Sb::ScalarData{N,Float64}
+    Ff::Edges{Primal, NX, NY, Float64}
     Ww::Edges{Dual, NX, NY,Float64}
     Qq::Edges{Dual, NX, NY,Float64}
+    Fc::Nodes{Primal, NX, NY,Float64}
+    Fn::Nodes{Dual, NX, NY,Float64}
 
     # Flags
     _isstored :: Bool
@@ -80,7 +95,7 @@ mutable struct NavierStokes{NX, NY, N, MT<:MotionType}
 end
 
 function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Real}, Δt::Real;
-                       freestream = (0.0, 0.0), points = VectorData(0),
+                       freestream = (0.0, 0.0), bodies::Union{BodyList,Body,Nothing} = nothing,
                        motions::Union{Vector{RigidBodyMotion},Nothing} = nothing,
                        store_operators = true,
                        static_points = true,
@@ -92,45 +107,76 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
 
     α = Δt/(Re*Δx^2)
 
-    L = plan_laplacian((NX,NY),with_inverse=true)
-
-    Vb = VectorData(points)
-    Fq = Edges{Primal,NX,NY,Float64}()
+    Ff = Edges{Primal,NX,NY,Float64}()
     Ww = Edges{Dual, NX, NY,Float64}()
     Qq = Edges{Dual, NX, NY,Float64}()
-    N = length(points)÷2
+    Fc = Nodes{Primal,NX,NY,Float64}()
+    Fn = Nodes{Dual,NX,NY,Float64}()
 
-    Hmat = nothing
-    Emat = nothing
-    Cmat = nothing
+    L = plan_laplacian(Fn,with_inverse=true)
+    Lc = plan_laplacian(Fc,with_inverse=true)
+
+    # Regularization and interpolation operators assumed empty
+    Rf = nothing
+    Ef = nothing
+    Rc = nothing
+    Ec = nothing
+    Rn = nothing
+    En = nothing
+    Cf = nothing
+    df = nothing
+    sn = nothing
+    sc = nothing
+
+    points = isnothing(bodies) ? VectorData(0) : VectorData(collect(bodies))
+    Vb = VectorData(points)
+    Sb = ScalarData(points)
+    N = length(points)÷NDIM
+
 
     if N > 0 && store_operators && static_points
       # in this case, points are assumed to be in inertial coordinates
 
-      regop = Regularize(points,Δx;I0=CartesianGrids.origin(g),issymmetric=true,ddftype=ddftype)
-      Hmat, Emat = RegularizationMatrix(regop,Vb,Fq)
+      body_areas = areas(bodies)
+      body_normals = normals(bodies)
+
+      df = DoubleLayer(bodies,g,Ff)
+      sc = SingleLayer(bodies,g,Fc)
+      sn = SingleLayer(bodies,g,Fn)
+
+      regop = Regularize(points,Δx;I0=CartesianGrids.origin(g),weights=body_areas.data,ddftype=ddftype)
+      Rf = RegularizationMatrix(regop,Vb,Ff)
+      Ef = InterpolationMatrix(regop,Ff,Vb)
+      Rc = RegularizationMatrix(regop,Sb,Fc)
+      Ec = InterpolationMatrix(regop,Fc,Sb)
+      Rn = RegularizationMatrix(regop,Sb,Fn)
+      En = InterpolationMatrix(regop,Fn,Sb)
+
       regopfilt = Regularize(points,Δx;I0=CartesianGrids.origin(g),filter=true,weights=Δx^2,ddftype=ddftype)
-      Ẽmat = InterpolationMatrix(regopfilt,Fq,Vb)
-      Cmat = sparse(Ẽmat*Hmat)
+      Ẽf = InterpolationMatrix(regopfilt,Ff,Vb)
+      Cf = sparse(Ẽf*Rf)
+
     end
 
     NavierStokes{NX, NY, N, _motiontype(static_points)}(Re, freestream, motions,
                                         g, Δt, rk,
-                                        L,
-                                        points, Hmat, Emat,Cmat,
-                                        Vb, Fq, Ww, Qq, store_operators)
+                                        L, Lc,
+                                        df,sc,sn,
+                                        points, Rf, Ef, Rc, Ec, Rn, En, Cf,
+                                        Vb, Sb, Ff, Ww, Qq, Fc, Fn,
+                                        store_operators)
 end
 
 NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::Union{Body,BodyList};kwargs...) =
-        NavierStokes(Re,Δx,xlim,ylim,Δt;points=VectorData(collect(bodies)),kwargs...)
-
-NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,motion::RigidBodyMotion;kwargs...) =
-        NavierStokes(Re,Δx,xlim,ylim,Δt;motions=[motion],points=VectorData(collect(body)),kwargs...)
+        NavierStokes(Re,Δx,xlim,ylim,Δt;bodies=bodies,kwargs...)
 
 function NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList,motions::Vector{RigidBodyMotion};kwargs...)
     length(bodies) == length(motions) || error("Inconsistent lengths of bodies and motions lists")
-    NavierStokes(Re,Δx,xlim,ylim,Δt;motions=motions,points=VectorData(collect(bodies)),kwargs...)
+    NavierStokes(Re,Δx,xlim,ylim,Δt,bodies;motions=motions,kwargs...)
 end
+
+NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,motion::RigidBodyMotion;kwargs...) =
+        NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]),[motion])
 
 
 function Base.show(io::IO, sys::NavierStokes{NX,NY,N,MT}) where {NX,NY,N,MT}

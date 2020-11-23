@@ -66,7 +66,7 @@ using LinearAlgebra
     Δx2, Δt2 = setstepsizes(Re,gridRe=4)
     @test Δx == Δx2 && Δt == Δt2
 
-    sys = NavierStokes(Re,Δx,xlim,ylim,Δt,freestream = U∞, points = X)
+    sys = NavierStokes(Re,Δx,xlim,ylim,Δt,body,freestream = U∞)
 
     @test size(sys,1) == 208
     @test size(sys,2) == 104

@@ -19,11 +19,11 @@ end
 
 # Constraint operators, using stored regularization and interpolation operators
 # B₁ᵀ = CᵀEᵀ, B₂ = -ECL⁻¹
-B₁ᵀ(f::VectorData{N},sys::NavierStokes{NX,NY,N,StaticBodies}) where {NX,NY,N} = Curl()*(sys.Hmat*f)
-B₂(w::Nodes{Dual,NX,NY,T},sys::NavierStokes{NX,NY,N,StaticBodies}) where {NX,NY,T,N} = -(sys.Emat*(Curl()*(sys.L\w)))
+B₁ᵀ(f::VectorData{N},sys::NavierStokes{NX,NY,N,StaticBodies}) where {NX,NY,N} = Curl()*(sys.Rf*f)
+B₂(w::Nodes{Dual,NX,NY,T},sys::NavierStokes{NX,NY,N,StaticBodies}) where {NX,NY,T,N} = -(sys.Ef*(Curl()*(sys.L\w)))
 
 # Constraint operators, using non-stored regularization and interpolation operators
-B₁ᵀ(f::VectorData{N},regop::Regularize,sys::NavierStokes{NX,NY,N,MovingBodies}) where {NX,NY,N} = Curl()*regop(sys.Fq,f)
+B₁ᵀ(f::VectorData{N},regop::Regularize,sys::NavierStokes{NX,NY,N,MovingBodies}) where {NX,NY,N} = Curl()*regop(sys.Ff,f)
 B₂(w::Nodes{Dual,NX,NY,T},regop::Regularize,sys::NavierStokes{NX,NY,N,MovingBodies}) where {NX,NY,T,N} = -(regop(sys.Vb,Curl()*(sys.L\w)))
 
 # Constraint operator constructors

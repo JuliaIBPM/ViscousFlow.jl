@@ -66,11 +66,13 @@ function plan_constraints(u::Tuple{Nodes{Dual,NX,NY},Vector{Float64}},t,sys::Nav
   # should be able to save some time and memory allocation here...
   x, y = T(sys.points.u,sys.points.v)
   X = VectorData(x,y)
-  regop = Regularize(X,cellsize(sys);issymmetric=true,I0=origin(sys))
+  regop = Regularize(X,cellsize(sys);I0=origin(g),weights=sys.areas.data,ddftype=ddftype)
+
   if sys._isstore
-    Hmat, Emat = RegularizationMatrix(regop,VectorData{N}(),Edges{Primal,NX,NY}())
-    sys.Hmat = Hmat
-    sys.Emat = Emat
+    Rf = RegularizationMatrix(regop,sys.Vb,sys.Ff)
+    Ef = InterpolationMatrix(regop,sys.Ff,sys.Vb)
+    sys.Rf = Rf
+    sys.Ef = Ef
     return (f->B₁ᵀ(f,sys), f->zeros(Float64,size(u[2]))),
            (w->B₂(w,sys), u->Vector{Float64}())
   else
