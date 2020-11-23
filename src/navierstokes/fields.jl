@@ -1,7 +1,19 @@
 ### Computing fields and other physical quantities ###
 
-vorticity(w::Nodes{Dual},sys) = w/cellsize(sys)
-velocity(w::Nodes{Dual},sys) = -curl(sys.L\w)
+@inline vorticity(w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY}) where {NX,NY} =
+        w/cellsize(sys)
+        
+#velocity(w::Nodes{Dual},sys) = -curl(sys.L\w)
+function velocity!(u::Edges{Primal,NX,NY},w::Nodes{Dual,NX,NY},Δus::VectorData{N},nrm::VectorData{N},sys::NavierStokes{NX,NY,N}) where {NX,NY,N}
+    u .= -curl(sys.L\w) + cellsize(sys)*grad(sys.Lc\sys.sc(pointwise_dot(Δus,nrm)))
+    return u
+end
+function velocity!(u::Edges{Primal,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY,N}) where {NX,NY,N}
+    u .= -curl(sys.L\w)
+    return u
+end
+velocity(w::Nodes{Dual,NX,NY},a...) where {NX,NY} = velocity!(Edges(Primal,(NX,NY)),w,a...)
+
 
 function streamfunction(w::Nodes{Dual},sys)
   ψ = -cellsize(sys)*(sys.L\w)

@@ -11,32 +11,22 @@ points to solve the discrete Navier-Stokes equations in vorticity form. The
 parameter `static_points` specifies whether the forcing points remain static in the
 grid.
 
-# Fields
-- `Re`: Reynolds number
-- `U∞`: Tuple of components of free-stream velocity
-- `Δx`: Size of each side of a grid cell
-- `I0`: Tuple of indices of the primal node corresponding to physical origin
-- `Δt`: Time step
-- `rk`: Runge-Kutta coefficients
-- `L`: Pre-planned discrete Laplacian operator and inverse
-- `points`: Lagrange point coordinate data (if present), expressed in inertial coordinates
-        (if static) or in body-fixed coordinates (if moving)
-- `Qq`: More buffer space for dual cell edge data
-- `_isstore`: flag to specify whether to store regularization/interpolation matrices
-
 # Constructors:
 
 `NavierStokes(Re,Δx,xlimits,ylimits,Δt
-              [,U∞ = (0.0, 0.0)][,points = VectorData{0}()]
-              [,isstore=false][,isstatic=true][,isfilter=false]
+              [,freestream = (0.0, 0.0)][,points = VectorData(0)]
+              [,store_operators=true][,static_points=true]
               [,rk=ConstrainedSystems.RK31]
-              [,ddftype=CartesianGrids.Yang3])` specifies the Reynolds number `Re`, the grid
+              [,ddftype=CartesianGrids.Yang3])`specifies the Reynolds number `Re`, the grid
               spacing `Δx`, the dimensions of the domain in the tuples `xlimits`
               and `ylimits` (excluding the ghost cells), and the time step size `Δt`.
-              The other arguments are optional. Note that `isstore` set to `true`
-              would store matrix versions of the operators. This makes the method
-              faster, at the cost of storage. If `isfilter` is set to true, then
-              the regularization relies on a filtered version.
+              The other arguments are optional. Note that `store_operators` set to `true`
+              stores matrix versions of the operators. This makes the method
+              faster, at the cost of storage.
+
+`NavierStokes(Re,Δx,xlimits,ylimits,Δt,bodies::Body/BodyList)` passes the body information
+              directly. The other keywords can be supplied, although `points`
+              would be ignored.
 
 """
 mutable struct NavierStokes{NX, NY, N, MT<:MotionType}
@@ -45,6 +35,8 @@ mutable struct NavierStokes{NX, NY, N, MT<:MotionType}
     Re::Float64
     "Free stream velocities"
     U∞::Tuple{Float64, Float64}
+    "Body motions"
+    motions::Union{Vector{RigidBodyMotion},Nothing}
 
     # Discretization
     "Grid metadata"
@@ -87,8 +79,9 @@ mutable struct NavierStokes{NX, NY, N, MT<:MotionType}
 
 end
 
-function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Real}, Δt;
+function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Real}, Δt::Real;
                        freestream = (0.0, 0.0), points = VectorData(0),
+                       motions::Union{Vector{RigidBodyMotion},Nothing} = nothing,
                        store_operators = true,
                        static_points = true,
                        rk::ConstrainedSystems.RKParams=ConstrainedSystems.RK31,
@@ -121,15 +114,28 @@ function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Rea
       Cmat = sparse(Ẽmat*Hmat)
     end
 
-    NavierStokes{NX, NY, N, _motiontype(static_points)}(Re, freestream, g, Δt, rk,
+    NavierStokes{NX, NY, N, _motiontype(static_points)}(Re, freestream, motions,
+                                        g, Δt, rk,
                                         L,
                                         points, Hmat, Emat,Cmat,
                                         Vb, Fq, Ww, Qq, store_operators)
 end
 
+NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::Union{Body,BodyList};kwargs...) =
+        NavierStokes(Re,Δx,xlim,ylim,Δt;points=VectorData(collect(bodies)),kwargs...)
 
-function Base.show(io::IO, sys::NavierStokes{NX,NY,N}) where {NX,NY,N}
-    print(io, "Navier-Stokes system on a grid of size $NX x $NY")
+NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,motion::RigidBodyMotion;kwargs...) =
+        NavierStokes(Re,Δx,xlim,ylim,Δt;motions=[motion],points=VectorData(collect(body)),kwargs...)
+
+function NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList,motions::Vector{RigidBodyMotion};kwargs...)
+    length(bodies) == length(motions) || error("Inconsistent lengths of bodies and motions lists")
+    NavierStokes(Re,Δx,xlim,ylim,Δt;motions=motions,points=VectorData(collect(bodies)),kwargs...)
+end
+
+
+function Base.show(io::IO, sys::NavierStokes{NX,NY,N,MT}) where {NX,NY,N,MT}
+    mtype = (MT == StaticBodies) ? "static" : "moving"
+    print(io, "Navier-Stokes system on a grid of size $NX x $NY and $N $mtype immersed points")
 end
 
 """
