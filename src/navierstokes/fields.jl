@@ -2,26 +2,32 @@
 
 @inline vorticity(w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY}) where {NX,NY} =
         w/cellsize(sys)
-        
-#velocity(w::Nodes{Dual},sys) = -curl(sys.L\w)
+
 function velocity!(u::Edges{Primal,NX,NY},w::Nodes{Dual,NX,NY},Δus::VectorData{N},nrm::VectorData{N},sys::NavierStokes{NX,NY,N}) where {NX,NY,N}
-    u .= -curl(sys.L\w) + cellsize(sys)*grad(sys.Lc\sys.sc(pointwise_dot(Δus,nrm)))
+    u .= curl(_streamfunction(w,sys)) + cellsize(sys)*grad(sys.Lc\sys.sc(pointwise_dot(Δus,nrm)))
+    U∞, V∞ = freestream(t,sys)
+    u.u .+= U∞
+    u.v .+= V∞
     return u
 end
 function velocity!(u::Edges{Primal,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY,N}) where {NX,NY,N}
-    u .= -curl(sys.L\w)
+    u .= curl(_streamfunction(w,sys))
     return u
 end
 velocity(w::Nodes{Dual,NX,NY},a...) where {NX,NY} = velocity!(Edges(Primal,(NX,NY)),w,a...)
 
 
-function streamfunction(w::Nodes{Dual},sys)
-  ψ = -cellsize(sys)*(sys.L\w)
+function streamfunction(w::Nodes{Dual},sys::NavierStokes;time=0.0)
+  ψ = cellsize(sys)*_streamfunction(w,sys)
 
   xg, yg = coordinates(ψ,sys.grid)
-  ψ .+= sys.U∞[1]*yg' .- sys.U∞[2]*xg
+  U∞, V∞ = freestream(time,sys)
+  ψ .+= U∞*yg' .- V∞*xg
   return ψ
 end
+
+_streamfunction(w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY}) where {NX,NY} = -(sys.L\w)
+
 
 nl(w::Nodes{Dual},sys) = ConstrainedSystems.r₁(w,0.0,sys)/cellsize(sys)
 

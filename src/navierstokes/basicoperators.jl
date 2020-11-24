@@ -1,5 +1,6 @@
 ### Basic operators for any Navier-Stokes system ###
 
+
 # Integrating factor -- rescale the time-step size
 CartesianGrids.plan_intfact(Δt,w,sys::NavierStokes{NX,NY}) where {NX,NY} =
        CartesianGrids.plan_intfact(Δt/(sys.Re*cellsize(sys)^2),w)

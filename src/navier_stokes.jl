@@ -11,7 +11,7 @@ $(TYPEDEF)
 A system type that utilizes a grid of `NX` x `NY` dual cells and `N` Lagrange forcing
 points to solve the discrete Navier-Stokes equations in vorticity form. The
 parameter `static_points` specifies whether the forcing points remain static in the
-grid.
+grid. It should be set to `false` if a supplied motion requires that the points move.
 
 # Constructors:
 
@@ -19,12 +19,16 @@ grid.
               [,freestream = (0.0, 0.0)]
               [,store_operators=true][,static_points=true]
               [,rk=ConstrainedSystems.RK31]
+              [,flow_side=BothSides]
               [,ddftype=CartesianGrids.Yang3])`specifies the Reynolds number `Re`, the grid
               spacing `Δx`, the dimensions of the domain in the tuples `xlimits`
               and `ylimits` (excluding the ghost cells), and the time step size `Δt`.
               The other arguments are optional. Note that `store_operators` set to `true`
               stores matrix versions of the operators. This makes the method
-              faster, at the cost of storage.
+              faster, at the cost of storage. The `freestream` argument can be
+              passed as either a tuple (a static freestream) or a `RigidBodyMotion`
+              for a time-varying freestream. The `flow_side` can be set to
+              `ExternalFlow`, `InternalFlow`, or `BothSides` (default).
 
 `NavierStokes(Re,Δx,xlimits,ylimits,Δt,bodies::Body/BodyList)` passes the body
               information. The other keywords can also be supplied. This
@@ -36,14 +40,8 @@ grid.
               The other keywords can also be supplied. The list of
               motions must be the same length as the list of bodies.
 
-`NavierStokes(Re,Δx,xlimits,ylimits,Δt,bodies::Body/BodyList,
-              motions::RigidBodyMotion/RigidMotionList)`
-              passes the body and associated motion information.
-              The other keywords can also be supplied. The list of
-              motions must be the same length as the list of bodies.`
-
 """
-mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType}
+mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, SD<:FlowSide}
     # Physical Parameters
     "Reynolds number"
     Re::Float64
@@ -113,8 +111,9 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
                        motions::Union{RigidMotionList,Nothing} = nothing,
                        store_operators = true,
                        static_points = true,
+                       flow_side::Type{SD} = BothSides,
                        rk::ConstrainedSystems.RKParams=ConstrainedSystems.RK31,
-                       ddftype=CartesianGrids.Yang3) where {F}
+                       ddftype=CartesianGrids.Yang3) where {F,SD<:FlowSide}
 
     g = PhysicalGrid(xlimits,ylimits,Δx)
     NX, NY = size(g)
@@ -154,9 +153,11 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
       body_areas = areas(bodies)
       body_normals = normals(bodies)
 
-      df = DoubleLayer(bodies,g,Ff)
-      sc = SingleLayer(bodies,g,Fc)
-      sn = SingleLayer(bodies,g,Fn)
+      if !(flow_side==BothSides)
+        df = DoubleLayer(bodies,g,Ff)
+        sc = SingleLayer(bodies,g,Fc)
+        sn = SingleLayer(bodies,g,Fn)
+      end
 
       regop = Regularize(points,Δx;I0=CartesianGrids.origin(g),weights=body_areas.data,ddftype=ddftype)
       Rf = RegularizationMatrix(regop,Vb,Ff)
@@ -172,7 +173,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
 
     end
 
-    NavierStokes{NX, NY, N, _motiontype(static_points), _fstype(F)}(
+    NavierStokes{NX, NY, N, _motiontype(static_points), _fstype(F), flow_side}(
                           Re, freestream, bodies, motions,
                           g, Δt, rk,
                           L, Lc,
@@ -183,7 +184,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
 end
 
 NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList;
-        motions=RigidMotionList(map(x -> RigidBodyMotion(complex(0.0),0.0),bodies)),kwargs...) =
+        motions=RigidMotionList(map(x -> RigidBodyMotion(0.0,0.0),bodies)),kwargs...) =
         NavierStokes(Re,Δx,xlim,ylim,Δt;bodies=bodies,motions=motions,kwargs...)
 
 NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body;kwargs...) =
@@ -280,6 +281,17 @@ and ending at t = `tf`.
 """
 timerange(tf,sys) = timestep(sys):timestep(sys):tf
 
+"""
+    freestream(t,sys) -> Tuple
+
+Return the value of the freestream in `sys` at time `t` as a tuple.
+"""
+freestream(t::Real,sys::NavierStokes{NX,NY,N,MT,StaticFreestream}) where {NX,NY,N,MT} = sys.U∞
+
+function freestream(t::Real,sys::NavierStokes{NX,NY,N,MT,VariableFreestream}) where {NX,NY,N,MT}
+    _,ċ,_,_,_,_ = sys.U∞(t)
+    return reim(ċ)
+end
 
 # Other functions
 _hasfilter(sys::NavierStokes) = !(sys.Cmat == nothing)

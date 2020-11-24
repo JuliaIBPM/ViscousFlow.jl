@@ -29,6 +29,12 @@ abstract type FreestreamType end
 abstract type StaticFreestream <: FreestreamType end
 abstract type VariableFreestream <: FreestreamType end
 
+abstract type FlowSide end
+abstract type ExternalFlow <: FlowSide end
+abstract type InternalFlow <: FlowSide end
+abstract type BothSides <: FlowSide end
+
+
 include("navier_stokes.jl")
 include("plot_recipes.jl")
 
