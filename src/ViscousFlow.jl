@@ -21,9 +21,13 @@ export NavierStokes, PointForce, SpatialGauss, Gaussian!, Gaussian,
        setstepsizes, timestep, timerange,
        vorticity, velocity, streamfunction, nl, force, pressurejump
 
-abstract type MotionType end
-abstract type StaticBodies <: MotionType end
-abstract type MovingBodies <: MotionType end
+abstract type PointMotionType end
+abstract type StaticPoints <: PointMotionType end
+abstract type MovingPoints <: PointMotionType end
+
+abstract type FreestreamType end
+abstract type StaticFreestream <: FreestreamType end
+abstract type VariableFreestream <: FreestreamType end
 
 include("navier_stokes.jl")
 include("plot_recipes.jl")

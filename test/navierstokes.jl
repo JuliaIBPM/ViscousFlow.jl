@@ -21,6 +21,9 @@ using LinearAlgebra
     #sys = NavierStokes((nx,ny),Re,Δx,Δt,U∞ = U∞)
     sys = NavierStokes(Re,Δx,(0.0,3.0),(0.0,2.0),Δt,freestream = U∞)
 
+    @test isnothing(sys.motions)
+    @test isnothing(sys.bodies)
+
     w₀ = Nodes(Dual,size(sys))
     xg,yg = coordinates(w₀,dx=Δx)
     x0 = (1,1)
@@ -66,7 +69,10 @@ using LinearAlgebra
     Δx2, Δt2 = setstepsizes(Re,gridRe=4)
     @test Δx == Δx2 && Δt == Δt2
 
+    motion = RigidBodyTools.RigidBodyMotion(complex(0.0),0.0)
     sys = NavierStokes(Re,Δx,xlim,ylim,Δt,body,freestream = U∞)
+
+    @test sys.motions[1].kin == motion.kin
 
     @test size(sys,1) == 208
     @test size(sys,2) == 104

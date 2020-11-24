@@ -36,7 +36,7 @@ r₁(u::Tuple{Nodes{Dual,NX,NY},Vector{Float64}},t,sys::NavierStokes{NX,NY},
 
 ## Constraint equations ##
 
-function r₂(u::Tuple{Nodes{Dual,NX,NY},Vector{Float64}},t,sys::NavierStokes{NX,NY,N,MovingBodies},
+function r₂(u::Tuple{Nodes{Dual,NX,NY},Vector{Float64}},t,sys::NavierStokes{NX,NY,N,MovingPoints},
                             motion::RigidBodyMotion) where {NX,NY,N}
 
   # for now, just assume that there is only one body. will fix later.
@@ -57,7 +57,7 @@ function r₂(u::Tuple{Nodes{Dual,NX,NY},Vector{Float64}},t,sys::NavierStokes{NX
   return ΔV, Vector{Float64}()
 end
 
-function plan_constraints(u::Tuple{Nodes{Dual,NX,NY},Vector{Float64}},t,sys::NavierStokes{NX,NY,N,MovingBodies}) where {NX,NY,N}
+function plan_constraints(u::Tuple{Nodes{Dual,NX,NY},Vector{Float64}},t,sys::NavierStokes{NX,NY,N,MovingPoints}) where {NX,NY,N}
 
   # for now, just assume that there is only one body. will fix later.
 

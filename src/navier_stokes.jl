@@ -16,7 +16,7 @@ grid.
 # Constructors:
 
 `NavierStokes(Re,Δx,xlimits,ylimits,Δt
-              [,freestream = (0.0, 0.0)][,points = VectorData(0)]
+              [,freestream = (0.0, 0.0)]
               [,store_operators=true][,static_points=true]
               [,rk=ConstrainedSystems.RK31]
               [,ddftype=CartesianGrids.Yang3])`specifies the Reynolds number `Re`, the grid
@@ -26,19 +26,33 @@ grid.
               stores matrix versions of the operators. This makes the method
               faster, at the cost of storage.
 
-`NavierStokes(Re,Δx,xlimits,ylimits,Δt,bodies::Body/BodyList)` passes the body information
-              directly. The other keywords can be supplied, although `points`
-              would be ignored.
+`NavierStokes(Re,Δx,xlimits,ylimits,Δt,bodies::Body/BodyList)` passes the body
+              information. The other keywords can also be supplied. This
+              sets the motions of the body/ies to be stationary.
+
+`NavierStokes(Re,Δx,xlimits,ylimits,Δt,bodies::Body/BodyList,
+              motions::RigidBodyMotion/RigidMotionList)`
+              passes the body and associated motion information.
+              The other keywords can also be supplied. The list of
+              motions must be the same length as the list of bodies.
+
+`NavierStokes(Re,Δx,xlimits,ylimits,Δt,bodies::Body/BodyList,
+              motions::RigidBodyMotion/RigidMotionList)`
+              passes the body and associated motion information.
+              The other keywords can also be supplied. The list of
+              motions must be the same length as the list of bodies.`
 
 """
-mutable struct NavierStokes{NX, NY, N, MT<:MotionType}
+mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType}
     # Physical Parameters
     "Reynolds number"
     Re::Float64
     "Free stream velocities"
-    U∞::Tuple{Float64, Float64}
+    U∞::Union{Tuple{Float64, Float64},RigidBodyMotion}
+    "Bodies"
+    bodies::Union{BodyList,Nothing}
     "Body motions"
-    motions::Union{Vector{RigidBodyMotion},Nothing}
+    motions::Union{RigidMotionList,Nothing}
 
     # Discretization
     "Grid metadata"
@@ -95,12 +109,12 @@ mutable struct NavierStokes{NX, NY, N, MT<:MotionType}
 end
 
 function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Real}, Δt::Real;
-                       freestream = (0.0, 0.0), bodies::Union{BodyList,Body,Nothing} = nothing,
-                       motions::Union{Vector{RigidBodyMotion},Nothing} = nothing,
+                       freestream::F = (0.0, 0.0), bodies::Union{BodyList,Nothing} = nothing,
+                       motions::Union{RigidMotionList,Nothing} = nothing,
                        store_operators = true,
                        static_points = true,
                        rk::ConstrainedSystems.RKParams=ConstrainedSystems.RK31,
-                       ddftype=CartesianGrids.Yang3)
+                       ddftype=CartesianGrids.Yang3) where {F}
 
     g = PhysicalGrid(xlimits,ylimits,Δx)
     NX, NY = size(g)
@@ -158,30 +172,38 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
 
     end
 
-    NavierStokes{NX, NY, N, _motiontype(static_points)}(Re, freestream, motions,
-                                        g, Δt, rk,
-                                        L, Lc,
-                                        df,sc,sn,
-                                        points, Rf, Ef, Rc, Ec, Rn, En, Cf,
-                                        Vb, Sb, Ff, Ww, Qq, Fc, Fn,
-                                        store_operators)
+    NavierStokes{NX, NY, N, _motiontype(static_points), _fstype(F)}(
+                          Re, freestream, bodies, motions,
+                          g, Δt, rk,
+                          L, Lc,
+                          df,sc,sn,
+                          points, Rf, Ef, Rc, Ec, Rn, En, Cf,
+                          Vb, Sb, Ff, Ww, Qq, Fc, Fn,
+                          store_operators)
 end
 
-NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::Union{Body,BodyList};kwargs...) =
-        NavierStokes(Re,Δx,xlim,ylim,Δt;bodies=bodies,kwargs...)
+NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList;
+        motions=RigidMotionList(map(x -> RigidBodyMotion(complex(0.0),0.0),bodies)),kwargs...) =
+        NavierStokes(Re,Δx,xlim,ylim,Δt;bodies=bodies,motions=motions,kwargs...)
 
-function NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList,motions::Vector{RigidBodyMotion};kwargs...)
+NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body;kwargs...) =
+        NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]);kwargs...)
+
+function NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList,motions::RigidMotionList;kwargs...)
     length(bodies) == length(motions) || error("Inconsistent lengths of bodies and motions lists")
     NavierStokes(Re,Δx,xlim,ylim,Δt,bodies;motions=motions,kwargs...)
 end
 
 NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,motion::RigidBodyMotion;kwargs...) =
-        NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]),[motion])
+        NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]),RigidMotionList([motion]))
 
 
-function Base.show(io::IO, sys::NavierStokes{NX,NY,N,MT}) where {NX,NY,N,MT}
-    mtype = (MT == StaticBodies) ? "static" : "moving"
-    print(io, "Navier-Stokes system on a grid of size $NX x $NY and $N $mtype immersed points")
+function Base.show(io::IO, sys::NavierStokes{NX,NY,N,MT,FS}) where {NX,NY,N,MT,FS}
+    mtype = (MT == StaticPoints) ? "static" : "moving"
+    fstype = (FS == StaticFreestream) ? "Static freestream = $(sys.U∞)" : "Variable freestream"
+    println(io, "Navier-Stokes system on a grid of size $NX x $NY and $N $mtype immersed points")
+    println(io, "   $fstype")
+    println(io, "   $(length(sys.bodies)) bodies")
 end
 
 """
@@ -260,7 +282,10 @@ timerange(tf,sys) = timestep(sys):timestep(sys):tf
 
 # Other functions
 _hasfilter(sys::NavierStokes) = !(sys.Cmat == nothing)
-_motiontype(isstatic::Bool) = isstatic ? StaticBodies : MovingBodies
+_motiontype(isstatic::Bool) = isstatic ? StaticPoints : MovingPoints
+_fstype(F) = F == RigidBodyMotion ? VariableFreestream : StaticFreestream
+
+
 
 include("navierstokes/fields.jl")
 include("navierstokes/pulses.jl")
