@@ -195,15 +195,16 @@ function NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList,motions::RigidMotion
 end
 
 NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,motion::RigidBodyMotion;kwargs...) =
-        NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]),RigidMotionList([motion]))
+        NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]),RigidMotionList([motion]);kwargs...)
 
 
 function Base.show(io::IO, sys::NavierStokes{NX,NY,N,MT,FS}) where {NX,NY,N,MT,FS}
     mtype = (MT == StaticPoints) ? "static" : "moving"
-    fstype = (FS == StaticFreestream) ? "Static freestream = $(sys.U∞)" : "Variable freestream"
+    fsmsg = (FS == StaticFreestream) ? "Static freestream = $(sys.U∞)" : "Variable freestream"
+    bdmsg = (length(sys.bodies) == 1) ? "1 body" : "$(length(sys.bodies)) bodies"
     println(io, "Navier-Stokes system on a grid of size $NX x $NY and $N $mtype immersed points")
-    println(io, "   $fstype")
-    println(io, "   $(length(sys.bodies)) bodies")
+    println(io, "   $fsmsg")
+    println(io, "   $bdmsg")
 end
 
 """
