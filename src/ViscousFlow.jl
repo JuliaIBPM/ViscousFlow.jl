@@ -18,8 +18,10 @@ using LinearAlgebra
 using SparseArrays
 
 export NavierStokes, PointForce, SpatialGauss, Gaussian!, Gaussian,
+       ExternalFlow, InternalFlow, ExternalInternalFlow,
        setstepsizes, timestep, timerange,
-       vorticity, velocity, streamfunction, nl, force, pressurejump
+       vorticity, velocity, streamfunction,
+       velocity!, streamfunction!, nl, force, pressurejump
 
 abstract type PointMotionType end
 abstract type StaticPoints <: PointMotionType end
@@ -32,7 +34,7 @@ abstract type VariableFreestream <: FreestreamType end
 abstract type FlowSide end
 abstract type ExternalFlow <: FlowSide end
 abstract type InternalFlow <: FlowSide end
-abstract type BothSides <: FlowSide end
+abstract type ExternalInternalFlow <: FlowSide end
 
 
 include("navier_stokes.jl")

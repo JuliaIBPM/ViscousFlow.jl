@@ -4,6 +4,8 @@ const NDIM = 2
 
 import ConstrainedSystems: r₁, r₂, B₁ᵀ, B₂, plan_constraints
 import CartesianGrids: cellsize, origin
+import RigidBodyTools: assign_velocity!
+import ImmersedLayers: normals, areas
 
 """
 $(TYPEDEF)
@@ -19,7 +21,7 @@ grid. It should be set to `false` if a supplied motion requires that the points 
               [,freestream = (0.0, 0.0)]
               [,store_operators=true][,static_points=true]
               [,rk=ConstrainedSystems.RK31]
-              [,flow_side=BothSides]
+              [,flow_side=ExternalInternalFlow]
               [,ddftype=CartesianGrids.Yang3])`specifies the Reynolds number `Re`, the grid
               spacing `Δx`, the dimensions of the domain in the tuples `xlimits`
               and `ylimits` (excluding the ghost cells), and the time step size `Δt`.
@@ -28,7 +30,7 @@ grid. It should be set to `false` if a supplied motion requires that the points 
               faster, at the cost of storage. The `freestream` argument can be
               passed as either a tuple (a static freestream) or a `RigidBodyMotion`
               for a time-varying freestream. The `flow_side` can be set to
-              `ExternalFlow`, `InternalFlow`, or `BothSides` (default).
+              `ExternalFlow`, `InternalFlow`, or `ExternalInternalFlow` (default).
 
 `NavierStokes(Re,Δx,xlimits,ylimits,Δt,bodies::Body/BodyList)` passes the body
               information. The other keywords can also be supplied. This
@@ -67,12 +69,11 @@ mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, 
     # Operators
     "Laplacian operator"
     L::CartesianGrids.Laplacian
-    Lc::CartesianGrids.Laplacian
 
     # Layers
-    df::Union{DoubleLayer,Nothing}
-    sc::Union{SingleLayer,Nothing}
-    sn::Union{SingleLayer,Nothing}
+    dlf::Union{DoubleLayer,Nothing}
+    slc::Union{SingleLayer,Nothing}
+    sln::Union{SingleLayer,Nothing}
 
     # Body coordinate data, if present
     # if a static problem, these coordinates are in inertial coordinates
@@ -95,11 +96,11 @@ mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, 
     ## Pre-allocated space for intermediate values
     Vb::VectorData{N,Float64}
     Sb::ScalarData{N,Float64}
-    Ff::Edges{Primal, NX, NY, Float64}
-    Ww::Edges{Dual, NX, NY,Float64}
-    Qq::Edges{Dual, NX, NY,Float64}
-    Fc::Nodes{Primal, NX, NY,Float64}
-    Fn::Nodes{Dual, NX, NY,Float64}
+    Δus::VectorData{N,Float64}
+    Vf::Edges{Primal, NX, NY, Float64}
+    Sc::Nodes{Primal, NX, NY,Float64}
+    Sn::Nodes{Dual, NX, NY,Float64}
+
 
     # Flags
     _isstored :: Bool
@@ -111,7 +112,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
                        motions::Union{RigidMotionList,Nothing} = nothing,
                        store_operators = true,
                        static_points = true,
-                       flow_side::Type{SD} = BothSides,
+                       flow_side::Type{SD} = ExternalInternalFlow,
                        rk::ConstrainedSystems.RKParams=ConstrainedSystems.RK31,
                        ddftype=CartesianGrids.Yang3) where {F,SD<:FlowSide}
 
@@ -120,14 +121,11 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
 
     α = Δt/(Re*Δx^2)
 
-    Ff = Edges{Primal,NX,NY,Float64}()
-    Ww = Edges{Dual, NX, NY,Float64}()
-    Qq = Edges{Dual, NX, NY,Float64}()
-    Fc = Nodes{Primal,NX,NY,Float64}()
-    Fn = Nodes{Dual,NX,NY,Float64}()
+    Vf = Edges{Primal,NX,NY,Float64}()
+    Sc = Nodes{Primal,NX,NY,Float64}()
+    Sn = Nodes{Dual,NX,NY,Float64}()
 
-    L = plan_laplacian(Fn,with_inverse=true)
-    Lc = plan_laplacian(Fc,with_inverse=true)
+    L = plan_laplacian(Sn,with_inverse=true)
 
     # Regularization and interpolation operators assumed empty
     Rf = nothing
@@ -137,13 +135,14 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
     Rn = nothing
     En = nothing
     Cf = nothing
-    df = nothing
-    sn = nothing
-    sc = nothing
+    dlf = nothing
+    sln = nothing
+    slc = nothing
 
     points = isnothing(bodies) ? VectorData(0) : VectorData(collect(bodies))
     Vb = VectorData(points)
     Sb = ScalarData(points)
+    Δus = VectorData(points)
     N = length(points)÷NDIM
 
 
@@ -153,22 +152,22 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
       body_areas = areas(bodies)
       body_normals = normals(bodies)
 
-      if !(flow_side==BothSides)
-        df = DoubleLayer(bodies,g,Ff)
-        sc = SingleLayer(bodies,g,Fc)
-        sn = SingleLayer(bodies,g,Fn)
+      if !(flow_side==ExternalInternalFlow)
+        dlf = DoubleLayer(bodies,g,Vf)
+        slc = SingleLayer(bodies,g,Sc)
+        sln = SingleLayer(bodies,g,Sn)
       end
 
       regop = Regularize(points,Δx;I0=CartesianGrids.origin(g),weights=body_areas.data,ddftype=ddftype)
-      Rf = RegularizationMatrix(regop,Vb,Ff)
-      Ef = InterpolationMatrix(regop,Ff,Vb)
-      Rc = RegularizationMatrix(regop,Sb,Fc)
-      Ec = InterpolationMatrix(regop,Fc,Sb)
-      Rn = RegularizationMatrix(regop,Sb,Fn)
-      En = InterpolationMatrix(regop,Fn,Sb)
+      Rf = RegularizationMatrix(regop,Vb,Vf)
+      Ef = InterpolationMatrix(regop,Vf,Vb)
+      Rc = RegularizationMatrix(regop,Sb,Sc)
+      Ec = InterpolationMatrix(regop,Sc,Sb)
+      Rn = RegularizationMatrix(regop,Sb,Sn)
+      En = InterpolationMatrix(regop,Sn,Sb)
 
       regopfilt = Regularize(points,Δx;I0=CartesianGrids.origin(g),filter=true,weights=Δx^2,ddftype=ddftype)
-      Ẽf = InterpolationMatrix(regopfilt,Ff,Vb)
+      Ẽf = InterpolationMatrix(regopfilt,Vf,Vb)
       Cf = sparse(Ẽf*Rf)
 
     end
@@ -176,10 +175,10 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
     NavierStokes{NX, NY, N, _motiontype(static_points), _fstype(F), flow_side}(
                           Re, freestream, bodies, motions,
                           g, Δt, rk,
-                          L, Lc,
-                          df,sc,sn,
+                          L,
+                          dlf,slc,sln,
                           points, Rf, Ef, Rc, Ec, Rn, En, Cf,
-                          Vb, Sb, Ff, Ww, Qq, Fc, Fn,
+                          Vb, Sb, Δus, Vf, Sc, Sn,
                           store_operators)
 end
 
@@ -199,11 +198,12 @@ NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,motion::RigidBodyMotion;kwargs...) 
         NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]),RigidMotionList([motion]);kwargs...)
 
 
-function Base.show(io::IO, sys::NavierStokes{NX,NY,N,MT,FS}) where {NX,NY,N,MT,FS}
+function Base.show(io::IO, sys::NavierStokes{NX,NY,N,MT,FS,SD}) where {NX,NY,N,MT,FS,SD}
     mtype = (MT == StaticPoints) ? "static" : "moving"
     fsmsg = (FS == StaticFreestream) ? "Static freestream = $(sys.U∞)" : "Variable freestream"
     bdmsg = (length(sys.bodies) == 1) ? "1 body" : "$(length(sys.bodies)) bodies"
-    println(io, "Navier-Stokes system on a grid of size $NX x $NY and $N $mtype immersed points")
+    sdmsg = (SD == ExternalFlow) ? "External flow" : ((SD == InternalFlow) ? "Internal flow" : "External/internal")
+    println(io, "$sdmsg Navier-Stokes system on a grid of size $NX x $NY and $N $mtype immersed points")
     println(io, "   $fsmsg")
     println(io, "   $bdmsg")
 end
@@ -281,6 +281,12 @@ and ending at t = `tf`.
 """
 timerange(tf,sys) = timestep(sys):timestep(sys):tf
 
+# Wrap the output of the motion evaluation in VectorData
+@inline assign_velocity!(u::VectorData,a...) = (assign_velocity!(u.u,u.v,a...); u)
+
+
+@inline normals(sys::NavierStokes) = (!isnothing(sys.bodies)) ? normals(sys.bodies) : nothing
+
 """
     freestream(t,sys) -> Tuple
 
@@ -299,7 +305,7 @@ _motiontype(isstatic::Bool) = isstatic ? StaticPoints : MovingPoints
 _fstype(F) = F == RigidBodyMotion ? VariableFreestream : StaticFreestream
 
 
-
+include("navierstokes/surfacevelocities.jl")
 include("navierstokes/fields.jl")
 include("navierstokes/pulses.jl")
 include("navierstokes/basicoperators.jl")
