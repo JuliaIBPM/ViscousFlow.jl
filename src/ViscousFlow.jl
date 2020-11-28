@@ -20,8 +20,8 @@ using SparseArrays
 export NavierStokes, PointForce, SpatialGauss, Gaussian!, Gaussian,
        ExternalFlow, InternalFlow, ExternalInternalFlow,
        setstepsizes, timestep, timerange,
-       vorticity, velocity, streamfunction,
-       velocity!, streamfunction!, nl, force, pressurejump
+       vorticity, velocity, velocity!, streamfunction, streamfunction!,
+       scalarpotential, scalarpotential!, force, pressurejump
 
 abstract type PointMotionType end
 abstract type StaticPoints <: PointMotionType end

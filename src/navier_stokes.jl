@@ -98,9 +98,13 @@ mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, 
     Sb::ScalarData{N,Float64}
     Δus::VectorData{N,Float64}
     Vf::Edges{Primal, NX, NY, Float64}
+    Vv::Edges{Primal, NX, NY, Float64}
     Sc::Nodes{Primal, NX, NY,Float64}
     Sn::Nodes{Dual, NX, NY,Float64}
-
+    Wn::Nodes{Dual, NX, NY,Float64}
+    Vtf::EdgeGradient{Primal,Dual,NX,NY,Float64}
+    DVf::EdgeGradient{Primal,Dual,NX,NY,Float64}
+    VDVf::EdgeGradient{Primal,Dual,NX,NY,Float64}
 
     # Flags
     _isstored :: Bool
@@ -122,8 +126,13 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
     α = Δt/(Re*Δx^2)
 
     Vf = Edges{Primal,NX,NY,Float64}()
+    Vv = Edges{Primal,NX,NY,Float64}()
     Sc = Nodes{Primal,NX,NY,Float64}()
     Sn = Nodes{Dual,NX,NY,Float64}()
+    Wn = Nodes{Dual,NX,NY,Float64}()
+    Vtf = EdgeGradient{Primal,Dual,NX,NY,Float64}()
+    DVf = EdgeGradient{Primal,Dual,NX,NY,Float64}()
+    VDVf = EdgeGradient{Primal,Dual,NX,NY,Float64}()
 
     L = plan_laplacian(Sn,with_inverse=true)
 
@@ -178,7 +187,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
                           L,
                           dlf,slc,sln,
                           points, Rf, Ef, Rc, Ec, Rn, En, Cf,
-                          Vb, Sb, Δus, Vf, Sc, Sn,
+                          Vb, Sb, Δus, Vf, Vv, Sc, Sn, Wn, Vtf, DVf, VDVf,
                           store_operators)
 end
 
