@@ -3,6 +3,35 @@ using LinearAlgebra
 
 @testset "Navier-Stokes" begin
 
+  @testset "Nonlinear convective term" begin
+
+  xlim = (-2,2)
+  ylim = (-2,2)
+
+  Re = 100.0
+
+  Δx, Δt = setstepsizes(Re,gridRe=1.0)
+  sys = NavierStokes(Re,Δx,xlim,ylim,Δt)
+  w = Nodes(Dual,size(sys))
+  dw = Nodes(Dual,w)
+
+  σx = 0.15; σy = 0.3
+  gauss = SpatialGaussian(σx,σy,0,0,1.0)
+  gfw = GeneratedField(w,gauss,sys.grid)
+  xg, yg = coordinates(w,sys.grid)
+  w .= cellsize(sys)*gfw().*2.0.*(1/σx^2 .+ 1/σy^2 .- 2.0.*(xg.^2/σx^4 .+ (yg').^2/σy^4))
+
+  ns_rhs!(dw,w,sys,0.0)
+
+  nlex = Nodes(Dual,w)
+  gauss2 = SpatialGaussian(σx/sqrt(2),σy/sqrt(2),0,0,1.0)
+  gfnl = GeneratedField(w,gauss2,sys.grid)
+  nlex .= -cellsize(sys).*gfnl().*(8/π/σx^3/σy^3).*xg.*yg'.*(1/σx^2 .- 1/σy^2)
+
+  @test norm(dw-nlex,sys.grid)/norm(nlex,sys.grid) < 1e-3
+
+  end
+
   @testset "Lamb-Oseen vortex" begin
 
     woseen(x::Tuple{Real,Real},t;Re=1.0,x0::Tuple{Real,Real}=(0,0),t0=1) =
