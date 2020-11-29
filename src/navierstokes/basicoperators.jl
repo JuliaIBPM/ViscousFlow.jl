@@ -37,20 +37,22 @@ function _ns_rhs_double_layer!(dw::Nodes{Dual,NX,NY},
                               t::Real) where {NX,NY,N,MT,FS,SD}
   Δx⁻¹ = 1/cellsize(sys)
   fact = Δx⁻¹/sys.Re
-  surface_velocity_jump!(sys.Vb,sys,t)
+  surface_velocity_jump!(sys.Δus,sys,t)
   sys.Vf .= 0.0
-  sys.dlf(sys.Vf,sys.Vb)
+  sys.dlf(sys.Vf,sys.Δus)
   sys.Sn .= 0.0
   curl!(sys.Sn,sys.Vf)
   sys.Sn .*= fact
   dw .-= sys.Sn
 end
 
+
+#=
 # RHS of Navier-Stokes (non-linear convective term)
 function r₁(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY}) where {NX,NY,T}
 
- Ww = sys.Ww
- Qq = sys.Qq
+ Ww = Edges(Dual,w) #sys.Ww
+ Qq = Edges(Dual,w) #sys.Qq
  L = sys.L
  Δx⁻¹ = 1/cellsize(sys)
 
@@ -78,3 +80,4 @@ function r₁(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY},U∞::RigidBodyT
  return rmul!(divergence(Qq∘grid_interpolate!(Ww,w)),Δx⁻¹) # -∇⋅(wu)
 
 end
+=#

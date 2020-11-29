@@ -97,6 +97,7 @@ mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, 
     Vb::VectorData{N,Float64}
     Sb::ScalarData{N,Float64}
     Δus::VectorData{N,Float64}
+    τ::VectorData{N,Float64}
     Vf::Edges{Primal, NX, NY, Float64}
     Vv::Edges{Primal, NX, NY, Float64}
     Sc::Nodes{Primal, NX, NY,Float64}
@@ -152,6 +153,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
     Vb = VectorData(points)
     Sb = ScalarData(points)
     Δus = VectorData(points)
+    τ = VectorData(points)
     N = length(points)÷NDIM
 
 
@@ -168,8 +170,9 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
       end
 
       regop = Regularize(points,Δx;I0=CartesianGrids.origin(g),weights=body_areas.data,ddftype=ddftype)
-      Rf = RegularizationMatrix(regop,Vb,Vf)
-      Ef = InterpolationMatrix(regop,Vf,Vb)
+      # May not need all of these...
+      Rf = RegularizationMatrix(regop,Vb,Vf) # Used by B₁ᵀ
+      Ef = InterpolationMatrix(regop,Vf,Vb) # Used by constraint_rhs! and B₂
       Rc = RegularizationMatrix(regop,Sb,Sc)
       Ec = InterpolationMatrix(regop,Sc,Sb)
       Rn = RegularizationMatrix(regop,Sb,Sn)
@@ -187,7 +190,8 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
                           L,
                           dlf,slc,sln,
                           points, Rf, Ef, Rc, Ec, Rn, En, Cf,
-                          Vb, Sb, Δus, Vf, Vv, Sc, Sn, Wn, Vtf, DVf, VDVf,
+                          Vb, Sb, Δus, τ,
+                          Vf, Vv, Sc, Sn, Wn, Vtf, DVf, VDVf,
                           store_operators)
 end
 

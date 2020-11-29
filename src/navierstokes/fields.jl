@@ -16,6 +16,7 @@ end
 function _velocity_vorticity!(u::Edges{Primal,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY,N}) where {NX,NY,N}
     sys.Wn .= 0.0
     _unscaled_streamfunction_vorticity!(sys.Wn,w,sys)
+    sys.Vf .= 0.0
     curl!(sys.Vf,sys.Wn)
     u .+= sys.Vf
     return u
