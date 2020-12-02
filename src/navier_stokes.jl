@@ -71,9 +71,9 @@ mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, 
     L::CartesianGrids.Laplacian
 
     # Layers
-    dlf::Union{DoubleLayer,Nothing}
-    slc::Union{SingleLayer,Nothing}
-    sln::Union{SingleLayer,Nothing}
+    dlf::Union{DoubleLayer,Nothing} # used for viscous surface terms
+    slc::Union{SingleLayer,Nothing} # used for scalar potential field in velocity
+    sln::Union{SingleLayer,Nothing} # might not be used
 
     # Body coordinate data, if present
     # if a static problem, these coordinates are in inertial coordinates
@@ -83,13 +83,11 @@ mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, 
     # Pre-stored regularization and interpolation matrices (if present)
     Rf::Union{RegularizationMatrix,Nothing} # faces (edges)
     Ef::Union{InterpolationMatrix,Nothing}
+    Cf::Union{AbstractMatrix,Nothing}
     Rc::Union{RegularizationMatrix,Nothing} # cell centers
     Ec::Union{InterpolationMatrix,Nothing}
     Rn::Union{RegularizationMatrix,Nothing} # cell nodes
     En::Union{InterpolationMatrix,Nothing}
-
-    # Conditioner matrices
-    Cf::Union{AbstractMatrix,Nothing}
 
     # Scratch space
 
@@ -140,11 +138,11 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
     # Regularization and interpolation operators assumed empty
     Rf = nothing
     Ef = nothing
+    Cf = nothing
     Rc = nothing
     Ec = nothing
     Rn = nothing
     En = nothing
-    Cf = nothing
     dlf = nothing
     sln = nothing
     slc = nothing
@@ -157,7 +155,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
     N = length(points)÷NDIM
 
 
-    if N > 0 && store_operators && static_points
+    if N > 0 && store_operators
       # in this case, points are assumed to be in inertial coordinates
 
       body_areas = areas(bodies)
@@ -166,17 +164,17 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
       if !(flow_side==ExternalInternalFlow)
         dlf = DoubleLayer(bodies,g,Vf)
         slc = SingleLayer(bodies,g,Sc)
-        sln = SingleLayer(bodies,g,Sn)
+        #sln = SingleLayer(bodies,g,Sn)
       end
 
       regop = Regularize(points,Δx;I0=CartesianGrids.origin(g),weights=body_areas.data,ddftype=ddftype)
       # May not need all of these...
       Rf = RegularizationMatrix(regop,Vb,Vf) # Used by B₁ᵀ
       Ef = InterpolationMatrix(regop,Vf,Vb) # Used by constraint_rhs! and B₂
-      Rc = RegularizationMatrix(regop,Sb,Sc)
-      Ec = InterpolationMatrix(regop,Sc,Sb)
-      Rn = RegularizationMatrix(regop,Sb,Sn)
-      En = InterpolationMatrix(regop,Sn,Sb)
+      #Rc = RegularizationMatrix(regop,Sb,Sc)
+      #Ec = InterpolationMatrix(regop,Sc,Sb)
+      #Rn = RegularizationMatrix(regop,Sb,Sn)
+      #En = InterpolationMatrix(regop,Sn,Sb)
 
       regopfilt = Regularize(points,Δx;I0=CartesianGrids.origin(g),filter=true,weights=Δx^2,ddftype=ddftype)
       Ẽf = InterpolationMatrix(regopfilt,Vf,Vb)
@@ -189,7 +187,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
                           g, Δt, rk,
                           L,
                           dlf,slc,sln,
-                          points, Rf, Ef, Rc, Ec, Rn, En, Cf,
+                          points, Rf, Ef, Cf, Rc, Ec, Rn, En,
                           Vb, Sb, Δus, τ,
                           Vf, Vv, Sc, Sn, Wn, Vtf, DVf, VDVf,
                           store_operators)
