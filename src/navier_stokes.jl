@@ -43,7 +43,7 @@ grid. It should be set to `false` if a supplied motion requires that the points 
               motions must be the same length as the list of bodies.
 
 """
-mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, SD<:FlowSide}
+mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, SD<:FlowSide, DDF<:CartesianGrids.DDFType}
     # Physical Parameters
     "Reynolds number"
     Re::Float64
@@ -124,6 +124,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
 
     α = Δt/(Re*Δx^2)
 
+    # Set up buffers
     Vf = Edges{Primal,NX,NY,Float64}()
     Vv = Edges{Primal,NX,NY,Float64}()
     Sc = Nodes{Primal,NX,NY,Float64}()
@@ -135,54 +136,18 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
 
     L = plan_laplacian(Sn,with_inverse=true)
 
-    # Regularization and interpolation operators assumed empty
-    Rf = nothing
-    Ef = nothing
-    Cf = nothing
-    Rc = nothing
-    Ec = nothing
-    Rn = nothing
-    En = nothing
-    dlf = nothing
-    sln = nothing
-    slc = nothing
+    N = numpts(bodies)
 
-    points = isnothing(bodies) ? VectorData(0) : VectorData(collect(bodies))
-    Vb = VectorData(points)
-    Sb = ScalarData(points)
-    Δus = VectorData(points)
-    τ = VectorData(points)
-    N = length(points)÷NDIM
+    Vb = VectorData(N)
+    Sb = ScalarData(N)
+    Δus = VectorData(N)
+    τ = VectorData(N)
+
+    points, dlf, slc, sln, Rf, Ef, Cf, Rc, Ec, Rn, En =
+              _immersion_operators(bodies,g,flow_side,ddftype,Vf,Sc,Vb)
 
 
-    if N > 0 && store_operators
-      # in this case, points are assumed to be in inertial coordinates
-
-      body_areas = areas(bodies)
-      body_normals = normals(bodies)
-
-      if !(flow_side==ExternalInternalFlow)
-        dlf = DoubleLayer(bodies,g,Vf)
-        slc = SingleLayer(bodies,g,Sc)
-        #sln = SingleLayer(bodies,g,Sn)
-      end
-
-      regop = Regularize(points,Δx;I0=CartesianGrids.origin(g),weights=body_areas.data,ddftype=ddftype)
-      # May not need all of these...
-      Rf = RegularizationMatrix(regop,Vb,Vf) # Used by B₁ᵀ
-      Ef = InterpolationMatrix(regop,Vf,Vb) # Used by constraint_rhs! and B₂
-      #Rc = RegularizationMatrix(regop,Sb,Sc)
-      #Ec = InterpolationMatrix(regop,Sc,Sb)
-      #Rn = RegularizationMatrix(regop,Sb,Sn)
-      #En = InterpolationMatrix(regop,Sn,Sb)
-
-      regopfilt = Regularize(points,Δx;I0=CartesianGrids.origin(g),filter=true,weights=Δx^2,ddftype=ddftype)
-      Ẽf = InterpolationMatrix(regopfilt,Vf,Vb)
-      Cf = sparse(Ẽf*Rf)
-
-    end
-
-    NavierStokes{NX, NY, N, _motiontype(static_points), _fstype(F), flow_side}(
+    NavierStokes{NX, NY, N, _motiontype(static_points), _fstype(F), flow_side, ddftype}(
                           Re, freestream, bodies, motions,
                           g, Δt, rk,
                           L,
@@ -212,12 +177,63 @@ NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,motion::RigidBodyMotion;kwargs...) 
 function Base.show(io::IO, sys::NavierStokes{NX,NY,N,MT,FS,SD}) where {NX,NY,N,MT,FS,SD}
     mtype = (MT == StaticPoints) ? "static" : "moving"
     fsmsg = (FS == StaticFreestream) ? "Static freestream = $(sys.U∞)" : "Variable freestream"
-    bdmsg = (length(sys.bodies) == 1) ? "1 body" : "$(length(sys.bodies)) bodies"
     sdmsg = (SD == ExternalFlow) ? "External flow" : ((SD == InternalFlow) ? "Internal flow" : "External/internal")
     println(io, "$sdmsg Navier-Stokes system on a grid of size $NX x $NY and $N $mtype immersed points")
     println(io, "   $fsmsg")
-    println(io, "   $bdmsg")
+    if N > 0
+      bdmsg = (length(sys.bodies) == 1) ? "1 body" : "$(length(sys.bodies)) bodies"
+      println(io, "   $bdmsg")
+    end
 end
+
+# Routines to set up the immersion operators
+
+function _immersion_operators(bodies::BodyList,g::PhysicalGrid,flow_side::Type{SD},ddftype,Vf::GridData{NX,NY},Sc::GridData{NX,NY},Vb::PointData{N}) where {NX,NY,N,SD<:ViscousFlow.FlowSide}
+
+  points = VectorData(collect(bodies))
+  numpts(bodies) == N || error("Inconsistent size of bodies")
+
+  body_areas = areas(bodies)
+  body_normals = normals(bodies)
+
+  if !(flow_side==ExternalInternalFlow)
+    dlf = DoubleLayer(bodies,g,Vf)
+    slc = SingleLayer(bodies,g,Sc)
+    #sln = SingleLayer(bodies,g,Sn)
+    sln = nothing
+  end
+
+  regop = Regularize(points,cellsize(g);I0=CartesianGrids.origin(g),weights=body_areas.data,ddftype=ddftype)
+  Rf = RegularizationMatrix(regop,Vb,Vf) # Used by B₁ᵀ
+  Ef = InterpolationMatrix(regop,Vf,Vb) # Used by constraint_rhs! and B₂
+
+  #Rc = RegularizationMatrix(regop,Sb,Sc)
+  #Ec = InterpolationMatrix(regop,Sc,Sb)
+  #Rn = RegularizationMatrix(regop,Sb,Sn)
+  #En = InterpolationMatrix(regop,Sn,Sb)
+  Rc = nothing
+  Ec = nothing
+  Rn = nothing
+  En = nothing
+
+  regopfilt = Regularize(points,cellsize(g);I0=CartesianGrids.origin(g),filter=true,weights=cellsize(g)^2,ddftype=ddftype)
+  Ẽf = InterpolationMatrix(regopfilt,Vf,Vb)
+  Cf = sparse(Ẽf*Rf)
+
+  return points, dlf, slc, sln, Rf, Ef, Cf, Rc, Ec, Rn, En
+end
+
+_immersion_operators(::Nothing,a...) =
+    VectorData(0), nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing
+
+
+function _immersion_operators!(sys::NavierStokes{NX,NY,N,MT,FS,SD,DDF},bodies::BodyList) where {NX,NY,N,MT,FS,SD,DDF<:CartesianGrids.DDFType}
+    sys.points, sys.dlf, sys.slc, sys.sln, sys.Rf, sys.Ef, sys.Cf, sys.Rc, sys.Ec, sys.Rn, sys.En =
+      _immersion_operators(bodies,sys.grid,SD,DDF,sys.Vf,sys.Sc,sys.Vb)
+    return sys
+end
+
+_immersion_operators!(sys::NavierStokes,body::Body) = _immersion_operators!(sys,BodyList([body]))
 
 """
     setstepsizes(Re[,gridRe=2][,cfl=0.5][,fourier=0.5]) -> Float64, Float64
