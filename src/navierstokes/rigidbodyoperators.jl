@@ -36,14 +36,14 @@ end
 
 # Constraint operators, using stored regularization and interpolation operators
 # B₁ᵀ = CᵀEᵀ, B₂ = -ECL⁻¹
-function B₁ᵀ(f::VectorData{N},sys::NavierStokes{NX,NY,N,ViscousFlow.StaticPoints}) where {NX,NY,N}
+function B₁ᵀ(f::VectorData{N},sys::NavierStokes{NX,NY,N}) where {NX,NY,N}
     sys.Vf .= sys.Rf*f
     sys.Sn .= 0.0
     curl!(sys.Sn,sys.Vf)
     return sys.Sn
 end
 
-function B₂(w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY,N,ViscousFlow.StaticPoints}) where {NX,NY,N}
+function B₂(w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY,N}) where {NX,NY,N}
     sys.Vv .= 0.0
     ViscousFlow._velocity_vorticity!(sys.Vv,w,sys)
     sys.Vb .= sys.Ef*sys.Vv
@@ -53,8 +53,8 @@ end
 #B₂(w::Nodes{Dual,NX,NY,T},sys::NavierStokes{NX,NY,N,StaticPoints}) where {NX,NY,T,N} = -(sys.Ef*(Curl()*(sys.L\w)))
 
 # Constraint operators, using non-stored regularization and interpolation operators
-B₁ᵀ(f::VectorData{N},regop::Regularize,sys::NavierStokes{NX,NY,N,MovingPoints}) where {NX,NY,N} = Curl()*regop(sys.Ff,f)
-B₂(w::Nodes{Dual,NX,NY,T},regop::Regularize,sys::NavierStokes{NX,NY,N,MovingPoints}) where {NX,NY,T,N} = -(regop(sys.Vb,Curl()*(sys.L\w)))
+#B₁ᵀ(f::VectorData{N},regop::Regularize,sys::NavierStokes{NX,NY,N,MovingPoints}) where {NX,NY,N} = Curl()*regop(sys.Ff,f)
+#B₂(w::Nodes{Dual,NX,NY,T},regop::Regularize,sys::NavierStokes{NX,NY,N,MovingPoints}) where {NX,NY,T,N} = -(regop(sys.Vb,Curl()*(sys.L\w)))
 
 # Constraint operator constructors
 # Constructor using stored operators

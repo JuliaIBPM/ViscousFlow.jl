@@ -9,6 +9,7 @@ export ns_rhs!
 CartesianGrids.plan_intfact(t,w,sys::NavierStokes{NX,NY}) where {NX,NY} =
        CartesianGrids.plan_intfact(t/(sys.Re*cellsize(sys)^2),w)
 
+# RHS of Navier-Stokes equations 
 function ns_rhs!(dw::Nodes{Dual,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY}
   dw .= 0.0
   _ns_rhs_convectivederivative!(dw,w,sys)

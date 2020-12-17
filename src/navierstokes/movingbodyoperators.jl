@@ -1,8 +1,26 @@
 #### Operators for a system with moving body ####
 
+export rigid_body_rhs!, rigid_body_rhs
+
+
 ## Right-hand sides for rigid-body motion equations ##
 
+function rigid_body_rhs!(u::Vector{T},sys::NavierStokes,t::Real) where {T<:Real}
+  length(u) == 3*(NDIM-1) || error("Wrong length for vector")
+  u .= rigidbodyvelocity(sys.motions,t)
+  return u
+end
+
+rigid_body_rhs(sys::NavierStokes,t::Real) where {T<:Real} = rigid_body_rhs!(zeros(Float64,3*(NDIM-1)),sys,t)
+
+_construct_B₁ᵀ(sys::NavierStokes) = f->B₁ᵀ(f,sys)
+_construct_B₂(sys::NavierStokes) = w->B₂(w,sys)
+_construct_B₁ᵀ(u::Vector{T}) where {T<:Real} = zeros(u)
+_construct_B₂(u::Vector{T}) where {T<:Real} = empty(u)
+
+
 # For a single rigid body
+#=
 function r₁(u::Vector{Float64},t::Real,motion::RigidBodyMotion)
     _,ċ,_,_,α̇,_ = motion(t)
     return [real(ċ),imag(ċ),α̇]
@@ -80,6 +98,5 @@ function plan_constraints(u::Tuple{Nodes{Dual,NX,NY},Vector{Float64}},t,sys::Nav
            (w->B₂(w,regop,sys), u->Vector{Float64}())
   end
 
-
-
 end
+=#
