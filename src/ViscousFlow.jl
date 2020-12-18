@@ -20,6 +20,7 @@ using SparseArrays
 export NavierStokes, PointForce, SpatialGauss, Gaussian!, Gaussian,
        ExternalFlow, InternalFlow, ExternalInternalFlow,
        setstepsizes, timestep, timerange,
+       update_immersion_operators!,
        vorticity, velocity, velocity!, streamfunction, streamfunction!,
        scalarpotential, scalarpotential!, force, pressurejump
 

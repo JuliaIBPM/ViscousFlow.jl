@@ -227,13 +227,22 @@ _immersion_operators(::Nothing,a...) =
     VectorData(0), nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing
 
 
-function _immersion_operators!(sys::NavierStokes{NX,NY,N,MT,FS,SD,DDF},bodies::BodyList) where {NX,NY,N,MT,FS,SD,DDF<:CartesianGrids.DDFType}
+# For updating the system with body data
+
+function update_immersion_operators!(sys::NavierStokes{NX,NY,N,MT,FS,SD,DDF},bodies::BodyList) where {NX,NY,N,MT,FS,SD,DDF<:CartesianGrids.DDFType}
+    sys.bodies = deepcopy(bodies)
     sys.points, sys.dlf, sys.slc, sys.sln, sys.Rf, sys.Ef, sys.Cf, sys.Rc, sys.Ec, sys.Rn, sys.En =
-      _immersion_operators(bodies,sys.grid,SD,DDF,sys.Vf,sys.Sc,sys.Vb)
+      _immersion_operators(sys.bodies,sys.grid,SD,DDF,sys.Vf,sys.Sc,sys.Vb)
     return sys
 end
 
-_immersion_operators!(sys::NavierStokes,body::Body) = _immersion_operators!(sys,BodyList([body]))
+update_immersion_operators!(sys::NavierStokes,body::Body) = immersion_operators!(sys,BodyList([body]))
+
+function update_immersion_operators!(sys::NavierStokes,x::AbstractVector)
+    tl! = RigidTransformList(x)
+    tl!(sys.bodies)
+    update_immersion_operators!(sys,sys.bodies)
+end
 
 """
     setstepsizes(Re[,gridRe=2][,cfl=0.5][,fourier=0.5]) -> Float64, Float64
