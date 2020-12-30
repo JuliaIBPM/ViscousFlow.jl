@@ -2,10 +2,15 @@ import Base: size
 
 const NDIM = 2
 
-import ConstrainedSystems: r₁, r₂, B₁ᵀ, B₂, plan_constraints
+
+#import ConstrainedSystems: r₁, r₂, B₁ᵀ, B₂, plan_constraints
 import CartesianGrids: cellsize, origin
 import RigidBodyTools: assign_velocity!
 import ImmersedLayers: normals, areas
+
+#const DEFAULT_RK = ConstrainedSystems.RK31
+#const DEFAULT_RK = ConstrainedSystems.LiskaIFHERK()
+
 
 """
 $(TYPEDEF)
@@ -20,7 +25,7 @@ grid. It should be set to `false` if a supplied motion requires that the points 
 `NavierStokes(Re,Δx,xlimits,ylimits,Δt
               [,freestream = (0.0, 0.0)]
               [,store_operators=true][,static_points=true]
-              [,rk=ConstrainedSystems.RK31]
+              [,rk=LiskaIFHERK()]
               [,flow_side=ExternalInternalFlow]
               [,ddftype=CartesianGrids.Yang3])`specifies the Reynolds number `Re`, the grid
               spacing `Δx`, the dimensions of the domain in the tuples `xlimits`
@@ -43,7 +48,7 @@ grid. It should be set to `false` if a supplied motion requires that the points 
               motions must be the same length as the list of bodies.
 
 """
-mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, SD<:FlowSide, DDF<:CartesianGrids.DDFType}
+mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, SD<:FlowSide, DDF<:CartesianGrids.DDFType} #, RKT}
     # Physical Parameters
     "Reynolds number"
     Re::Float64
@@ -63,8 +68,8 @@ mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, 
     #I0::Tuple{Int,Int}
     "Time step"
     Δt::Float64
-    "Runge-Kutta method"
-    rk::ConstrainedSystems.RKParams
+    #"Time marching method"
+    #rk::RKT
 
     # Operators
     "Laplacian operator"
@@ -115,8 +120,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
                        motions::Union{RigidMotionList,Nothing} = nothing,
                        store_operators = true,
                        static_points = true,
-                       flow_side::Type{SD} = ExternalInternalFlow,
-                       rk::ConstrainedSystems.RKParams=ConstrainedSystems.RK31,
+                       flow_side::Type{SD} = ExternalInternalFlow, #rk=DEFAULT_RK,
                        ddftype=CartesianGrids.Yang3) where {F,SD<:FlowSide}
 
     g = PhysicalGrid(xlimits,ylimits,Δx)
@@ -147,9 +151,9 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
               _immersion_operators(bodies,g,flow_side,ddftype,Vf,Sc,Vb)
 
 
-    NavierStokes{NX, NY, N, _motiontype(static_points), _fstype(F), flow_side, ddftype}(
+    NavierStokes{NX, NY, N, _motiontype(static_points), _fstype(F), flow_side, ddftype}( #,typeof(rk)}(
                           Re, freestream, bodies, motions,
-                          g, Δt, rk,
+                          g, Δt, # rk,
                           L,
                           dlf,slc,sln,
                           points, Rf, Ef, Cf, Rc, Ec, Rn, En,
