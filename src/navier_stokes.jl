@@ -248,6 +248,10 @@ function update_immersion_operators!(sys::NavierStokes,x::AbstractVector)
     update_immersion_operators!(sys,sys.bodies)
 end
 
+# The form passed to ConstrainedODEFunction
+update_immersion_operators!(sys::NavierStokes,u,sys_old::NavierStokes,t) =
+    update_immersion_operators!(sys,aux_state(u))
+
 """
     setstepsizes(Re[,gridRe=2][,cfl=0.5][,fourier=0.5]) -> Float64, Float64
 

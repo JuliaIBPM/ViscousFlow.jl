@@ -10,7 +10,7 @@ using Reexport
 @reexport using CartesianGrids
 @reexport using ImmersedLayers
 @reexport using RigidBodyTools
-#@reexport using ConstrainedSystems
+@reexport using ConstrainedSystems
 @reexport using GridUtilities
 
 
