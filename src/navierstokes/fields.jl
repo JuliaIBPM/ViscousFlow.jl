@@ -3,6 +3,10 @@ using LinearAlgebra
 import LinearAlgebra: transpose!
 import CartesianGrids: convective_derivative!
 
+for fcn in (:vorticity,:velocity,:streamfunction,:scalarpotential)
+  @eval $fcn(s::ConstrainedSystems.ArrayPartition,sys::NavierStokes,t) = $fcn(state(s),sys,t)
+end
+
 @inline vorticity(w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY} = w/cellsize(sys)
 
 function velocity!(u::Edges{Primal,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY,N},t::Real) where {NX,NY,N}
@@ -97,33 +101,20 @@ function convective_derivative!(out::Edges{Primal,NX,NY},u::Edges{Primal,NX,NY},
 end
 
 
-_unscaled_convective_derivative!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY}) where {NX,NY} =
-      _unscaled_convective_derivative!(u,sys.Vtf,sys.DVf,sys.VDVf)
+# Surface field quantities
 
-# Operates in-place on `u`, which comes in with the velocity field and
-# returns the unscaled convective derivative
-function _unscaled_convective_derivative!(u::Edges{Primal,NX,NY},
-                                          Vtf::EdgeGradient{Primal,Dual,NX,NY},
-                                          DVf::EdgeGradient{Primal,Dual,NX,NY},
-                                          VDVf::EdgeGradient{Primal,Dual,NX,NY}) where {NX,NY}
-    transpose!(Vtf,grid_interpolate!(DVf,u))
-    DVf .= 0.0
-    grad!(DVf,u)
-    product!(VDVf,Vtf,DVf)
-    u .= 0.0
-    grid_interpolate!(u,VDVf)
-    u
+for fcn in (:force,:pressurejump)
+  @eval $fcn(s::ConstrainedSystems.ArrayPartition,a...;kwargs...) = $fcn(constraint(s),a...;kwargs...)
 end
 
+force(τ::VectorData{N},sys) where {N} = τ #*cellsize(sys)^2
 
-
-force(f::VectorData{N},sys) where {N} = f*cellsize(sys)^2
-
-function pressurejump(fds::VectorData{N},b::Union{Body,BodyList},sys::NavierStokes) where {N}
+function pressurejump(τ::VectorData{N},b::Union{Body,BodyList},sys::NavierStokes) where {N}
     @assert N == numpts(b)
 
-    _hasfilter(sys) ? (fdsf = similar(fds); fdsf .= sys.Cmat*fds) : fdsf = deepcopy(fds)
+    #_hasfilter(sys) ? (τf = similar(τ); τf .= sys.Cf*force(τ,sys)) : τf = deepcopy(force(τ,sys))
+    τf = deepcopy(τ)
 
-    nrm = VectorData(normalmid(b))
-    return (nrm.u∘fdsf.u + nrm.v∘fdsf.v)./dlengthmid(b) # This might need some modification
+    nrm = normals(b)
+    return nrm.u∘τf.u + nrm.v∘τf.v # This might need some modification
 end

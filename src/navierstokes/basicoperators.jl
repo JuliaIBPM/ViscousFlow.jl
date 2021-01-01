@@ -5,11 +5,8 @@
 
 export ns_rhs!
 
-# Integrating factor -- rescale the time-step size
-CartesianGrids.plan_intfact(t,w,sys::NavierStokes{NX,NY}) where {NX,NY} =
-       CartesianGrids.plan_intfact(t/(sys.Re*cellsize(sys)^2),w)
 
-# RHS of Navier-Stokes equations 
+# RHS of Navier-Stokes equations
 function ns_rhs!(dw::Nodes{Dual,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY}
   dw .= 0.0
   _ns_rhs_convectivederivative!(dw,w,sys)
@@ -48,37 +45,20 @@ function _ns_rhs_double_layer!(dw::Nodes{Dual,NX,NY},
 end
 
 
-#=
-# RHS of Navier-Stokes (non-linear convective term)
-function r₁(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY}) where {NX,NY,T}
+_unscaled_convective_derivative!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY}) where {NX,NY} =
+      _unscaled_convective_derivative!(u,sys.Vtf,sys.DVf,sys.VDVf)
 
- Ww = Edges(Dual,w) #sys.Ww
- Qq = Edges(Dual,w) #sys.Qq
- L = sys.L
- Δx⁻¹ = 1/cellsize(sys)
-
- grid_interpolate!(Qq,curl(L\w)) # -velocity, on dual edges
- Qq.u .-= sys.U∞[1]
- Qq.v .-= sys.U∞[2]
-
- return rmul!(divergence(Qq∘grid_interpolate!(Ww,w)),Δx⁻¹) # -∇⋅(wu)
-
+# Operates in-place on `u`, which comes in with the velocity field and
+# returns the unscaled convective derivative
+function _unscaled_convective_derivative!(u::Edges{Primal,NX,NY},
+                                          Vtf::EdgeGradient{Primal,Dual,NX,NY},
+                                          DVf::EdgeGradient{Primal,Dual,NX,NY},
+                                          VDVf::EdgeGradient{Primal,Dual,NX,NY}) where {NX,NY}
+    transpose!(Vtf,grid_interpolate!(DVf,u))
+    DVf .= 0.0
+    grad!(DVf,u)
+    product!(VDVf,Vtf,DVf)
+    u .= 0.0
+    grid_interpolate!(u,VDVf)
+    u
 end
-
-# RHS of Navier-Stokes (non-linear convective term)
-function r₁(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY},U∞::RigidBodyTools.RigidBodyMotion) where {NX,NY,T}
-
- Ww = sys.Ww
- Qq = sys.Qq
- L = sys.L
- Δx⁻¹ = 1/cellsize(sys)
-
- grid_interpolate!(Qq,curl(L\w)) # -velocity, on dual edges
- _,ċ,_,_,_,_ = U∞(t)
- Qq.u .-= real(ċ)
- Qq.v .-= imag(ċ)
-
- return rmul!(divergence(Qq∘grid_interpolate!(Ww,w)),Δx⁻¹) # -∇⋅(wu)
-
-end
-=#

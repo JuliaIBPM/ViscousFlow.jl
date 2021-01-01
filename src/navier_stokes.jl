@@ -48,7 +48,7 @@ grid. It should be set to `false` if a supplied motion requires that the points 
               motions must be the same length as the list of bodies.
 
 """
-mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, SD<:FlowSide, DDF<:CartesianGrids.DDFType} #, RKT}
+mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, SD<:FlowSide, DDF<:CartesianGrids.DDFType, FT, SP} #, RKT}
     # Physical Parameters
     "Reynolds number"
     Re::Float64
@@ -93,6 +93,12 @@ mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, 
     Ec::Union{InterpolationMatrix,Nothing}
     Rn::Union{RegularizationMatrix,Nothing} # cell nodes
     En::Union{InterpolationMatrix,Nothing}
+
+    # Operators
+    f :: FT
+
+    # state vector
+    state_prototype :: SP
 
     # Scratch space
 
@@ -151,12 +157,39 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
               _immersion_operators(bodies,g,flow_side,ddftype,Vf,Sc,Vb)
 
 
-    NavierStokes{NX, NY, N, _motiontype(static_points), _fstype(F), flow_side, ddftype}( #,typeof(rk)}(
+    viscous_L = plan_laplacian(Sn,factor=1/(Re*Δx^2))
+
+    if isnothing(bodies)
+      state_prototype = solvector(state=Sn)
+      f = ConstrainedODEFunction(ns_rhs!,viscous_L,_func_cache=state_prototype)
+    else
+      if static_points
+        state_prototype = solvector(state=Sn,constraint=τ)
+        f = ConstrainedODEFunction(ns_rhs!,bc_constraint_rhs!,
+                                      ns_op_constraint_force!,bc_constraint_op!,
+                                      viscous_L,_func_cache=state_prototype)
+      else
+        state_prototype = solvector(state=Sn,constraint=τ,aux_state=zero_body_state(bodies))
+        rhs! = ConstrainedSystems.r1vector(state_r1 = ns_rhs!,aux_r1 = rigid_body_rhs!)
+        f = ConstrainedODEFunction(rhs!,bc_constraint_rhs!,
+                                      ns_op_constraint_force!,bc_constraint_op!,
+                                      viscous_L,_func_cache=state_prototype,
+                                      param_update_func=update_immersion_operators!)
+      end
+
+    end
+
+
+
+
+
+    NavierStokes{NX, NY, N, _motiontype(static_points), _fstype(F), flow_side, ddftype, typeof(f), typeof(state_prototype)}( #,typeof(rk)}(
                           Re, freestream, bodies, motions,
                           g, Δt, # rk,
                           L,
                           dlf,slc,sln,
                           points, Rf, Ef, Cf, Rc, Ec, Rn, En,
+                          f,state_prototype,
                           Vb, Sb, Δus, τ,
                           Vf, Vv, Sc, Sn, Wn, Vtf, DVf, VDVf,
                           store_operators)
@@ -240,7 +273,7 @@ function update_immersion_operators!(sys::NavierStokes{NX,NY,N,MT,FS,SD,DDF},bod
     return sys
 end
 
-update_immersion_operators!(sys::NavierStokes,body::Body) = immersion_operators!(sys,BodyList([body]))
+update_immersion_operators!(sys::NavierStokes,body::Body) = update_immersion_operators!(sys,BodyList([body]))
 
 function update_immersion_operators!(sys::NavierStokes,x::AbstractVector)
     tl! = RigidTransformList(x)
@@ -251,6 +284,9 @@ end
 # The form passed to ConstrainedODEFunction
 update_immersion_operators!(sys::NavierStokes,u,sys_old::NavierStokes,t) =
     update_immersion_operators!(sys,aux_state(u))
+
+
+
 
 """
     setstepsizes(Re[,gridRe=2][,cfl=0.5][,fourier=0.5]) -> Float64, Float64
@@ -331,6 +367,7 @@ timerange(tf,sys) = timestep(sys):timestep(sys):tf
 
 @inline normals(sys::NavierStokes) = (!isnothing(sys.bodies)) ? normals(sys.bodies) : nothing
 
+
 """
     freestream(t,sys) -> Tuple
 
@@ -344,7 +381,7 @@ function freestream(t::Real,sys::NavierStokes{NX,NY,N,MT,VariableFreestream}) wh
 end
 
 # Other functions
-_hasfilter(sys::NavierStokes) = !(sys.Cmat == nothing)
+_hasfilter(sys::NavierStokes) = !isnothing(sys.Cf)
 _motiontype(isstatic::Bool) = isstatic ? StaticPoints : MovingPoints
 _fstype(F) = F == RigidBodyMotion ? VariableFreestream : StaticFreestream
 
@@ -355,3 +392,4 @@ include("navierstokes/pulses.jl")
 include("navierstokes/basicoperators.jl")
 include("navierstokes/rigidbodyoperators.jl")
 include("navierstokes/movingbodyoperators.jl")
+include("navierstokes/timemarching.jl")
