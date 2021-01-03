@@ -58,9 +58,10 @@ function _ns_rhs_double_layer!(dw::Nodes{Dual,NX,NY},
   dw .-= sys.Sn
 end
 
-function _vel_ns_rhs_double_layer!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY,N,MT,FS,ExternalInternalFlow},t::Real) where {NX,NY,N,MT,FS}
-    return u
-end
+@inline _vel_ns_rhs_double_layer!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY,N,MT,FS,
+                                  ExternalInternalFlow},t::Real) where {NX,NY,N,MT,FS} = u
+
+@inline _vel_ns_rhs_double_layer!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY,0},t::Real) where {NX,NY} = u
 
 function _vel_ns_rhs_double_layer!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY,N,MT,FS,SD},t::Real) where {NX,NY,N,MT,FS,SD}
     Δx⁻¹ = 1/cellsize(sys)
