@@ -109,6 +109,7 @@ mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, 
     τ::VectorData{N,Float64}
     Vf::Edges{Primal, NX, NY, Float64}
     Vv::Edges{Primal, NX, NY, Float64}
+    Vn::Edges{Primal, NX, NY, Float64}
     Sc::Nodes{Primal, NX, NY,Float64}
     Sn::Nodes{Dual, NX, NY,Float64}
     Wn::Nodes{Dual, NX, NY,Float64}
@@ -126,7 +127,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
                        motions::Union{RigidMotionList,Nothing} = nothing,
                        store_operators = true,
                        static_points = true,
-                       flow_side::Type{SD} = ExternalInternalFlow, #rk=DEFAULT_RK,
+                       flow_side::Type{SD} = ExternalFlow,
                        ddftype=CartesianGrids.Yang3) where {F,SD<:FlowSide}
 
     g = PhysicalGrid(xlimits,ylimits,Δx)
@@ -137,6 +138,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
     # Set up buffers
     Vf = Edges{Primal,NX,NY,Float64}()
     Vv = Edges{Primal,NX,NY,Float64}()
+    Vn = Edges{Primal,NX,NY,Float64}()
     Sc = Nodes{Primal,NX,NY,Float64}()
     Sn = Nodes{Dual,NX,NY,Float64}()
     Wn = Nodes{Dual,NX,NY,Float64}()
@@ -191,7 +193,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
                           points, Rf, Ef, Cf, Rc, Ec, Rn, En,
                           f,state_prototype,
                           Vb, Sb, Δus, τ,
-                          Vf, Vv, Sc, Sn, Wn, Vtf, DVf, VDVf,
+                          Vf, Vv, Vn, Sc, Sn, Wn, Vtf, DVf, VDVf,
                           store_operators)
 end
 
@@ -237,6 +239,10 @@ function _immersion_operators(bodies::BodyList,g::PhysicalGrid,flow_side::Type{S
     dlf = DoubleLayer(bodies,g,Vf)
     slc = SingleLayer(bodies,g,Sc)
     #sln = SingleLayer(bodies,g,Sn)
+    sln = nothing
+  else
+    dlf = nothing
+    slc = nothing
     sln = nothing
   end
 

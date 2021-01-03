@@ -32,3 +32,9 @@
 @inline surface_velocity!(ūs::VectorData{N},us::VectorData{N},
                                ::NavierStokes{NX,NY,N,MT,FS,SD}) where {NX,NY,N,MT,FS,SD} =
                                (ūs .= 0.5*us; ūs)
+
+@inline function relative_surface_velocity!(ūsr::VectorData{N},sys::NavierStokes{NX,NY,N},t::Real) where {NX,NY,N}
+  assign_velocity!(sys.Vb,sys.bodies,sys.motions,t)
+  surface_velocity!(ūsr,sys.Vb,sys)
+  ūsr .-= sys.Vb
+end

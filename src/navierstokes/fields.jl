@@ -175,14 +175,14 @@ end
 
 function pressure(u::ConstrainedSystems.ArrayPartition,sys::NavierStokes{NX,NY},t) where {NX,NY}
     w, τ = state(u), constraint(u)
-    sys.Vv .= 0
-    _vel_ns_rhs_convectivederivative!(sys.Vv,w,sys)
-    _vel_ns_rhs_double_layer!(sys.Vv,sys,t)
-    sys.Vf .= 0
+    fill!(sys.Vn,0.0)
+    _vel_ns_rhs_convectivederivative!(sys.Vn,w,sys)
+    _vel_ns_rhs_double_layer!(sys.Vn,sys,t)
+    fill!(sys.Vf,0.0)
     _vel_ns_op_constraint_force!(sys.Vf,τ,sys)
-    sys.Vv .-= sys.Vf
-    sys.Sc .= 0
-    divergence!(sys.Sc,sys.Vv)
+    sys.Vn .-= sys.Vf
+    fill!(sys.Sc,0.0)
+    divergence!(sys.Sc,sys.Vn)
     press = zero(sys.Sc)
     ldiv!(press,sys.L,sys.Sc)
     press .*= cellsize(sys)
@@ -192,18 +192,56 @@ pressure(integ::ConstrainedSystems.OrdinaryDiffEq.ODEIntegrator) = pressure(inte
 
 # Surface field quantities
 
-for fcn in (:force,:pressurejump)
+for fcn in (:traction,:pressurejump)
   @eval $fcn(s::ConstrainedSystems.ArrayPartition,a...;kwargs...) = $fcn(constraint(s),a...;kwargs...)
+  @eval $fcn(integ::ConstrainedSystems.OrdinaryDiffEq.ODEIntegrator) = $fcn(integ.u,integ.p,integ.t)
 end
 
-force(τ::VectorData{N},sys) where {N} = τ #*cellsize(sys)^2
+traction(τ,sys::NavierStokes{NX,NY,0,MT,FS,SD},t) where {NX,NY,MT,FS,SD} = τ
 
-function pressurejump(τ::VectorData{N},b::Union{Body,BodyList},sys::NavierStokes) where {N}
-    @assert N == numpts(b)
+traction(τ::VectorData{N},sys::NavierStokes{NX,NY,N,MT,FS,ExternalInternalFlow},t) where {NX,NY,N,MT,FS} = τ
+
+function traction(τ::VectorData{N},sys::NavierStokes{NX,NY,N,MT,FS,SD},t) where {NX,NY,N,MT,FS,SD}
+    nrm = normals(sys.bodies)
+    relative_surface_velocity!(sys.Δus,sys,t)
+    pointwise_dot!(sys.Sb,nrm,sys.Δus)
+    surface_velocity_jump!(sys.Δus,sys,t)
+    product!(sys.Vb,sys.Δus,sys.Sb)
+    return τ + sys.Vb
+end
+
+function pressurejump(τ::VectorData{N},sys::NavierStokes{NX,NY,N},t) where {NX,NY,N}
 
     #_hasfilter(sys) ? (τf = similar(τ); τf .= sys.Cf*force(τ,sys)) : τf = deepcopy(force(τ,sys))
-    τf = deepcopy(τ)
+    #τf = deepcopy(τ)
+    #return nrm.u∘τf.u + nrm.v∘τf.v # This might need some modification
 
-    nrm = normals(b)
-    return nrm.u∘τf.u + nrm.v∘τf.v # This might need some modification
+    press = zero(sys.Sb)
+    nrm = normals(sys.bodies)
+    pointwise_dot!(press,nrm,traction(τ,sys,t))
+    return -press
+end
+
+## Total quantities
+
+force(τ,sys::NavierStokes{NX,NY,0},t,i::Int) where {NX,NY} = Vector{Float64}(), Vector{Float64}()
+
+function force(τ::VectorData{N},sys::NavierStokes,t,i::Int) where {N}
+    product!(sys.τ,traction(τ,sys,t),areas(sys.bodies))
+    fxvec = Vector{Float64}(undef,length(sys.bodies))
+    fyvec = Vector{Float64}(undef,length(sys.bodies))
+    #for i in 1:length(sys.bodies)
+    fxvec = sum(sys.τ.u,sys.bodies,i)
+    fyvec = sum(sys.τ.v,sys.bodies,i)
+    #end
+    return fxvec, fyvec
+end
+
+force(s::ConstrainedSystems.ArrayPartition,sys,t,i) = force(constraint(s),sys,t,i)
+force(integ::ConstrainedSystems.OrdinaryDiffEq.ODEIntegrator,i) = force(integ.u,integ.p,integ.t,i)
+
+function force(sol::ConstrainedSystems.OrdinaryDiffEq.ODESolution,sys::NavierStokes,i::Int)
+    fx = map((u,t) -> force(u,sys,t,1)[1],sol.u,sol.t)
+    fy = map((u,t) -> force(u,sys,t,1)[2],sol.u,sol.t)
+    fx, fy
 end
