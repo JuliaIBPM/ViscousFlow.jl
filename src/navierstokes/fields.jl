@@ -3,10 +3,12 @@ using LinearAlgebra
 import LinearAlgebra: transpose!
 import CartesianGrids: convective_derivative!
 
-for fcn in (:vorticity,:velocity,:streamfunction,:scalarpotential)
-  @eval $fcn(s::ConstrainedSystems.ArrayPartition,sys::NavierStokes,t) = $fcn(state(s),sys,t)
-end
+"""
+    vorticity(u,sys::NavierStokes,t)
 
+Return the vorticity field associated with state vector `u` on the grid in `sys`,
+at time `t`.
+"""
 @inline vorticity(w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY} = w/cellsize(sys)
 
 function velocity!(u::Edges{Primal,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY,N},t::Real) where {NX,NY,N}
@@ -49,6 +51,12 @@ function _velocity_freestream!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY,N,
   return u
 end
 
+"""
+    velocity(u,sys::NavierStokes,t)
+
+Return the velocity field associated with state vector `u` on the grid in `sys`,
+at time `t`.
+"""
 velocity(w::Nodes{Dual,NX,NY},a...) where {NX,NY} = velocity!(Edges(Primal,(NX,NY)),w,a...)
 
 
@@ -66,13 +74,19 @@ function _unscaled_streamfunction_vorticity!(ψ::Nodes{Dual,NX,NY},w::Nodes{Dual
   return ψ
 end
 
-function _streamfunction_freestream(ψ::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY}
+function _streamfunction_freestream!(ψ::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY}
   xg, yg = coordinates(ψ,sys.grid)
   U∞, V∞ = freestream(t,sys)
   ψ .+= U∞*yg' .- V∞*xg
   return ψ
 end
 
+"""
+    streamfunction(u,sys::NavierStokes,t)
+
+Return the streamfunction field associated with state vector `u` on the grid in `sys`,
+at time `t`.
+"""
 streamfunction(w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY} = streamfunction!(Nodes(Dual,(NX,NY)),w,sys,t)
 
 
@@ -88,6 +102,12 @@ function _unscaled_scalarpotential!(ϕ::Nodes{Primal,NX,NY},dil::Nodes{Primal,NX
   return ϕ
 end
 
+"""
+    scalarpotential(u,sys::NavierStokes,t)
+
+Return the scalar potential field associated with state vector `u` on the grid in `sys`,
+at time `t`.
+"""
 scalarpotential(dil::Nodes{Primal,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY} = scalarpotential!(Nodes(Primal,(NX,NY)),dil,sys,t)
 
 
@@ -100,6 +120,75 @@ function convective_derivative!(out::Edges{Primal,NX,NY},u::Edges{Primal,NX,NY},
   return out
 end
 
+"""
+    convective_derivative(u,sys::NavierStokes,t)
+
+Return the convective derivative associated with state vector `u` on the grid in `sys`,
+at time `t`.
+"""
+convective_derivative(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY} =
+      convective_derivative!(Edges(Primal,(NX,NY)),u,sys,t)
+
+
+"""
+    vorticity(integrator)
+
+Return the vorticity field associated with `integrator` at its current state.
+"""
+function vorticity end
+
+"""
+    velocity(integrator)
+
+Return the velocity field associated with `integrator` at its current state.
+"""
+function velocity end
+
+"""
+    streamfunction(integrator)
+
+Return the streamfunction field associated with `integrator` at its current state.
+"""
+function streamfunction end
+
+"""
+    scalarpotential(integrator)
+
+Return the scalar potential field associated with `integrator` at its current state.
+"""
+function scalarpotential end
+
+"""
+    convective_derivative(integrator)
+
+Return the convective derivative associated with `integrator` at its current state.
+"""
+function convective_derivative end
+
+
+for fcn in (:vorticity,:velocity,:streamfunction,:scalarpotential,:convective_derivative)
+  @eval $fcn(s::ConstrainedSystems.ArrayPartition,sys::NavierStokes,t) = $fcn(state(s),sys,t)
+
+  @eval $fcn(integ::ConstrainedSystems.OrdinaryDiffEq.ODEIntegrator) = $fcn(integ.u,integ.p,integ.t)
+end
+
+
+function pressure(u::ConstrainedSystems.ArrayPartition,sys::NavierStokes{NX,NY},t) where {NX,NY}
+    w, τ = state(u), constraint(u)
+    sys.Vv .= 0
+    _vel_ns_rhs_convectivederivative!(sys.Vv,w,sys)
+    _vel_ns_rhs_double_layer!(sys.Vv,sys,t)
+    sys.Vf .= 0
+    _vel_ns_op_constraint_force!(sys.Vf,τ,sys)
+    sys.Vv .-= sys.Vf
+    sys.Sc .= 0
+    divergence!(sys.Sc,sys.Vv)
+    press = zero(sys.Sc)
+    ldiv!(press,sys.L,sys.Sc)
+    press .*= cellsize(sys)
+    return press
+end
+pressure(integ::ConstrainedSystems.OrdinaryDiffEq.ODEIntegrator) = pressure(integ.u,integ.p,integ.t)
 
 # Surface field quantities
 

@@ -24,6 +24,15 @@ function _ns_rhs_convectivederivative!(dw::Nodes{Dual,NX,NY},w::Nodes{Dual,NX,NY
   dw .-= sys.Sn
 end
 
+function _vel_ns_rhs_convectivederivative!(u::Edges{Primal,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY}) where {NX,NY}
+    Δx⁻¹ = 1/cellsize(sys)
+    velocity!(u,w,sys,0.0)
+    _unscaled_convective_derivative!(u,sys)
+    u .*= -Δx⁻¹
+    return u
+end
+
+
 function _ns_rhs_double_layer!(dw::Nodes{Dual,NX,NY},
                               sys::NavierStokes{NX,NY,N,MT,FS,ExternalInternalFlow},
                               t::Real) where {NX,NY,N,MT,FS}
@@ -44,6 +53,19 @@ function _ns_rhs_double_layer!(dw::Nodes{Dual,NX,NY},
   dw .-= sys.Sn
 end
 
+function _vel_ns_rhs_double_layer!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY,N,MT,FS,ExternalInternalFlow},t::Real) where {NX,NY,N,MT,FS}
+    return u
+end
+
+function _vel_ns_rhs_double_layer!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY,N,MT,FS,SD},t::Real) where {NX,NY,N,MT,FS,SD}
+    Δx⁻¹ = 1/cellsize(sys)
+    fact = -Δx⁻¹/sys.Re
+    surface_velocity_jump!(sys.Δus,sys,t)
+    fill!(u,0.0)
+    sys.dlf(u,sys.Δus)
+    u .*= fact
+    return u
+end
 
 _unscaled_convective_derivative!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY}) where {NX,NY} =
       _unscaled_convective_derivative!(u,sys.Vtf,sys.DVf,sys.VDVf)

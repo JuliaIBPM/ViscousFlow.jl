@@ -214,7 +214,7 @@ NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,motion::RigidBodyMotion;kwargs...) 
 function Base.show(io::IO, sys::NavierStokes{NX,NY,N,MT,FS,SD}) where {NX,NY,N,MT,FS,SD}
     mtype = (MT == StaticPoints) ? "static" : "moving"
     fsmsg = (FS == StaticFreestream) ? "Static freestream = $(sys.U∞)" : "Variable freestream"
-    sdmsg = (SD == ExternalFlow) ? "External flow" : ((SD == InternalFlow) ? "Internal flow" : "External/internal")
+    sdmsg = (N == 0) ? "Unbounded" : ((SD == ExternalFlow) ? "External flow" : ((SD == InternalFlow) ? "Internal flow" : "External/internal"))
     println(io, "$sdmsg Navier-Stokes system on a grid of size $NX x $NY and $N $mtype immersed points")
     println(io, "   $fsmsg")
     if N > 0
@@ -369,7 +369,7 @@ timerange(tf,sys) = timestep(sys):timestep(sys):tf
 
 
 """
-    freestream(t,sys) -> Tuple
+    freestream(t,sys::NavierStokes) -> Tuple
 
 Return the value of the freestream in `sys` at time `t` as a tuple.
 """
@@ -378,6 +378,26 @@ freestream(t::Real,sys::NavierStokes{NX,NY,N,MT,StaticFreestream}) where {NX,NY,
 function freestream(t::Real,sys::NavierStokes{NX,NY,N,MT,VariableFreestream}) where {NX,NY,N,MT}
     _,ċ,_,_,_,_ = sys.U∞(t)
     return reim(ċ)
+end
+
+"""
+    newstate(sys::NavierStokes)
+
+Return a new (zero) instance of the state vector for `sys`.
+"""
+newstate(sys::NavierStokes) = zero(sys.state_prototype)
+
+"""
+    newstate(s::AbstractSpatialField,sys::NavierStokes)
+
+Return an instance of the state vector for `sys`, assigned the
+data in the spatial field `s`.
+"""
+function newstate(s::AbstractSpatialField,sys::NavierStokes)
+  u = newstate(sys)
+  gf = GeneratedField(state(u),s,sys.grid)
+  state(u) .= cellsize(sys)*gf()
+  return u
 end
 
 # Other functions

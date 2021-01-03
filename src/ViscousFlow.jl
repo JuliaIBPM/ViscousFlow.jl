@@ -17,12 +17,13 @@ using Reexport
 using LinearAlgebra
 using SparseArrays
 
-export NavierStokes, PointForce, SpatialGauss, Gaussian!, Gaussian,
+export NavierStokes, PointForce,
        ExternalFlow, InternalFlow, ExternalInternalFlow,
-       setstepsizes, timestep, timerange,
+       setstepsizes, timestep, timerange, newstate,
        update_immersion_operators!,
        vorticity, velocity, velocity!, streamfunction, streamfunction!,
-       scalarpotential, scalarpotential!, force, pressurejump
+       scalarpotential, scalarpotential!, convective_derivative, convective_derivative!,
+       pressure, force, pressurejump
 
 abstract type PointMotionType end
 abstract type StaticPoints <: PointMotionType end

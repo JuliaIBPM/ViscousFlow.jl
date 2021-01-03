@@ -17,12 +17,22 @@ end
 
 # Constraint operators, using stored regularization and interpolation operators
 # B₁ᵀ = CᵀEᵀ
-function ns_op_constraint_force!(out::Nodes{Dual,NX,NY},f::VectorData{N},sys::NavierStokes{NX,NY,N}) where {NX,NY,N}
-    sys.Vf .= sys.Rf*f
+function ns_op_constraint_force!(out::Nodes{Dual,NX,NY},τ::VectorData{N},sys::NavierStokes{NX,NY,N}) where {NX,NY,N}
+    sys.Vf .= sys.Rf*τ
     out .= 0.0
     curl!(out,sys.Vf)
     return out
 end
+
+function _vel_ns_op_constraint_force!(u::Edges{Primal,NX,NY},τ,sys::NavierStokes{NX,NY,0}) where {NX,NY}
+    return u
+end
+
+function _vel_ns_op_constraint_force!(u::Edges{Primal,NX,NY},τ::VectorData{N},sys::NavierStokes{NX,NY,N}) where {NX,NY,N}
+    u .= sys.Rf*τ
+    return u
+end
+
 
 # B₂ = -ECL⁻¹
 function bc_constraint_op!(out::VectorData{N},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY,N}) where {NX,NY,N}

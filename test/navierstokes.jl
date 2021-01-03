@@ -1,5 +1,6 @@
 
 using LinearAlgebra
+using SpecialFunctions
 
 @testset "Navier-Stokes" begin
 
@@ -32,53 +33,64 @@ using LinearAlgebra
 
   end
 
+  struct OseenPressure <: CartesianGrids.AbstractSpatialField
+    σ :: Real
+    x0 :: Real
+    y0 :: Real
+    A :: Real
+  end
+  function (p::OseenPressure)(x,y)
+    r = sqrt((x-p.x0)^2+(y-p.y0)^2)
+    p.A^2/(4π^2)*(-0.5/r^2 + 1/r^2*exp(-r^2/p.σ^2) -
+                  expint(r^2/p.σ^2)/p.σ^2 -
+                  0.5/r^2*exp(-2*r^2/p.σ^2) +
+                  expint(2*r^2/p.σ^2)/p.σ^2)
+   end
+
+
   @testset "Lamb-Oseen vortex" begin
 
-    woseen(x::Tuple{Real,Real},t;Re=1.0,x0::Tuple{Real,Real}=(0,0),t0=1) =
-                          exp(-((x[1]-x0[1])^2+(x[2]-x0[2])^2)/(4(t+t0)/Re))/(1+t/t0)
-
-    #wexact(x, y, t, Re, σ, U, Δx) = Δx*exp(-((x-U*t)^2+y^2)/(σ^2+4t/Re))/(1+4t/(Re*σ^2))
-
-    #nx = 260; ny = 130
     Re = 200 + 50rand()
-    U = 1.0 + 0.2randn()
+    U = 0.2randn()
     U∞ = (U,0.0)
-    #Lx = 2.0
-    Δx = 0.015  #Lx/(ny-1)
-    Δt = min(0.5*Δx,0.5*Δx^2*Re)
 
-    #sys = NavierStokes((nx,ny),Re,Δx,Δt,U∞ = U∞)
-    sys = NavierStokes(Re,Δx,(0.0,3.0),(0.0,2.0),Δt,freestream = U∞)
+    xlim = (-2.0,2.0)
+    ylim = (-2.0,2.0)
+
+    Δx, Δt = setstepsizes(Re,gridRe=4)
+
+    sys = NavierStokes(Re,Δx,xlim,ylim,Δt,freestream = U∞)
 
     @test isnothing(sys.motions)
     @test isnothing(sys.bodies)
 
-    w₀ = Nodes(Dual,size(sys))
-    xg,yg = coordinates(w₀,dx=Δx)
-    x0 = (1,1)
-    t0 = 1
-    wexact(t) = [Δx*woseen((x,y),t;Re=Re,x0=x0.+U∞.*t,t0=t0) for x in xg, y in yg]
+    σ = 0.2; x0 = 0.0; y0 = 0.0; A = 1
+    gauss = SpatialGaussian(σ,x0,y0,A)
 
-    ifrk = IFRK(w₀,sys.Δt,
-                (t,w) -> plan_intfact(t,w,sys),
-                (w,t) -> r₁(w,t,sys) ,rk=ConstrainedSystems.RK31)
+    u0 = newstate(gauss,sys)
 
-    t = 0.0
-    w₀ .= wexact(t)
+    tspan = (0.0,0.5)
+    integrator = init(u0,tspan,sys)
 
-    w = deepcopy(w₀)
-    tf = 1.0
-    T = 0:Δt:tf
+    step!(integrator,0.5)
 
-    for ti in T
-      t, w = ifrk(t,w)
-    end
+    press = pressure(integrator)
 
-    @test norm(w-wexact(t),Inf) < 1e-1
-    @test abs(sum(w)-sum(wexact(t))) < 1e-3
+    oseen_vorticity(t) = SpatialGaussian(sqrt(σ^2+4*t/Re),x0+U*t,y0,A)
+    #exactvorticity(t) = newstate(oseen_exact(t),sys)
+    exactvorticity(t) = CartesianGrids.GeneratedField(state(u0),oseen_vorticity(t),sys.grid)
+
+    oseen_pressure(t) = OseenPressure(sqrt(σ^2+4*t/Re),x0+U*t,y0,A)
+    exactpressure(t) = CartesianGrids.GeneratedField(press,oseen_pressure(t),sys.grid)
+
+    @test norm(vorticity(integrator)-exactvorticity(integrator.t)()) < 1e-2
+
+    @test norm(press - exactpressure(integrator.t)()) < 5e-2
+
 
   end
 
+#=
   @testset "Flow past cylinder" begin
 
     Re = 200
@@ -109,14 +121,6 @@ using LinearAlgebra
 
     @test origin(sys) == (54,52)
 
-    #=
-    wf = PointForce(Nodes(Dual,size(sys)),(1.5,0.0),10.0,1.5,1.0,sys)
-    @test isapprox(sum(wf(1.5)),10,atol=1e-2)
-
-    qf = PointForce(Edges(Primal,size(sys)),(1.5,0.0),(10.0,-10.0),1.5,1.0,sys)
-    @test isapprox(sum(qf(1.5).u),10,atol=1e-2)
-    @test isapprox(sum(qf(1.5).v),10,atol=1e-2)
-    =#
 
     w₀ = Nodes(Dual,size(sys))
     f = VectorData(X)
@@ -140,7 +144,7 @@ using LinearAlgebra
     end
 
   end
-
+=#
 
 
 end
