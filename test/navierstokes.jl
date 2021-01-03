@@ -90,29 +90,26 @@ using SpecialFunctions
 
   end
 
-#=
   @testset "Flow past cylinder" begin
 
     Re = 200
     U = 1.0
     U∞ = (U,0.0)
 
-    n = 100
-    body = Circle(0.5,n)
-
     xlim = (-1.0,3.0)
     ylim = (-1.0,1.0)
 
-    X = VectorData(body.x,body.y)
+    Δx, Δt = setstepsizes(Re,gridRe=4)
 
-    Δx = 0.02
-    Δt = min(0.5*Δx,0.5*Δx^2*Re)
-    Δx2, Δt2 = setstepsizes(Re,gridRe=4)
-    @test Δx == Δx2 && Δt == Δt2
+    @test Δx == 0.02
+    @test Δt == min(0.5*Δx,0.5*Δx^2*Re)
 
-    motion = RigidBodyTools.RigidBodyMotion(complex(0.0),0.0)
+    body = Circle(0.5,1.5Δx)
+
+
     sys = NavierStokes(Re,Δx,xlim,ylim,Δt,body,freestream = U∞)
 
+    motion = RigidBodyTools.RigidBodyMotion(0.0,0.0)
     @test sys.motions[1].kin == motion.kin
 
     @test size(sys,1) == 208
@@ -121,30 +118,27 @@ using SpecialFunctions
 
     @test origin(sys) == (54,52)
 
+    u0 = newstate(sys)
 
     w₀ = Nodes(Dual,size(sys))
-    f = VectorData(X)
+    τ = VectorData(sys.points)
+    @test state(u0) == w₀
+    @test constraint(u0) == τ
 
-    plan_intfact(t,u) = CartesianGrids.plan_intfact(t,u,sys)
-    plan_constraints(u,t) = ConstrainedSystems.plan_constraints(u,t,sys)
-    r₁(u,t) = ConstrainedSystems.r₁(u,t,sys)
-    r₂(u,t) = ConstrainedSystems.r₂(u,t,sys)
+    du = deepcopy(u0)
+    sys.f(du,u0,sys,0.0)
+    @test maximum(state(du)) == minimum(state(du)) == 0.0
+    @test all(x -> (x ≈ -U),constraint(du).u)
+    @test all(x -> (x ≈ 0.0),constraint(du).v)
 
+    tspan = (0.0,1.0)
+    integrator = init(u0,tspan,sys)
 
-    solver = IFHERK(w₀,f,timestep(sys),plan_intfact,plan_constraints,(r₁,r₂),rk=ConstrainedSystems.RK31)
+    @test integrator.alg isa LiskaIFHERK{Direct}
 
-    t = 0.0
-    u = zero(w₀)
-
-    tsim = 0.2
-    @test timerange(tsim,sys) == Δt:Δt:tsim
-
-    for ti in timerange(tsim,sys)
-      t, u, f = solver(t,u)
-    end
+    step!(integrator,0.2)
 
   end
-=#
 
 
 end

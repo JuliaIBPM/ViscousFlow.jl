@@ -228,22 +228,37 @@ end
 
 force(τ,sys::NavierStokes{NX,NY,0},t,i::Int) where {NX,NY} = Vector{Float64}(), Vector{Float64}()
 
-function force(τ::VectorData{N},sys::NavierStokes,t,i::Int) where {N}
+function force(τ::VectorData{N},sys::NavierStokes,t,bodyi::Int) where {N}
     product!(sys.τ,traction(τ,sys,t),areas(sys.bodies))
     fxvec = Vector{Float64}(undef,length(sys.bodies))
     fyvec = Vector{Float64}(undef,length(sys.bodies))
     #for i in 1:length(sys.bodies)
-    fxvec = sum(sys.τ.u,sys.bodies,i)
-    fyvec = sum(sys.τ.v,sys.bodies,i)
+    fxvec = sum(sys.τ.u,sys.bodies,bodyi)
+    fyvec = sum(sys.τ.v,sys.bodies,bodyi)
     #end
     return fxvec, fyvec
 end
 
-force(s::ConstrainedSystems.ArrayPartition,sys,t,i) = force(constraint(s),sys,t,i)
-force(integ::ConstrainedSystems.OrdinaryDiffEq.ODEIntegrator,i) = force(integ.u,integ.p,integ.t,i)
 
-function force(sol::ConstrainedSystems.OrdinaryDiffEq.ODESolution,sys::NavierStokes,i::Int)
-    fx = map((u,t) -> force(u,sys,t,1)[1],sol.u,sol.t)
-    fy = map((u,t) -> force(u,sys,t,1)[2],sol.u,sol.t)
+force(s::ConstrainedSystems.ArrayPartition,sys,t,bodyi) = force(constraint(s),sys,t,bodyi)
+
+"""
+    force(integ,bodyindex)
+
+Given the state of the system in integrator `integ`, return the current force
+on the body with index `bodyindex`.
+"""
+force(integ::ConstrainedSystems.OrdinaryDiffEq.ODEIntegrator,bodyi) = force(integ.u,integ.p,integ.t,bodyi)
+
+"""
+    force(sol,sys::NavierStokes,bodyindex) -> Tuple{Vector,Vector}
+
+Given the solution history vector `sol` and the system `sys`, return the force
+history on the body with index `bodyindex` as a tuple of vectors, one for
+each component.
+"""
+function force(sol::ConstrainedSystems.OrdinaryDiffEq.ODESolution,sys::NavierStokes,bodyi::Int)
+    fx = map((u,t) -> force(u,sys,t,bodyi)[1],sol.u,sol.t)
+    fy = map((u,t) -> force(u,sys,t,bodyi)[2],sol.u,sol.t)
     fx, fy
 end

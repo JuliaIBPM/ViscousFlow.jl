@@ -6,6 +6,7 @@ import PlotUtils: cgrad
 
 @recipe function f(w::T,sys::NavierStokes) where {T<:GridData}
     @series begin
+      trim := 2
       w, sys.grid
     end
 
