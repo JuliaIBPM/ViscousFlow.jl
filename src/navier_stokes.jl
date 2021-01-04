@@ -436,7 +436,6 @@ _fstype(F) = F == RigidBodyMotion ? VariableFreestream : StaticFreestream
 
 include("navierstokes/surfacevelocities.jl")
 include("navierstokes/fields.jl")
-include("navierstokes/pulses.jl")
 include("navierstokes/basicoperators.jl")
 include("navierstokes/rigidbodyoperators.jl")
 include("navierstokes/movingbodyoperators.jl")
