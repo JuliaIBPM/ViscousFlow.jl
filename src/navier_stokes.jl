@@ -322,22 +322,7 @@ function setstepsizes(Re::Real; gridRe = 2.0, cfl = 0.5, fourier = 0.5)
     return Δx, Δt
 end
 
-_process_pulses(::Nothing,s,grid) = nothing
 
-function _process_pulses(params::PulseParams,s,grid)
-  gf = GeneratedField(s,params.field,grid)
-  pulse = PulseField(gf,params.t0,params.σt)
-  return [pulse]
-end
-
-function _process_pulses(params::Vector{<:PulseParams},s,grid)
-  pulses = PulseField[]
-  for p in params
-    gf = GeneratedField(s,p.field,grid)
-    push!(pulses,PulseField(gf,p.t0,p.σt))
-  end
-  return pulses
-end
 
 
 # some convenience functions
@@ -436,6 +421,7 @@ _fstype(F) = F == RigidBodyMotion ? VariableFreestream : StaticFreestream
 
 include("navierstokes/surfacevelocities.jl")
 include("navierstokes/fields.jl")
+include("navierstokes/pointforce.jl")
 include("navierstokes/basicoperators.jl")
 include("navierstokes/rigidbodyoperators.jl")
 include("navierstokes/movingbodyoperators.jl")
