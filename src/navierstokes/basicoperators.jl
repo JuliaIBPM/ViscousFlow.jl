@@ -15,9 +15,22 @@ function ns_rhs!(dw::Nodes{Dual,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX
   _vel_ns_rhs_convectivederivative!(sys.Vn,w,sys)
   _vel_ns_rhs_double_layer!(sys.Vn,sys,t)
   curl!(dw,sys.Vn)
+  _ns_rhs_pulses!(dw,sys,t)
   return dw
 end
 
+_ns_rhs_pulses!(dw::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t) where {NX,NY} = _ns_rhs_pulses!(dw,sys.pulses,t)
+
+_ns_rhs_pulses!(dw,::Nothing,t) = dw
+
+function _ns_rhs_pulses!(dw,pulses::Vector{<:PulseField},t)
+  for p in pulses
+    dw .+= p(t)
+  end
+  dw
+end
+
+#=
 function _ns_rhs_convectivederivative!(dw::Nodes{Dual,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY}) where {NX,NY}
   Δx⁻¹ = 1/cellsize(sys)
   velocity!(sys.Vv,w,sys,0.0)
@@ -27,6 +40,7 @@ function _ns_rhs_convectivederivative!(dw::Nodes{Dual,NX,NY},w::Nodes{Dual,NX,NY
   sys.Sn .*= Δx⁻¹
   dw .-= sys.Sn
 end
+=#
 
 function _vel_ns_rhs_convectivederivative!(u::Edges{Primal,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY}) where {NX,NY}
     Δx⁻¹ = 1/cellsize(sys)
@@ -38,6 +52,7 @@ function _vel_ns_rhs_convectivederivative!(u::Edges{Primal,NX,NY},w::Nodes{Dual,
 end
 
 
+#=
 function _ns_rhs_double_layer!(dw::Nodes{Dual,NX,NY},
                               sys::NavierStokes{NX,NY,N,MT,FS,ExternalInternalFlow},
                               t::Real) where {NX,NY,N,MT,FS}
@@ -57,6 +72,7 @@ function _ns_rhs_double_layer!(dw::Nodes{Dual,NX,NY},
   sys.Sn .*= fact
   dw .-= sys.Sn
 end
+=#
 
 @inline _vel_ns_rhs_double_layer!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY,N,MT,FS,
                                   ExternalInternalFlow},t::Real) where {NX,NY,N,MT,FS} = u

@@ -58,6 +58,8 @@ mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, 
     bodies::Union{BodyList,Nothing}
     "Body motions"
     motions::Union{RigidMotionList,Nothing}
+    "Pulses"
+    pulses::Union{Vector{PulseField},Nothing}
 
     # Discretization
     "Grid metadata"
@@ -123,12 +125,14 @@ mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, 
 end
 
 function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Real}, Δt::Real;
-                       freestream::F = (0.0, 0.0), bodies::Union{BodyList,Nothing} = nothing,
+                       freestream::F = (0.0, 0.0),
+                       bodies::Union{BodyList,Nothing} = nothing,
                        motions::Union{RigidMotionList,Nothing} = nothing,
+                       pulses::PT = nothing,
                        store_operators = true,
                        static_points = true,
                        flow_side::Type{SD} = ExternalFlow,
-                       ddftype=CartesianGrids.Yang3) where {F,SD<:FlowSide}
+                       ddftype=CartesianGrids.Yang3) where {F,PT,SD<:FlowSide}
 
     g = PhysicalGrid(xlimits,ylimits,Δx)
     NX, NY = size(g)
@@ -147,6 +151,8 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
     VDVf = EdgeGradient{Primal,Dual,NX,NY,Float64}()
 
     L = plan_laplacian(Sn,with_inverse=true)
+
+    pulsefields = _process_pulses(pulses,Sn,g)
 
     N = numpts(bodies)
 
@@ -186,7 +192,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
 
 
     NavierStokes{NX, NY, N, _motiontype(static_points), _fstype(F), flow_side, ddftype, typeof(f), typeof(state_prototype)}( #,typeof(rk)}(
-                          Re, freestream, bodies, motions,
+                          Re, freestream, bodies, motions, pulsefields,
                           g, Δt, # rk,
                           L,
                           dlf,slc,sln,
@@ -316,6 +322,22 @@ function setstepsizes(Re::Real; gridRe = 2.0, cfl = 0.5, fourier = 0.5)
     return Δx, Δt
 end
 
+_process_pulses(::Nothing,s,grid) = nothing
+
+function _process_pulses(params::PulseParams,s,grid)
+  gf = GeneratedField(s,params.field,grid)
+  pulse = PulseField(gf,params.t0,params.σt)
+  return [pulse]
+end
+
+function _process_pulses(params::Vector{<:PulseParams},s,grid)
+  pulses = PulseField[]
+  for p in params
+    gf = GeneratedField(s,p.field,grid)
+    push!(pulses,PulseField(gf,p.t0,p.σt))
+  end
+  return pulses
+end
 
 
 # some convenience functions

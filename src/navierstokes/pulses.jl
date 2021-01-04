@@ -1,5 +1,11 @@
 ### Utilities ###
 
+struct PulseParams{GF}
+    field :: GF
+    t0 :: Float64
+    σt :: Float64
+end
+
 struct PointForce{T}
   x :: Vector{Float64}
   f0 :: Union{Float64,Vector{Float64}}
