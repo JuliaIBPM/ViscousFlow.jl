@@ -17,7 +17,7 @@ using Reexport
 using LinearAlgebra
 using SparseArrays
 
-export NavierStokes, PulseParams, PointForce,
+export NavierStokes, PulseParams, PointForce, SpatialDGaussian,
        ExternalFlow, InternalFlow, ExternalInternalFlow,
        setstepsizes, timestep, timerange, newstate,
        update_immersion_operators!,

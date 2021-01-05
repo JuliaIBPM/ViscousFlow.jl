@@ -19,13 +19,13 @@ function ns_rhs!(dw::Nodes{Dual,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX
   return dw
 end
 
-_ns_rhs_pulses!(dw::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t) where {NX,NY} = _ns_rhs_pulses!(dw,sys.pulses,t)
+_ns_rhs_pulses!(dw::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t) where {NX,NY} = _ns_rhs_pulses!(dw,sys.pulses,cellsize(sys),t)
 
-_ns_rhs_pulses!(dw,::Nothing,t) = dw
+_ns_rhs_pulses!(dw,::Nothing,Δx,t) = dw
 
-function _ns_rhs_pulses!(dw,pulses::Vector{<:PulseField},t)
+function _ns_rhs_pulses!(dw,pulses::Vector{<:PulseField},Δx,t)
   for p in pulses
-    dw .+= p(t)
+    dw .+= Δx*p(t)
   end
   dw
 end
