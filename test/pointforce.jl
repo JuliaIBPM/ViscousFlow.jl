@@ -40,8 +40,8 @@ end
   x0 = 0
   y0 = 0
   A = 1
-  dgaussx = SpatialDGaussian(σx,σy,x0,y0,A,1)
-  dgaussy = SpatialDGaussian(σx,σy,x0,y0,A,2)
+  dgaussx = SpatialGaussian(σx,σy,x0,y0,A,deriv=1)
+  dgaussy = SpatialGaussian(σx,σy,x0,y0,A,deriv=2)
   x = 0.1
   y = 0.2
   @test dgaussx(0.1,0.2) == dgaussy(0.2,0.1) ≈ -2*A*x/π/σx^3/σy*exp(-x^2/σx^2)*exp(-y^2/σy^2)
