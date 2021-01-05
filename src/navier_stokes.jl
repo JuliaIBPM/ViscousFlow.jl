@@ -210,12 +210,12 @@ NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList;
 NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body;kwargs...) =
         NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]);kwargs...)
 
-function NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList,motions::RigidMotionList;kwargs...)
+function NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList,motions::RigidMotionList;static_points=false,kwargs...)
     length(bodies) == length(motions) || error("Inconsistent lengths of bodies and motions lists")
-    NavierStokes(Re,Δx,xlim,ylim,Δt,bodies;motions=motions,kwargs...)
+    NavierStokes(Re,Δx,xlim,ylim,Δt,bodies;motions=motions,static_points=static_points,kwargs...)
 end
 
-NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,motion::RigidBodyMotion;kwargs...) =
+NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,motion::RigidBodyMotion;static_points=false,kwargs...) =
         NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]),RigidMotionList([motion]);kwargs...)
 
 
