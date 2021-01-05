@@ -1,55 +1,65 @@
 import Base: size
 
-import ConstrainedSystems: r₁, r₂, B₁ᵀ, B₂, plan_constraints
+const NDIM = 2
+
+
+#import ConstrainedSystems: r₁, r₂, B₁ᵀ, B₂, plan_constraints
 import CartesianGrids: cellsize, origin
+import RigidBodyTools: assign_velocity!
+import ImmersedLayers: normals, areas
+
+#const DEFAULT_RK = ConstrainedSystems.RK31
+#const DEFAULT_RK = ConstrainedSystems.LiskaIFHERK()
+
 
 """
 $(TYPEDEF)
 
 A system type that utilizes a grid of `NX` x `NY` dual cells and `N` Lagrange forcing
 points to solve the discrete Navier-Stokes equations in vorticity form. The
-parameter `isstatic` specifies whether the forcing points remain static in the
-grid.
-
-# Fields
-- `Re`: Reynolds number
-- `U∞`: Tuple of components of free-stream velocity
-- `Δx`: Size of each side of a grid cell
-- `I0`: Tuple of indices of the primal node corresponding to physical origin
-- `Δt`: Time step
-- `rk`: Runge-Kutta coefficients
-- `L`: Pre-planned discrete Laplacian operator and inverse
-- `X̃`: Lagrange point coordinate data (if present), expressed in inertial coordinates
-        (if static) or in body-fixed coordinates (if moving)
-- `Hmat`: Pre-computed regularization matrix (if present)
-- `Emat`: Pre-computed interpolation matrix (if present)
-- `Vb`: Buffer space for vector data on Lagrange points
-- `Fq`: Buffer space for primal cell edge data
-- `Ww`: Buffer space for dual cell edge data
-- `Qq`: More buffer space for dual cell edge data
-- `_isstore`: flag to specify whether to store regularization/interpolation matrices
+parameter `static_points` specifies whether the forcing points remain static in the
+grid. It should be set to `false` if a supplied motion requires that the points move.
 
 # Constructors:
 
 `NavierStokes(Re,Δx,xlimits,ylimits,Δt
-              [,U∞ = (0.0, 0.0)][,X̃ = VectorData{0}()]
-              [,isstore=false][,isstatic=true][,isfilter=false]
-              [,rk=ConstrainedSystems.RK31]
-              [,ddftype=CartesianGrids.Yang3])` specifies the Reynolds number `Re`, the grid
+              [,freestream = (0.0, 0.0)]
+              [,store_operators=true][,static_points=true]
+              [,rk=LiskaIFHERK()]
+              [,flow_side=ExternalInternalFlow]
+              [,ddftype=CartesianGrids.Yang3])`specifies the Reynolds number `Re`, the grid
               spacing `Δx`, the dimensions of the domain in the tuples `xlimits`
               and `ylimits` (excluding the ghost cells), and the time step size `Δt`.
-              The other arguments are optional. Note that `isstore` set to `true`
-              would store matrix versions of the operators. This makes the method
-              faster, at the cost of storage. If `isfilter` is set to true, then
-              the regularization relies on a filtered version.
+              The other arguments are optional. Note that `store_operators` set to `true`
+              stores matrix versions of the operators. This makes the method
+              faster, at the cost of storage. The `freestream` argument can be
+              passed as either a tuple (a static freestream) or a `RigidBodyMotion`
+              for a time-varying freestream. The `flow_side` can be set to
+              `ExternalFlow`, `InternalFlow`, or `ExternalInternalFlow` (default).
+
+`NavierStokes(Re,Δx,xlimits,ylimits,Δt,bodies::Body/BodyList)` passes the body
+              information. The other keywords can also be supplied. This
+              sets the motions of the body/ies to be stationary.
+
+`NavierStokes(Re,Δx,xlimits,ylimits,Δt,bodies::Body/BodyList,
+              motions::RigidBodyMotion/RigidMotionList)`
+              passes the body and associated motion information.
+              The other keywords can also be supplied. The list of
+              motions must be the same length as the list of bodies.
 
 """
-mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
+mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, SD<:FlowSide, DDF<:CartesianGrids.DDFType, FT, SP} #, RKT}
     # Physical Parameters
     "Reynolds number"
     Re::Float64
     "Free stream velocities"
-    U∞::Tuple{Float64, Float64}
+    U∞::Union{Tuple{Float64, Float64},RigidBodyMotion}
+    "Bodies"
+    bodies::Union{BodyList,Nothing}
+    "Body motions"
+    motions::Union{RigidMotionList,Nothing}
+    "Pulses"
+    pulses::Union{Vector{PulseField},Nothing}
 
     # Discretization
     "Grid metadata"
@@ -60,103 +70,235 @@ mutable struct NavierStokes{NX, NY, N, isstatic}  #<: System{Unconstrained}
     #I0::Tuple{Int,Int}
     "Time step"
     Δt::Float64
-    "Runge-Kutta method"
-    rk::ConstrainedSystems.RKParams
+    #"Time marching method"
+    #rk::RKT
 
     # Operators
     "Laplacian operator"
-    L::CartesianGrids.Laplacian{NX,NY}
+    L::CartesianGrids.Laplacian
+
+    # Layers
+    dlf::Union{DoubleLayer,Nothing} # used for viscous surface terms
+    slc::Union{SingleLayer,Nothing} # used for scalar potential field in velocity
+    sln::Union{SingleLayer,Nothing} # might not be used
 
     # Body coordinate data, if present
     # if a static problem, these coordinates are in inertial coordinates
     # if a non-static problem, in their own coordinate systems
-    X̃::VectorData{N,Float64}
+    points::VectorData{N,Float64}
 
     # Pre-stored regularization and interpolation matrices (if present)
-    Hmat::Union{RegularizationMatrix,Nothing}
-    Emat::Union{InterpolationMatrix,Nothing}
-    Hmat_grad::Union{RegularizationMatrix,Nothing}
-    Emat_grad::Union{InterpolationMatrix,Nothing}
+    Rf::Union{RegularizationMatrix,Nothing} # faces (edges)
+    Ef::Union{InterpolationMatrix,Nothing}
+    Cf::Union{AbstractMatrix,Nothing}
+    Rc::Union{RegularizationMatrix,Nothing} # cell centers
+    Ec::Union{InterpolationMatrix,Nothing}
+    Rn::Union{RegularizationMatrix,Nothing} # cell nodes
+    En::Union{InterpolationMatrix,Nothing}
 
-    # Conditioner matrices
-    Cmat::Union{AbstractMatrix,Nothing}
-    Cmat_grad::Union{AbstractMatrix,Nothing}
+    # Operators
+    f :: FT
+
+    # state vector
+    state_prototype :: SP
 
     # Scratch space
 
     ## Pre-allocated space for intermediate values
     Vb::VectorData{N,Float64}
-    Fq::Edges{Primal, NX, NY, Float64}
-    Ww::Edges{Dual, NX, NY,Float64}
-    Qq::Edges{Dual, NX, NY,Float64}
+    Sb::ScalarData{N,Float64}
+    Δus::VectorData{N,Float64}
+    τ::VectorData{N,Float64}
+    Vf::Edges{Primal, NX, NY, Float64}
+    Vv::Edges{Primal, NX, NY, Float64}
+    Vn::Edges{Primal, NX, NY, Float64}
+    Sc::Nodes{Primal, NX, NY,Float64}
+    Sn::Nodes{Dual, NX, NY,Float64}
+    Wn::Nodes{Dual, NX, NY,Float64}
+    Vtf::EdgeGradient{Primal,Dual,NX,NY,Float64}
+    DVf::EdgeGradient{Primal,Dual,NX,NY,Float64}
+    VDVf::EdgeGradient{Primal,Dual,NX,NY,Float64}
 
     # Flags
-    _isstore :: Bool
+    _isstored :: Bool
 
 end
 
-function NavierStokes(Re, Δx, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Real}, Δt;
-                       U∞ = (0.0, 0.0), X̃ = VectorData(0),
-                       isstore = false,
-                       isstatic = true,
-                       isasymptotic = false,
-                       isfilter = false,
-                       rk::ConstrainedSystems.RKParams=ConstrainedSystems.RK31,
-                       ddftype=CartesianGrids.Yang3)
+function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Real}, Δt::Real;
+                       freestream::F = (0.0, 0.0),
+                       bodies::Union{BodyList,Nothing} = nothing,
+                       motions::Union{RigidMotionList,Nothing} = nothing,
+                       pulses::PT = nothing,
+                       store_operators = true,
+                       static_points = true,
+                       flow_side::Type{SD} = ExternalFlow,
+                       ddftype=CartesianGrids.Yang3) where {F,PT,SD<:FlowSide}
 
     g = PhysicalGrid(xlimits,ylimits,Δx)
     NX, NY = size(g)
 
     α = Δt/(Re*Δx^2)
 
-    L = plan_laplacian((NX,NY),with_inverse=true)
+    # Set up buffers
+    Vf = Edges{Primal,NX,NY,Float64}()
+    Vv = Edges{Primal,NX,NY,Float64}()
+    Vn = Edges{Primal,NX,NY,Float64}()
+    Sc = Nodes{Primal,NX,NY,Float64}()
+    Sn = Nodes{Dual,NX,NY,Float64}()
+    Wn = Nodes{Dual,NX,NY,Float64}()
+    Vtf = EdgeGradient{Primal,Dual,NX,NY,Float64}()
+    DVf = EdgeGradient{Primal,Dual,NX,NY,Float64}()
+    VDVf = EdgeGradient{Primal,Dual,NX,NY,Float64}()
 
-    Vb = VectorData(X̃)
-    Fq = Edges{Primal,NX,NY,Float64}()
-    Ww = Edges{Dual, NX, NY,Float64}()
-    Qq = Edges{Dual, NX, NY,Float64}()
-    N = length(X̃)÷2
+    L = plan_laplacian(Sn,with_inverse=true)
 
-    Hmat = nothing
-    Emat = nothing
-    Cmat = nothing
+    pulsefields = _process_pulses(pulses,Sn,g)
 
-    Hmat_grad = nothing
-    Emat_grad = nothing
-    Cmat_grad = nothing
+    N = numpts(bodies)
 
-    if length(N) > 0 && isstore && isstatic
-      # in this case, X̃ is assumed to be in inertial coordinates
+    Vb = VectorData(N)
+    Sb = ScalarData(N)
+    Δus = VectorData(N)
+    τ = VectorData(N)
 
-      regop = Regularize(X̃,Δx;I0=CartesianGrids.origin(g),issymmetric=true,ddftype=ddftype)
-      Hmat, Emat = RegularizationMatrix(regop,Vb,Fq)
-      if isfilter
-        regopfilt = Regularize(X̃,Δx;I0=CartesianGrids.origin(g),filter=true,weights=Δx^2,ddftype=ddftype)
-        Ẽmat = InterpolationMatrix(regopfilt,Fq,Vb)
-        Cmat = sparse(Ẽmat*Hmat)
+    points, dlf, slc, sln, Rf, Ef, Cf, Rc, Ec, Rn, En =
+              _immersion_operators(bodies,g,flow_side,ddftype,Vf,Sc,Vb)
+
+
+    viscous_L = plan_laplacian(Sn,factor=1/(Re*Δx^2))
+
+    if isnothing(bodies)
+      state_prototype = solvector(state=Sn)
+      f = ConstrainedODEFunction(ns_rhs!,viscous_L,_func_cache=state_prototype)
+    else
+      if static_points
+        state_prototype = solvector(state=Sn,constraint=τ)
+        f = ConstrainedODEFunction(ns_rhs!,bc_constraint_rhs!,
+                                      ns_op_constraint_force!,bc_constraint_op!,
+                                      viscous_L,_func_cache=state_prototype)
+      else
+        state_prototype = solvector(state=Sn,constraint=τ,aux_state=zero_body_state(bodies))
+        rhs! = ConstrainedSystems.r1vector(state_r1 = ns_rhs!,aux_r1 = rigid_body_rhs!)
+        f = ConstrainedODEFunction(rhs!,bc_constraint_rhs!,
+                                      ns_op_constraint_force!,bc_constraint_op!,
+                                      viscous_L,_func_cache=state_prototype,
+                                      param_update_func=update_immersion_operators!)
       end
-      if isasymptotic
-        Hmat_grad, Emat_grad = RegularizationMatrix(regop,TensorData{N}(),grad(Fq))
-        if isfilter
-          Ẽmat_grad = InterpolationMatrix(regopfilt,grad(Fq),TensorData{N}())
-          Cmat_grad = sparse(Ẽmat_grad*Hmat_grad)
-        end
-      end
+
     end
 
-    # should be able to set up time marching operator here...
 
-    #NavierStokes{NX, NY, N, isstatic}(Re, U∞, Δx, I0, Δt, rk, L, X̃, Hmat, Emat, Vb, Fq, Ww, Qq, isstore)
-    NavierStokes{NX, NY, N, isstatic}(Re, U∞, g, Δt, rk, L, X̃, Hmat, Emat,
-                                        Hmat_grad, Emat_grad,
-                                        Cmat,Cmat_grad,
-                                        Vb, Fq, Ww, Qq, isstore)
+
+
+
+    NavierStokes{NX, NY, N, _motiontype(static_points), _fstype(F), flow_side, ddftype, typeof(f), typeof(state_prototype)}( #,typeof(rk)}(
+                          Re, freestream, bodies, motions, pulsefields,
+                          g, Δt, # rk,
+                          L,
+                          dlf,slc,sln,
+                          points, Rf, Ef, Cf, Rc, Ec, Rn, En,
+                          f,state_prototype,
+                          Vb, Sb, Δus, τ,
+                          Vf, Vv, Vn, Sc, Sn, Wn, Vtf, DVf, VDVf,
+                          store_operators)
 end
 
+NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList;
+        motions=RigidMotionList(map(x -> RigidBodyMotion(0.0,0.0),bodies)),kwargs...) =
+        NavierStokes(Re,Δx,xlim,ylim,Δt;bodies=bodies,motions=motions,kwargs...)
 
-function Base.show(io::IO, sys::NavierStokes{NX,NY,N,isstatic}) where {NX,NY,N,isstatic}
-    print(io, "Navier-Stokes system on a grid of size $NX x $NY")
+NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body;kwargs...) =
+        NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]);kwargs...)
+
+function NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList,motions::RigidMotionList;static_points=false,kwargs...)
+    length(bodies) == length(motions) || error("Inconsistent lengths of bodies and motions lists")
+    NavierStokes(Re,Δx,xlim,ylim,Δt,bodies;motions=motions,static_points=static_points,kwargs...)
 end
+
+NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,motion::RigidBodyMotion;static_points=false,kwargs...) =
+        NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]),RigidMotionList([motion]);kwargs...)
+
+
+function Base.show(io::IO, sys::NavierStokes{NX,NY,N,MT,FS,SD}) where {NX,NY,N,MT,FS,SD}
+    mtype = (MT == StaticPoints) ? "static" : "moving"
+    fsmsg = (FS == StaticFreestream) ? "Static freestream = $(sys.U∞)" : "Variable freestream"
+    sdmsg = (N == 0) ? "Unbounded" : ((SD == ExternalFlow) ? "External flow" : ((SD == InternalFlow) ? "Internal flow" : "External/internal"))
+    println(io, "$sdmsg Navier-Stokes system on a grid of size $NX x $NY and $N $mtype immersed points")
+    println(io, "   $fsmsg")
+    if N > 0
+      bdmsg = (length(sys.bodies) == 1) ? "1 body" : "$(length(sys.bodies)) bodies"
+      println(io, "   $bdmsg")
+    end
+end
+
+# Routines to set up the immersion operators
+
+function _immersion_operators(bodies::BodyList,g::PhysicalGrid,flow_side::Type{SD},ddftype,Vf::GridData{NX,NY},Sc::GridData{NX,NY},Vb::PointData{N}) where {NX,NY,N,SD<:ViscousFlow.FlowSide}
+
+  points = VectorData(collect(bodies))
+  numpts(bodies) == N || error("Inconsistent size of bodies")
+
+  body_areas = areas(bodies)
+  body_normals = normals(bodies)
+
+  if !(flow_side==ExternalInternalFlow)
+    dlf = DoubleLayer(bodies,g,Vf)
+    slc = SingleLayer(bodies,g,Sc)
+    #sln = SingleLayer(bodies,g,Sn)
+    sln = nothing
+  else
+    dlf = nothing
+    slc = nothing
+    sln = nothing
+  end
+
+  regop = Regularize(points,cellsize(g);I0=CartesianGrids.origin(g),weights=body_areas.data,ddftype=ddftype)
+  Rf = RegularizationMatrix(regop,Vb,Vf) # Used by B₁ᵀ
+  Ef = InterpolationMatrix(regop,Vf,Vb) # Used by constraint_rhs! and B₂
+
+  #Rc = RegularizationMatrix(regop,Sb,Sc)
+  #Ec = InterpolationMatrix(regop,Sc,Sb)
+  #Rn = RegularizationMatrix(regop,Sb,Sn)
+  #En = InterpolationMatrix(regop,Sn,Sb)
+  Rc = nothing
+  Ec = nothing
+  Rn = nothing
+  En = nothing
+
+  regopfilt = Regularize(points,cellsize(g);I0=CartesianGrids.origin(g),filter=true,weights=cellsize(g)^2,ddftype=ddftype)
+  Ẽf = InterpolationMatrix(regopfilt,Vf,Vb)
+  Cf = sparse(Ẽf*Rf)
+
+  return points, dlf, slc, sln, Rf, Ef, Cf, Rc, Ec, Rn, En
+end
+
+_immersion_operators(::Nothing,a...) =
+    VectorData(0), nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing
+
+
+# For updating the system with body data
+
+function update_immersion_operators!(sys::NavierStokes{NX,NY,N,MT,FS,SD,DDF},bodies::BodyList) where {NX,NY,N,MT,FS,SD,DDF<:CartesianGrids.DDFType}
+    sys.bodies = deepcopy(bodies)
+    sys.points, sys.dlf, sys.slc, sys.sln, sys.Rf, sys.Ef, sys.Cf, sys.Rc, sys.Ec, sys.Rn, sys.En =
+      _immersion_operators(sys.bodies,sys.grid,SD,DDF,sys.Vf,sys.Sc,sys.Vb)
+    return sys
+end
+
+update_immersion_operators!(sys::NavierStokes,body::Body) = update_immersion_operators!(sys,BodyList([body]))
+
+function update_immersion_operators!(sys::NavierStokes,x::AbstractVector)
+    tl! = RigidTransformList(x)
+    tl!(sys.bodies)
+    update_immersion_operators!(sys,sys.bodies)
+end
+
+# The form passed to ConstrainedODEFunction
+update_immersion_operators!(sys::NavierStokes,u,sys_old::NavierStokes,t) =
+    update_immersion_operators!(sys,aux_state(u))
+
+
+
 
 """
     setstepsizes(Re[,gridRe=2][,cfl=0.5][,fourier=0.5]) -> Float64, Float64
@@ -179,6 +321,7 @@ function setstepsizes(Re::Real; gridRe = 2.0, cfl = 0.5, fourier = 0.5)
     Δt = min(fourier*Δx,cfl*Δx^2*Re)
     return Δx, Δt
 end
+
 
 
 
@@ -231,13 +374,55 @@ and ending at t = `tf`.
 """
 timerange(tf,sys) = timestep(sys):timestep(sys):tf
 
+# Wrap the output of the motion evaluation in VectorData
+@inline assign_velocity!(u::VectorData,a...) = (assign_velocity!(u.u,u.v,a...); u)
+
+
+@inline normals(sys::NavierStokes) = (!isnothing(sys.bodies)) ? normals(sys.bodies) : nothing
+
+
+"""
+    freestream(t,sys::NavierStokes) -> Tuple
+
+Return the value of the freestream in `sys` at time `t` as a tuple.
+"""
+freestream(t::Real,sys::NavierStokes{NX,NY,N,MT,StaticFreestream}) where {NX,NY,N,MT} = sys.U∞
+
+function freestream(t::Real,sys::NavierStokes{NX,NY,N,MT,VariableFreestream}) where {NX,NY,N,MT}
+    _,ċ,_,_,_,_ = sys.U∞(t)
+    return reim(ċ)
+end
+
+"""
+    newstate(sys::NavierStokes)
+
+Return a new (zero) instance of the state vector for `sys`.
+"""
+newstate(sys::NavierStokes) = zero(sys.state_prototype)
+
+"""
+    newstate(s::AbstractSpatialField,sys::NavierStokes)
+
+Return an instance of the state vector for `sys`, assigned the
+data in the spatial field `s`.
+"""
+function newstate(s::AbstractSpatialField,sys::NavierStokes)
+  u = newstate(sys)
+  gf = GeneratedField(state(u),s,sys.grid)
+  state(u) .= cellsize(sys)*gf()
+  return u
+end
 
 # Other functions
-_hasfilter(sys::NavierStokes) = !(sys.Cmat == nothing)
+_hasfilter(sys::NavierStokes) = !isnothing(sys.Cf)
+_motiontype(isstatic::Bool) = isstatic ? StaticPoints : MovingPoints
+_fstype(F) = F == RigidBodyMotion ? VariableFreestream : StaticFreestream
 
 
+include("navierstokes/surfacevelocities.jl")
 include("navierstokes/fields.jl")
-include("navierstokes/pulses.jl")
+include("navierstokes/pointforce.jl")
 include("navierstokes/basicoperators.jl")
 include("navierstokes/rigidbodyoperators.jl")
 include("navierstokes/movingbodyoperators.jl")
+include("navierstokes/timemarching.jl")

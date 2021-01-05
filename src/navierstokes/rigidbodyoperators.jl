@@ -1,65 +1,43 @@
-#### Operators for a system with a body ####
+#### Operators for a system with a body and stationary points ####
 
-# RHS of a stationary body with no surface velocity
-function r₂(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,true}) where {NX,NY,N,T}
-   ΔV = VectorData(sys.X̃)
-   ΔV.u .-= sys.U∞[1]
-   ΔV.v .-= sys.U∞[2]
-   return ΔV
+export bc_constraint_rhs!
+
+function bc_constraint_rhs!(us::VectorData{N},sys::NavierStokes{NX,NY,N},t::Real) where {NX,NY,N}
+    # Here, need surface_velocity! - _velocity_single_layer!(u,sys,t) - _velocity_freestream!(u,sys,t)
+    sys.Vv .= 0.0
+    _velocity_single_layer!(sys.Vv,sys,t)
+    _velocity_freestream!(sys.Vv,sys,t)
+    us .= sys.Ef*sys.Vv
+    us .*= -1.0
+    surface_velocity!(sys.Δus,sys,t)
+    us .+= sys.Δus
+    return us
 end
 
-# Time-varying free stream
-function r₂(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,true},U∞::RigidBodyTools.RigidBodyMotion) where {NX,NY,N,T}
-   ΔV = VectorData(sys.X̃)
-   _,ċ,_,_,_,_ = U∞(t)
-   ΔV.u .-= real(ċ)
-   ΔV.v .-= imag(ċ)
-   return ΔV
-end
 
 # Constraint operators, using stored regularization and interpolation operators
-# B₁ᵀ = CᵀEᵀ, B₂ = -ECL⁻¹
-B₁ᵀ(f::VectorData{N},sys::NavierStokes{NX,NY,N,true}) where {NX,NY,N} = Curl()*(sys.Hmat*f)
-B₂(w::Nodes{Dual,NX,NY,T},sys::NavierStokes{NX,NY,N,true}) where {NX,NY,T,N} = -(sys.Emat*(Curl()*(sys.L\w)))
+# B₁ᵀ = CᵀEᵀ
+function ns_op_constraint_force!(out::Nodes{Dual,NX,NY},τ::VectorData{N},sys::NavierStokes{NX,NY,N}) where {NX,NY,N}
+    sys.Vf .= sys.Rf*τ
+    out .= 0.0
+    curl!(out,sys.Vf)
+    return out
+end
 
-# Constraint operators, using non-stored regularization and interpolation operators
-B₁ᵀ(f::VectorData{N},regop::Regularize,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,N} = Curl()*regop(sys.Fq,f)
-B₂(w::Nodes{Dual,NX,NY,T},regop::Regularize,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,T,N} = -(regop(sys.Vb,Curl()*(sys.L\w)))
+function _vel_ns_op_constraint_force!(u::Edges{Primal,NX,NY},τ,sys::NavierStokes{NX,NY,0}) where {NX,NY}
+    return u
+end
 
-# Constraint operator constructors
-# Constructor using stored operators
-plan_constraints(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,true}) where {NX,NY,T,N} =
-                   (f -> B₁ᵀ(f,sys),w -> B₂(w,sys))
-
-# Constructor using non-stored operators
-function plan_constraints(w::Nodes{Dual,NX,NY,T},t,sys::NavierStokes{NX,NY,N,false}) where {NX,NY,T,N}
- regop = Regularize(sys.X̃,cellsize(sys);I0=origin(sys),issymmetric=true)
-
- return f -> B₁ᵀ(f,regop,sys),w -> B₂(w,regop,sys)
+function _vel_ns_op_constraint_force!(u::Edges{Primal,NX,NY},τ::VectorData{N},sys::NavierStokes{NX,NY,N}) where {NX,NY,N}
+    u .= sys.Rf*τ
+    return u
 end
 
 
-
-
-"""
-    assign_velocity!(V::VectorData,X::VectorData,
-                     xc::Real,yc::Real,α::Real,
-                     mlist::Vector{RigidBodyMotion},t::Real)
-
-Assign the components of rigid body velocity for every body (in inertial coordinate system)
-at time `t` in the overall data structure `V`, using coordinates described by `X` (also in inertial
-coordinate system), based on array of supplied motion `mlist` for each body.
-"""
-function RigidBodyTools.assign_velocity!(V::VectorData{N},X::VectorData{N},
-                                           bl::BodyList,tlist::Vector{RigidTransform},
-                                           mlist::Vector{RigidBodyMotion},t::Real) where {N}
-    N == numpts(bl) || error("Inconsistent size of data structures")
-    for i in 1:length(bl)
-        ui = view(V.u,bl,i)
-        vi = view(V.v,bl,i)
-        xi = view(X.u,bl,i)
-        yi = view(X.v,bl,i)
-        Ti = tlist[i]
-        assign_velocity!(ui,vi,xi,yi,Ti.trans[1],Ti.trans[2],Ti.α,mlist[i],t)
-    end
+# B₂ = -ECL⁻¹
+function bc_constraint_op!(out::VectorData{N},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY,N}) where {NX,NY,N}
+    sys.Vv .= 0.0
+    ViscousFlow._velocity_vorticity!(sys.Vv,w,sys)
+    out .= sys.Ef*sys.Vv
+    return out
 end
