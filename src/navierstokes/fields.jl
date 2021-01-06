@@ -178,7 +178,7 @@ end
 function pressure(u::ConstrainedSystems.ArrayPartition,sys::NavierStokes{NX,NY},t) where {NX,NY}
     w, τ = state(u), constraint(u)
     fill!(sys.Vn,0.0)
-    _vel_ns_rhs_convectivederivative!(sys.Vn,w,sys)
+    _vel_ns_rhs_convectivederivative!(sys.Vn,w,sys,t)
     _vel_ns_rhs_double_layer!(sys.Vn,sys,t)
     fill!(sys.Vf,0.0)
     _vel_ns_op_constraint_force!(sys.Vf,τ,sys)

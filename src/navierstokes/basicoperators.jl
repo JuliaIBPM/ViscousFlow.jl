@@ -9,10 +9,10 @@ export ns_rhs!
 # RHS of Navier-Stokes equations
 function ns_rhs!(dw::Nodes{Dual,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY}
   dw .= 0.0
-  #_ns_rhs_convectivederivative!(dw,w,sys)
+  #_ns_rhs_convectivederivative!(dw,w,sys,t)
   #_ns_rhs_double_layer!(dw,sys,t)
   fill!(sys.Vn,0.0)
-  _vel_ns_rhs_convectivederivative!(sys.Vn,w,sys)
+  _vel_ns_rhs_convectivederivative!(sys.Vn,w,sys,t)
   _vel_ns_rhs_double_layer!(sys.Vn,sys,t)
   curl!(dw,sys.Vn)
   _ns_rhs_pulses!(dw,sys,t)
@@ -31,9 +31,9 @@ function _ns_rhs_pulses!(dw,pulses::Vector{<:PulseField},Δx,t)
 end
 
 #=
-function _ns_rhs_convectivederivative!(dw::Nodes{Dual,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY}) where {NX,NY}
+function _ns_rhs_convectivederivative!(dw::Nodes{Dual,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t) where {NX,NY}
   Δx⁻¹ = 1/cellsize(sys)
-  velocity!(sys.Vv,w,sys,0.0)
+  velocity!(sys.Vv,w,sys,t)
   _unscaled_convective_derivative!(sys.Vv,sys)
   sys.Sn .= 0.0
   curl!(sys.Sn,sys.Vv)
@@ -42,10 +42,10 @@ function _ns_rhs_convectivederivative!(dw::Nodes{Dual,NX,NY},w::Nodes{Dual,NX,NY
 end
 =#
 
-function _vel_ns_rhs_convectivederivative!(u::Edges{Primal,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY}) where {NX,NY}
+function _vel_ns_rhs_convectivederivative!(u::Edges{Primal,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t) where {NX,NY}
     Δx⁻¹ = 1/cellsize(sys)
     fill!(sys.Vv,0.0)
-    velocity!(sys.Vv,w,sys,0.0)
+    velocity!(sys.Vv,w,sys,t)
     _unscaled_convective_derivative!(sys.Vv,sys)
     sys.Vv .*= Δx⁻¹
     u .-= sys.Vv
