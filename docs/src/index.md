@@ -22,7 +22,7 @@ their motions are based on the [RigidBodyTools](https://github.com/JuliaIBPM/Rig
 
 ## Installation
 
-This package works on Julia `1.0` and above and is registered in the general Julia registry. To install from the REPL, type
+This package works on Julia `1.4` and above and is registered in the general Julia registry. To install from the REPL, type
 e.g.,
 ```julia
 ] add ViscousFlow
