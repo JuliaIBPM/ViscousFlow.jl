@@ -35,7 +35,7 @@ grid. It should be set to `false` if a supplied motion requires that the points 
               faster, at the cost of storage. The `freestream` argument can be
               passed as either a tuple (a static freestream) or a `RigidBodyMotion`
               for a time-varying freestream. The `flow_side` can be set to
-              `ExternalFlow`, `InternalFlow`, or `ExternalInternalFlow` (default).
+              `ExternalFlow` (default), `InternalFlow`, or `ExternalInternalFlow`.
 
 `NavierStokes(Re,Δx,xlimits,ylimits,Δt,bodies::Body/BodyList)` passes the body
               information. The other keywords can also be supplied. This
@@ -48,12 +48,12 @@ grid. It should be set to `false` if a supplied motion requires that the points 
               motions must be the same length as the list of bodies.
 
 """
-mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, SD<:FlowSide, DDF<:CartesianGrids.DDFType, FT, SP} #, RKT}
+mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, SD<:FlowSide, DDF<:CartesianGrids.DDFType, FT, SP, FST} #, RKT}
     # Physical Parameters
     "Reynolds number"
     Re::Float64
     "Free stream velocities"
-    U∞::Union{Tuple{Float64, Float64},RigidBodyMotion}
+    U∞::FST
     "Bodies"
     bodies::Union{BodyList,Nothing}
     "Body motions"
@@ -125,14 +125,14 @@ mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, 
 end
 
 function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Real}, Δt::Real;
-                       freestream::F = (0.0, 0.0),
+                       freestream::FST = (0.0, 0.0),
                        bodies::Union{BodyList,Nothing} = nothing,
                        motions::Union{RigidMotionList,Nothing} = nothing,
                        pulses::PT = nothing,
                        store_operators = true,
                        static_points = true,
                        flow_side::Type{SD} = ExternalFlow,
-                       ddftype=CartesianGrids.Yang3) where {F,PT,SD<:FlowSide}
+                       ddftype=CartesianGrids.Yang3) where {FST,PT,SD<:FlowSide}
 
     g = PhysicalGrid(xlimits,ylimits,Δx)
     NX, NY = size(g)
@@ -191,7 +191,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
 
 
 
-    NavierStokes{NX, NY, N, _motiontype(static_points), _fstype(F), flow_side, ddftype, typeof(f), typeof(state_prototype)}( #,typeof(rk)}(
+    NavierStokes{NX, NY, N, _motiontype(static_points), _fstype(FST), flow_side, ddftype, typeof(f), typeof(state_prototype),FST}( #,typeof(rk)}(
                           Re, freestream, bodies, motions, pulsefields,
                           g, Δt, # rk,
                           L,
@@ -416,7 +416,7 @@ end
 # Other functions
 _hasfilter(sys::NavierStokes) = !isnothing(sys.Cf)
 _motiontype(isstatic::Bool) = isstatic ? StaticPoints : MovingPoints
-_fstype(F) = F == RigidBodyMotion ? VariableFreestream : StaticFreestream
+  _fstype(F) = F <: Union{RigidBodyMotion,Kinematics} ? VariableFreestream : StaticFreestream
 
 
 include("navierstokes/surfacevelocities.jl")

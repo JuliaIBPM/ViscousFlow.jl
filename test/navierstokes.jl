@@ -90,6 +90,25 @@ using SpecialFunctions
 
   end
 
+  @testset "Variable freestream" begin
+
+    Re = 200
+
+    xlim = (-1.0,3.0)
+    ylim = (-1.0,1.0)
+
+    Δx, Δt = setstepsizes(Re,gridRe=4)
+
+    ox = OscillationX(0.0,1.0,1.0,0.0)
+    sys = NavierStokes(Re,Δx,xlim,ylim,Δt,freestream = ox)
+
+    t = rand()
+    ux, uy = ViscousFlow.freestream(t,sys)
+    @test ux ≈ cos(t) && uy ≈ 0.0
+
+
+  end
+
   @testset "Flow past cylinder" begin
 
     Re = 200

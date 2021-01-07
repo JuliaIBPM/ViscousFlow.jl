@@ -33,3 +33,5 @@ end
       end
     end
 end
+
+@recipe f(kin::Kinematics) = RigidBodyMotion(kin)
