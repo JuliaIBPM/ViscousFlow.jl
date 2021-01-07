@@ -25,55 +25,52 @@ using Plots
 
 Here, we will focus on putting tools together from the previous sections in order to set up and solve the Navier-Stokes system of equations. First, we will solve them in a completely unbounded domain (i.e., no bodies), and then we will solve them in the vicinity of a body.
 
+To perform any simulation in `ViscousFlow`, we need to carry out a few basic steps:
+* **Specify the problem**: Set the Reynolds number and free stream
+* **Discretize**: Set up a solution domain, grid cell size, time step size
+* **Create bodies**: If present, set up bodies and motions
+* **Construct the system structure**: Create the operators that will be used to perform the simulation
+* **Initialize**: Set the initial flow field and initialize the integrator
+* **Solve**: Solve the flow field
+* **Examine**: Examine the results
+
 ## Navier-Stokes without a body
 
-Here, we seek the solve the two-dimensional incompressible Navier-Stokes equations in their *discrete vorticity form*, in an unbounded domain:
-
-$$\ddt w + N(v,w) = \frac{1}{Re} L w,$$
-
-along with the initial condition
-
-$$w(0) = w_0.$$
-
-The field $w$ represents the discrete vorticity, which sits at the nodes of the dual cells. The velocity, $v$, lies on the edges of the primal cells. They are related
-to each other by $v = Cs$, where $s = -L^{-1} w$ is the discrete streamfunction.
-
-The second term on the left-hand side is the convective term, which we have
-simply written as $N(v,w)$. There are several ways to write this term; here, we
-will write it by using the discrete divergence,
-
-$$N(v,w) = D(vw).$$
-
-The package has a function that is set up to compute this term; we will discuss it below. The right-hand side contains the viscous term, proportional to $1/Re$, where $Re$ is the Reynolds number. For this, we will use the integrating factor. For purposes of calculation, it is better to express the problem as
-
-$$\ddt w - \frac{1}{Re} L w = r_1(w),$$
-
-where $r_1(w) = -D(vw)$.
-
-For demonstration, we will solve a problem consisting initially of two identical circular patches of vorticity.
-
-```@setup corotate
-using ViscousFlow
-using Plots
-pyplot()
-```
-
-The first thing we must do is set up a grid. We will make it square, with spacing equal to 0.02 in each cell.
-
-```@repl corotate
-xlim = (-2,2); ylim = (-2,2);
-Δx = 0.02;
-```
-
-Now we will set the Reynolds number, and set the time step size so that it follows the so-called *CFL* condition (with CFL number set to 0.5). To be careful, we also make sure the time step size does not exceed a threshold in the grid Fourier number (also set to 0.5):
+The first thing we must do is specify the problem parameters: here, this simply means to set the Reynolds number. We will set the other parameters (the initial conditions) later
 
 ```@repl corotate
 Re = 200
-Δt = min(0.5*Δx,0.5*Δx^2*Re)
+```
+
+We will also set up two Gaussian vortices, centered at $(x_{01},y_{01} = (0.5,0)$
+and $(x_{02},y_{02} = (-0.5,0)$, with strength $\Gamma = 1$ and radius $\sigma = 0.1$.
+For this, we use the function `SpatialGaussian`:
+
+```@repl corotate
+σ = 0.1
+x01, y01 = 0.5, 0.0
+x02, y02 = -0.5, 0.0
+Γ = 1
+twogauss = SpatialGaussian(σ,x01,y01,Γ) + SpatialGaussian(σ,x02,y02,Γ)
+```
+
+Now we will discretize the problem: set the domain, the grid spacing, and time step size.
+For these latter two, we use `setstepsizes`. There are some keyword arguments for this
+that might come in handy. Below, we use of the them, `gridRe`, to set the grid
+Reynolds number ($U_c\Delta x/\nu$), for characteristic velocity $U_c$ and
+kinematic viscosity $\nu$, to 4. If we do not set this explicitly, it defaults to 2.
+Other keyword arguments are `fourier` (to change the grid Fourier number $\nu\Delta t/\Delta x^2$
+  from its default value of 0.5) and `cfl` (to change the grid CFL number $U_c\Delta t/\Delta x$
+  from the default 0.5).
+
+```@repl corotate
+xlim = (-2.0,2.0)
+ylim = (-2.0,2.0)
+Δx, Δt = setstepsizes(Re,gridRe=4)
 ```
 
 Now we set up the Navier-Stokes system. This sets the rest of the grid parameters,
-(number of cells, etc), and creates some some buffer space on the grid.
+(number of cells, immersed boundary operators), and creates some cache space on the grid.
 
 ```@repl corotate
 sys = NavierStokes(Re,Δx,xlim,ylim,Δt)
@@ -85,275 +82,152 @@ For example, to check how many dual grid cells we have, we can use the `size` fu
 size(sys)
 ```
 
-Let's set up a set of dual nodes on this grid:
+Let's set up the initial state vector for this system. We initialize it with the
+pair of gaussians `twogauss` that we set up earlier:
 
 ```@repl corotate
-w₀ = Nodes(Dual,size(sys));
+u0 = newstate(twogauss,sys);
 ```
 
-The physical grid coordinates of these dual nodes can be generated with the `coordinates` function:
+Next we initialize the integrator. The integrator advances the solution and holds all
+of the solution history, in the same manner as the
+[`OrdinaryDiffEq`](https://github.com/SciML/OrdinaryDiffEq.jl) package. We will set a
+time span of 8 time units:
 
 ```@repl corotate
-xg, yg = coordinates(w₀,dx=cellsize(sys),I0=origin(sys))
+tspan = (0.0,8.0);
+integrator = init(u0,tspan,sys)
 ```
 
-Now we are ready to set up the integrator for this problem. To account for the viscous diffusion, we need the integrating factor. There are no body constraints to enforce, so we will use the integrating factor Runge-Kutta method (`IFRK`). For this, we need to set up plans for the integrating factor and for the right-hand side ($r_1$). The package has functions that do both for us, using the system data in `sys`. We just need to change their argument list so that they fit the template for the `IFRK` scheme:
+Now we are ready to solve the problem. We advance it by a desired amount of time
+with the `step!` function. Let's do it a little at a time:
 
 ```@repl corotate
-plan_intfact(t,w) = CartesianGrids.plan_intfact(t,w,sys)
-r₁(w,t) = ConstrainedSystems.r₁(w,t,sys)
+step!(integrator,2.0)
 ```
 
-Now we can construct the integrator. We will use 3rd-order Runge-Kutta:
+Let's look at the vorticity field at this point:
 
 ```@repl corotate
-ifrk = IFRK(w₀,sys.Δt,plan_intfact,r₁,rk=ConstrainedSystems.RK31)
-```
-
-Note that we have only passed in `w₀` to this scheme to provide the form of data to be used for the state vector in the integrator. It does not matter that the data are still zeros.
-
-Finally we are ready to solve the problem. We set up the initial condition. It is helpful to define a function first that specifies the vorticity distribution in each vortex patch. We will use a Gaussian:
-
-```@repl corotate
-using LinearAlgebra
-gaussian(x,x0,σ) = exp(-LinearAlgebra.norm(x.-x0)^2/σ^2)/(π*σ^2)
-```
-
-Now the initial conditions. We will put one vortex at $(-0.5,0)$ and the other at $(0.5,0)$. They will each have a strength of $1$ and a radius of $0.2$. (Reynolds number is implicitly defined in this problem as $\Gamma/\nu$, where $\nu$ is the kinematic viscosity. So there is no point in changing the strength; only the Reynolds number need be varied to explore different mixes of convective and diffusive transport.)
-
-```@repl corotate
-t = 0.0
-x01 = (-0.5,0); x02 = (0.5,0); σ = 0.2; Γ = 1
-w₀ .= Δx*[Γ*gaussian((x,y),x01,σ) + Γ*gaussian((x,y),x02,σ) for x in xg, y in yg];
-w = deepcopy(w₀);
-```
-
-Note that we have multiplied the vorticity vector by the grid spacing. This is because the vector `w` is not actually the vorticity, but rather, a *grid* vorticity related to velocity through differencing. Let's plot it to see what we are starting with:
-
-```@repl corotate
-plot(xg,yg,w)
+plot(vorticity(integrator),sys,levels=range(0.1,5,length=31),title="Vorticity at t = 2")
 savefig("w0corotate.svg"); nothing # hide
 ```
 ![](w0corotate.svg)
 
-
-We will integrate the problem for 1 time unit:
+They have orbited around each other a bit. Let's advance further. All we need
+to do is run `step!` again with a desired new time interval. It automatically
+builds on the previous results:
 
 ```@repl corotate
-tf = 1
-T = 0:Δt:tf
+step!(integrator,6.0)
 ```
 
-Now, do it. We will time it to see how long it takes:
-
 ```@repl corotate
-@time for ti in T
-    global t, w = ifrk(t,w)
-end
-```
-
-and plot it again:
-
-```@repl corotate
-plot(xg,yg,w)
+plot(vorticity(integrator),sys,levels=range(0.1,5,length=31),title="Vorticity at t = 8")
 savefig("w1corotate.svg"); nothing # hide
 ```
 ![](w1corotate.svg)
 
-Let's go further!
+## A problem with a stationary body
 
-```@repl corotate
-tf = 6
-T = 0:Δt:tf
-@time for ti in T
-    global t, w = ifrk(t,w)
-end
-```
-
-```@repl corotate
-plot(xg,yg,w)
-savefig("w2corotate.svg"); nothing # hide
-```
-![](w2corotate.svg)
-
-## Navier-Stokes with a body
-
-Now let's solve for flow past a body. We will solve for the flow past a circular cylinder, a canonical problem in fluid dynamics.
+Now let's solve for flow past a body. The only additional step compared to the
+previous example is creating a body and placing it in the desired location. Here, we will
+solve for flow past an ellipse at 45 degrees at Re = 200.
 
 ```@setup cylflow
 using ViscousFlow
 using Plots
-pyplot()
 ```
 
-We will start by constructing the body points,
-
-```@repl cylflow
-n = 100;
-body = Circle(0.5,n)
-```
-
-We will leave it at the origin. However, to show how we can place it in different orientations, we will construct a rigid-body transformation for demonstration:
-
-```@repl cylflow
-cent = (0.0,0.0)
-α = 0.0
-T! = RigidTransform(cent,α)
-T!(body)
-```
-
-Now we construct the grid. This time, we will make the grid longer, so that it can resolve part of the wake. (The cylinder will be placed at)
-
-```@repl cylflow
-xlim = (-1,3); ylim = (-1,1);
-Δx = 0.02;
-```
-
-Let's plot this to see its placement in the domain
-
-```@repl cylflow
-plot(body,xlim=xlim,ylim=ylim)
-savefig("cyl0.svg"); nothing # hide
-```
-![](cyl0.svg)
-
-Now we will set the Reynolds number and free stream velocity. Since the problem is scaled by the free stream velocity, we need only set the speed to $1$.
-
+Set the Reynolds number and free stream velocity:
 ```@repl cylflow
 Re = 200
-U = 1.0;
-U∞ = (U,0.0)
+U∞ = (1.0,0.0);
 ```
 
-Set the time step size with the usual CFL condition:
+Now discretize as before: set the domain, and grid spacing and time step:
+```@repl cylflow
+xlim = (-1.0,3.0);
+ylim = (-1.5,1.5);
+Δx, Δt = setstepsizes(Re,gridRe=4.0);
+```
+
+We will place the ellipse at the origin. Placement and configuration is done with the `RigidTransform`
+function:
 
 ```@repl cylflow
-Δt = min(0.5*Δx,0.5*Δx^2*Re)
+body = Ellipse(0.5,0.1,1.5Δx)
+cent = (0.0,0.0) # center of body
+α = -45π/180 # angle, in radians
+T! = RigidTransform(cent,α)
+T!(body) # transform the body to the desired configuration
 ```
 
-Now set up the body point coordinates in a vector data structure. If we had more than one body, we would assemble all of the bodies' points into this same vector.
+
+Now we set up the system structure, supplying `body`. The freestream is supplied as
+a keyword argument:
 
 ```@repl cylflow
-X = VectorData(body.x,body.y);
+sys = NavierStokes(Re,Δx,xlim,ylim,Δt,body,freestream = U∞)
 ```
 
-Create the Navier-Stokes system:
+The rest of the setup is done just as before, except that the initial condition
+is set to zero:
+
+```
+@repl cylflow
+u0 = newstate(sys);
+tspan = (0.0,20.0);
+integrator = init(u0,tspan,sys);
+```
+
+Advance by 1 time unit:
+```
+step!(integrator,1.0)
+```
+
+Let's plot this:
 
 ```@repl cylflow
-sys = NavierStokes(Re,Δx,xlim,ylim,Δt,U∞ = U∞, X̃ = X, isstore = true)
+plot(vorticity(integrator),sys,title="Vorticity at t = 1",clim=(-10,10),levels=range(-10,10,length=30), color = :RdBu,ylim=ylim)
+savefig("ellipse0.svg"); nothing # hide
 ```
+![](ellipse0.svg)
 
-Now set up the basic data structures for use in the problem.
+Now let's advance further:
 
 ```@repl cylflow
-w₀ = Nodes(Dual,size(sys));
-f = VectorData(X);
+step!(integrator,29.0)
 ```
 
-The cylinder flow remains symmetric unless it is explicitly perturbed. We will do this by applying a point perturbation directly in the vorticity,
-over a short interval centered at $t = 4$.
+and plot it now:
 
 ```@repl cylflow
-xf = (1.5,0.0);
-Ff = 10.0;
-t0 = 4.0; σ = 1.0;
-wforce = PointForce(w₀,xf,Ff,t0,σ,sys)
+plot(vorticity(integrator),sys,title="Vorticity at t = 11",clim=(-10,10),levels=range(-10,10,length=30), color = :RdBu,ylim=ylim)
+savefig("ellipse1.svg"); nothing # hide
 ```
+![](ellipse1.svg)
 
-Now we can set up the integrator. For this, we use `IFHERK`, since we need both the integrating factor and the constraint applications. We use ready-made functions for each of these. For the right-hand side of the Navier-Stokes equations `r₁`, we add the point force at time `t`.
+
+We can also compute the force history:
 
 ```@repl cylflow
-plan_intfact(t,u) = CartesianGrids.plan_intfact(t,u,sys)
-plan_constraints(u,t) = ConstrainedSystems.plan_constraints(u,t,sys)
-r₁(u,t) = ConstrainedSystems.r₁(u,t,sys) + wforce(t)
-r₂(u,t) = ConstrainedSystems.r₂(u,t,sys)
-@time ifherk = IFHERK(w₀,f,sys.Δt,plan_intfact,plan_constraints,(r₁,r₂),
-        rk=ConstrainedSystems.RK31)
+fx, fy = force(sol,sys,1);
 ```
 
-Now set the initial conditions, and initialize some vectors for storing results
+The last argument (1) specifies that we are obtaining the force components on body 1. Now
+plot them:
 
 ```@repl cylflow
-t = 0.0
-u = deepcopy(w₀);
-fx = Float64[];
-fy = Float64[];
-thist = Float64[];
+plot(
+plot(sol.t,2*fx,xlim=(0,Inf),ylim=(0,6),xlabel="Convective time",ylabel="\$C_D\$",legend=:false),
+plot(sol.t,2*fy,xlim=(0,Inf),ylim=(-6,6),xlabel="Convective time",ylabel="\$C_L\$",legend=:false),
+    size=(800,350)
+    savefig("force.svg"); nothing # hide
+)
 ```
+![](force.svg)
 
-Let's first integrate just one time unit forward to see the results. We will collect the force data into the `fx` and `fy` arrays.
-
-```@repl cylflow
-tf = 1.0;
-T = Δt:Δt:tf;
-@time for ti in T
-    global t, u, f = ifherk(t,u)
-
-    push!(thist,t)
-    push!(fx,sum(f.u)*Δx^2)
-    push!(fy,sum(f.v)*Δx^2)
-end
-```
-
-Plot the solution:
-
-```@repl cylflow
-xg, yg = coordinates(w₀,dx=Δx,I0=origin(sys))
-plot(xg,yg,u,levels=range(-0.25,stop=0.25,length=30), color = :RdBu,width=1,
-        xlim=(-1+Δx,3-Δx),ylim=(-1+Δx,1-Δx))
-plot!(body)
-savefig("cyl1.svg"); nothing # hide
-```
-![](cyl1.svg)
-
-The solution is still symmetric because we have not yet applied the perturbation. Advance 4 more units:
-
-```@repl cylflow
-tf = 4.0;
-T = Δt:Δt:tf;
-@time for ti in T
-    global t, u, f = ifherk(t,u)
-
-    push!(thist,t)
-    push!(fx,sum(f.u)*Δx^2)
-    push!(fy,sum(f.v)*Δx^2)
-end
-plot(xg,yg,u,levels=range(-0.25,stop=0.25,length=30), color = :RdBu, width=1,
-        xlim=(-1+Δx,3-Δx),ylim=(-1+Δx,1-Δx))
-plot!(body)
-savefig("cyl5.svg"); nothing # hide
-```
-![](cyl5.svg)
-
-Now it is losing symmetry after the perturbation has triggered this behavior. Run it several more time units:
-
-```@repl cylflow
-tf = 25.0;
-T = Δt:Δt:tf;
-@time for ti in T
-    global t, u, f = ifherk(t,u)
-
-    push!(thist,t)
-    push!(fx,sum(f.u)*Δx^2)
-    push!(fy,sum(f.v)*Δx^2)
-end
-plot(xg,yg,u,levels=range(-0.25,stop=0.25,length=30), color = :RdBu,width=1,
-        xlim=(-1+Δx,3-Δx),ylim=(-1+Δx,1-Δx))
-plot!(body)
-savefig("cyl30.svg"); nothing # hide
-```
-![](cyl30.svg)
-
-A full wake now after 30 time units! Plot the force, too:
-
-```@repl cylflow
-plt = plot(layout = (2,1), size = (600, 400))
-plot!(plt[1],thist,2*fy,xlim=(0,30),ylim=(-2,2),xlabel="Convective time",ylabel="\$C_L\$",legend=false)
-plot!(plt[2],thist,2*fx,xlim=(0,30),ylim=(0,4),xlabel="Convective time",ylabel="\$C_D\$",legend=false)
-plt
-savefig("cylforce.svg"); nothing # hide
-```
-![](cylforce.svg)
 
 ## Methods
 

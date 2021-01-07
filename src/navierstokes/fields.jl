@@ -226,7 +226,7 @@ end
 
 ## Total quantities
 
-force(τ,sys::NavierStokes{NX,NY,0},t,i::Int) where {NX,NY} = Vector{Float64}(), Vector{Float64}()
+force(τ,sys::NavierStokes{NX,NY,0},t,bodyi::Int) where {NX,NY} = Vector{Float64}(), Vector{Float64}()
 
 function force(τ::VectorData{N},sys::NavierStokes,t,bodyi::Int) where {N}
     product!(sys.τ,traction(τ,sys,t),areas(sys.bodies))
