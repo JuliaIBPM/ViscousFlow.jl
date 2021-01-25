@@ -5,28 +5,34 @@
 using ViscousFlow
 using Plots
 
-# ### The basic steps
-# To carry out any simulation in `ViscousFlow`, we need to carry out a few basic steps:
-# * **Specify the problem**: Set the Reynolds number and free stream
-# * **Discretize**: Set up a solution domain, grid cell size, time step size
-# * **Construct the system structure**: Create the operators that will be used to perform the simulation
-# * **Initialize**: Set the initial flow field and initialize the integrator
-# * **Solve**: Solve the flow field
-# * **Examine**: Examine the results
-#
-# We will go through all of these here. For the examples we will carry out in this notebook,
-# the first three steps need only be carried out once.
+#=
+### The basic steps
+To carry out any simulation in `ViscousFlow`, we need to carry out a few basic steps:
+* **Specify the problem**: Set the Reynolds number and free stream
+* **Discretize**: Set up a solution domain, grid cell size, time step size
+* **Construct the system structure**: Create the operators that will be used to perform the simulation
+* **Initialize**: Set the initial flow field and initialize the integrator
+* **Solve**: Solve the flow field
+* **Examine**: Examine the results
 
-# ### Problem specification
-# We will set the Reynolds number to be 200 and no free stream
+We will go through all of these here. For the examples we will carry out in this notebook,
+the first three steps need only be carried out once.
+=#
+
+#=
+### Problem specification
+We will set the Reynolds number to be 200 and no free stream
+=#
 Re = 200
 
-# ### Discretize
-# We will set up a domain from x = -2 to x = 2, and y = -2 to y = 2. The Reynolds number helps us
-# determine the grid spacing `Δx` and time step size `Δt`. To set these, we set a target *grid Reynolds
-# number*, `gridRe`. We will set this to 4 here; if we ignore it, it defaults to 2. Note that this choice is a compromise
-# * smaller grid Reynolds number means smaller grid spacing, and slower simulations
-# * larger grid Reynolds number means less accurate results
+#=
+### Discretize
+We will set up a domain from x = -2 to x = 2, and y = -2 to y = 2. The Reynolds number helps us
+determine the grid spacing `Δx` and time step size `Δt`. To set these, we set a target *grid Reynolds
+number*, `gridRe`. We will set this to 4 here; if we ignore it, it defaults to 2. Note that this choice is a compromise
+* smaller grid Reynolds number means smaller grid spacing, and slower simulations
+* larger grid Reynolds number means less accurate results
+=#
 xlim = (-2.0,2.0)
 ylim = (-2.0,2.0)
 Δx, Δt = setstepsizes(Re,gridRe=4)
@@ -37,9 +43,11 @@ sys = NavierStokes(Re,Δx,xlim,ylim,Δt)
 
 # Now, we will solve a few different problems
 
-# ## A basic example: the Lamb-Oseen vortex
-# This example starts with a single vortex with a Gaussian distribution of vorticity. To generate this, will use the `SpatialGaussian` function:
-# The command below creates a Gaussian with radius σ at (0,0) with strength 1.
+#=
+## A basic example: the Lamb-Oseen vortex
+This example starts with a single vortex with a Gaussian distribution of vorticity. To generate this, will use the `SpatialGaussian` function:
+The command below creates a Gaussian with radius σ at (0,0) with strength 1.
+=#
 σ = 0.2
 x0 = 0.0
 y0 = 0.0
@@ -49,17 +57,19 @@ gauss = SpatialGaussian(σ,x0,y0,A)
 #=
 ### Initialize
 Now, we create an instance of this vorticity distribution on the grid by
-calling `newstate` with this vortex. 
+calling `newstate` with this vortex.
 =#
 u0 = newstate(gauss,sys)
 
-# We use this initial condition to initialize the **integrator**. The integrator is the structure that
-# holds all of our solution and operator information. With it, we can start the simulation, restart
-# the simulation later, etc. We specify a range of time over which to advance the solution.
-#
-# **Note**: This range need only be large enough to contain the whole interval of time we wish to simulate. It does not need to be chosen very precisely.
-#
-# **Note 2**: There is no need to restart the problem! We can keep applying the `step!` function below as long we need.
+#=
+We use this initial condition to initialize the **integrator**. The integrator is the structure that
+holds all of our solution and operator information. With it, we can start the simulation, restart
+the simulation later, etc. We specify a range of time over which to advance the solution.
+
+**Note**: This range need only be large enough to contain the whole interval of time we wish to simulate. It does not need to be chosen very precisely.
+
+**Note 2**: There is no need to restart the problem! We can keep applying the `step!` function below as long we need.
+=#
 tspan = (0.0,10.0)
 integrator = init(u0,tspan,sys)
 
@@ -70,12 +80,14 @@ step!(integrator,1.0)
 # We can see now that the solution has been advanced in time:
 integrator
 
-# ### Examine
-# Let's examine the results. It is important to show a few different ways that we can do this.
-# The most straightforward way is to just look at the flow fields at the current state of the
-# integrator. For example, to get the current velocity field, type `velocity(integrator)`. We can
-# do the same for `vorticity`, `streamfunction` (the streamlines), `scalarpotential`, `convective_derivative`,
-# and `pressure`.
+#=
+### Examine
+Let's examine the results. It is important to show a few different ways that we can do this.
+The most straightforward way is to just look at the flow fields at the current state of the
+integrator. For example, to get the current velocity field, type `velocity(integrator)`. We can
+do the same for `vorticity`, `streamfunction` (the streamlines), `scalarpotential`, `convective_derivative`,
+and `pressure`.
+=#
 
 # We will look at some of these at the current state:
 plot(
@@ -94,10 +106,12 @@ plot(vorticity(integrator)[:,104],label="Numerical")
 plot!(vorticity(exactsol(integrator.t),sys,integrator.t)[:,104],label="Exact")
 plot!(title=string("Vorticity at t = ",round(integrator.t,digits=2)))
 
-# ## Second example: co-rotating vortices
-# The previous example is not very exciting, because the convection of the flow is simply circular.
-# The next example is more interesting, because we will start with two vortices that influence each
-# other's motion:
+#=
+## Second example: co-rotating vortices
+The previous example is not very exciting, because the convection of the flow is simply circular.
+The next example is more interesting, because we will start with two vortices that influence each
+other's motion:
+=#
 σ = 0.1
 x01, y01 = 0.5, 0.0
 x02, y02 = -0.5, 0.0
@@ -119,11 +133,13 @@ integrator = init(u0,tspan,sys)
 # Now we are ready to solve the problem. Let's advance the solution to $t = 8$:
 step!(integrator,8.0)
 
-# ### Examine
-# In this case, it is best to view the results as an animation. In the previous example, we just
-# looked at the final state of the integrator. Here, to animate, we will make use of the solution
-# history that is held by the integrator, `integrator.sol`. Let's create an alias for this to shorten
-# our commands:
+#=
+### Examine
+In this case, it is best to view the results as an animation. In the previous example, we just
+looked at the final state of the integrator. Here, to animate, we will make use of the solution
+history that is held by the integrator, `integrator.sol`. Let's create an alias for this to shorten
+our commands:
+=#
 sol = integrator.sol;
 
 # Now we will animate the solution, plotting the vorticity every 5 steps
@@ -142,7 +158,9 @@ end
 savefig(plt,"CoRotating.pdf")
 plt
 
-# **Try other examples!**
-# * Make one or both of the vortices into elliptical shapes
-# * Make one stronger than the other
-# * Add other vortices into the initial distribution
+#=
+**Try other examples!**
+* Make one or both of the vortices into elliptical shapes
+* Make one stronger than the other
+* Add other vortices into the initial distribution
+=#

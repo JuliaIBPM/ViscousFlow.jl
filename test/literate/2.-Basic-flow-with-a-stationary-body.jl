@@ -1,21 +1,25 @@
-# # 2. Basic flow with a stationary body
-# In this notebook we will simulate the flow past a stationary body.
+#=
+# 2. Basic flow with a stationary body
+In this notebook we will simulate the flow past a stationary body.
+=#
 
 using ViscousFlow
 #-
 using Plots
 
-# ### The basic steps
-# From the previous notebook, we add one additional step:
-# * **Specify the problem**: Set the Reynolds number and free stream
-# * **Discretize**: Set up a solution domain, grid cell size, time step size
-# * ***Set up bodies***: *Create the body or bodies and specify their motions, if any*
-# * **Construct the system structure**: Create the operators that will be used to perform the simulation
-# * **Initialize**: Set the initial flow field and initialize the integrator
-# * **Solve**: Solve the flow field
-# * **Examine**: Examine the results
-# We will go through all of these here. For the examples we will carry out in this notebook,
-# the first three steps need only be carried out once.
+#=
+### The basic steps
+From the previous notebook, we add one additional step:
+* **Specify the problem**: Set the Reynolds number and free stream
+* **Discretize**: Set up a solution domain, grid cell size, time step size
+* ***Set up bodies***: *Create the body or bodies and specify their motions, if any*
+* **Construct the system structure**: Create the operators that will be used to perform the simulation
+* **Initialize**: Set the initial flow field and initialize the integrator
+* **Solve**: Solve the flow field
+* **Examine**: Examine the results
+We will go through all of these here. For the examples we will carry out in this notebook,
+the first three steps need only be carried out once.
+=#
 
 # ### Problem specification
 # Set the Reynolds number and free stream
@@ -52,9 +56,11 @@ T(body) # transform the body to the current configuration
 # Let's plot it just to make sure
 plot(body,xlim=xlim,ylim=ylim)
 
+#=
 ### Construct the system structure
-# This step is like the previous notebook, but now we also provide the body and
-# the freestream:
+This step is like the previous notebook, but now we also provide the body and
+the freestream:
+=#
 sys = NavierStokes(Re,Δx,xlim,ylim,Δt,body,freestream = U∞)
 
 #=
