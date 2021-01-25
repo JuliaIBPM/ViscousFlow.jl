@@ -57,14 +57,15 @@ Here, we supply the motion as an another argument.
 sys = NavierStokes(Re,Δx,xlim,ylim,Δt,body,motion,freestream = U∞)
 #-
 u0 = newstate(sys)
-tspan = (0.0,20.0)
+tspan = (0.0,10.0)
 integrator = init(u0,tspan,sys)
 
 #=
 ### Solve
-This will take awhile, so be patient.
+This takes longer than it does for stationary bodies. Here, we only run it
+for a little while just to demonstrate it.
 =#
-step!(integrator,10.0)
+step!(integrator,0.1)
 
 # ### Examine the solution
 plot(vorticity(integrator),sys,clim=(-10,10),levels=range(-10,10,length=30),color = :RdBu)

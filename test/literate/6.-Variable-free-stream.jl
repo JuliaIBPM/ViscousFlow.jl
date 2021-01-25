@@ -65,15 +65,14 @@ Now, we initialize with zero vorticity
 =#
 u0 = newstate(sys)
 # and create the integrator
-tspan = (0.0,100.0)
+tspan = (0.0,10.0)
 integrator = init(u0,tspan,sys)
 
 #=
 ### Solve
-Now we are ready to solve the problem. Let's advance the solution to $t = 10$.
-This should take a minute or two, depending on the machine.
+Now we are ready to solve the problem. Let's advance the solution to $t = 1$.
 =#
-@time step!(integrator,10.0)
+@time step!(integrator,1.0)
 sol = integrator.sol;
 
 #=

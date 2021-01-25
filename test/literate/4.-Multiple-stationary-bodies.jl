@@ -57,13 +57,13 @@ We construct the system with the same syntax as for a single body:
 sys = NavierStokes(Re,Δx,xlim,ylim,Δt,bl,freestream = U∞)
 #-
 u0 = newstate(sys)
-tspan = (0.0,30.0)
+tspan = (0.0,10.0)
 integrator = init(u0,tspan,sys)
 #=
 ### Solve
-We will run this for a little while to see how the flow evolves:
+Here, we run it for only a little while, just to demonstrate:
 =#
-@time step!(integrator,20.0)
+@time step!(integrator,0.5)
 #=
 ### Examine
 Let's make an animation
