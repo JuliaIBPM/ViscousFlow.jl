@@ -1,20 +1,17 @@
-#using Compat.Test
-#using Compat
-
 using ViscousFlow
 using Test
 ##using TestSetExtensions
+using Literate
 
 
-#@test isempty(detect_ambiguities(ViscousFlow))
 include("pointforce.jl")
-include("navierstokes.jl")
+#include("navierstokes.jl")
 
+outputdir = "../examples"
+litdir = "./literate"
 
-#@testset ExtendedTestSet "All tests" begin
-#    @includetests ARGS
-#end
-
-#if isempty(ARGS)
-#    include("../docs/make.jl")
-#end
+for (root, dirs, files) in walkdir(litdir)
+    for file in files
+        endswith(file,".jl") && Literate.notebook(joinpath(root, file),outputdir)
+    end
+end
