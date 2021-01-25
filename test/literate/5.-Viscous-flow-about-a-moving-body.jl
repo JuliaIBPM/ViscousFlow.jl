@@ -44,7 +44,7 @@ fstar = 1/π # fc/U
 U₀ = 0.0 # translational motion (set to zero in place of free stream)
 K = π*fstar # reduced frequency, K = πfc/U
 
-oscil1 = PitchHeave(U₀,a,K,ϕp,α₀,Δα,A,ϕh)
+oscil1 = RigidBodyTools.PitchHeave(U₀,a,K,ϕp,α₀,Δα,A,ϕh)
 motion = RigidBodyMotion(oscil1)
 
 # We can inspect the kinematics in this `motion` by plotting them:
