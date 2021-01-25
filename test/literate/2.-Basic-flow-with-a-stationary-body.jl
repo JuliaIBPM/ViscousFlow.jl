@@ -126,6 +126,6 @@ plot(sol.t,2*fy,xlim=(0,Inf),ylim=(-6,6),xlabel="Convective time",ylabel="\$C_L\
 )
 
 # The mean drag and lift coefficients are
-meanCD = 2*sum(fx)/length(fx)
+meanCD = GridUtilities.mean(2*fx)
 #-
-meanCL = 2*sum(fy)/length(fy)
+meanCL = GridUtilities.mean(2*fy)
