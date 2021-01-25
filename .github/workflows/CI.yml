@@ -9,6 +9,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        group:
+          - Auxiliary
+          - Notebooks
         version:
           - '1.4'
           - 'nightly'

@@ -1,20 +1,31 @@
-#using Compat.Test
-#using Compat
-
 using ViscousFlow
 using Test
 ##using TestSetExtensions
+using Literate
+
+const GROUP = get(ENV, "GROUP", "All")
+
+notebookdir = "../examples"
+docdir = "../docs/src/manual"
+litdir = "./literate"
+
+if GROUP == "All" || GROUP == "Auxiliary"
+  include("pointforce.jl")
+end
 
 
-#@test isempty(detect_ambiguities(ViscousFlow))
-include("pointforce.jl")
-include("navierstokes.jl")
+if GROUP == "All" || GROUP == "Notebooks"
+  for (root, dirs, files) in walkdir(litdir)
+    for file in files
+      endswith(file,".jl") && Literate.notebook(joinpath(root, file),notebookdir)
+    end
+  end
+end
 
-
-#@testset ExtendedTestSet "All tests" begin
-#    @includetests ARGS
-#end
-
-#if isempty(ARGS)
-#    include("../docs/make.jl")
-#end
+if GROUP == "Documentation"
+  for (root, dirs, files) in walkdir(litdir)
+    for file in files
+      endswith(file,".jl") && Literate.markdown(joinpath(root, file),docdir)
+    end
+  end
+end
