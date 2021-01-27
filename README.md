@@ -4,7 +4,7 @@ _A framework for simulating viscous incompressible flows_
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://JuliaIBPM.github.io/ViscousFlow.jl/stable) [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://JuliaIBPM.github.io/ViscousFlow.jl/dev)
 [![Build Status](https://github.com/JuliaIBPM/ViscousFlow.jl/workflows/CI/badge.svg)](https://github.com/JuliaIBPM/ViscousFlow.jl/actions)
-[![Coverage](https://codecov.io/gh/JuliaIBPM/ViscousFlow.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaIBPM/ViscousFlow.jl) |
+[![Coverage](https://codecov.io/gh/JuliaIBPM/ViscousFlow.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaIBPM/ViscousFlow.jl)
 [![DOI](https://zenodo.org/badge/91933686.svg)](https://zenodo.org/badge/latestdoi/91933686)
 
 
