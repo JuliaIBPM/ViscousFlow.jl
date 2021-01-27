@@ -1,5 +1,21 @@
 using LinearAlgebra
 
+@testset "LidDrivenCavity" begin
+  b = Rectangle(0.5,0.5,0.01)
+
+  u = zero(b.x)
+  v = zero(b.y)
+
+  m = ViscousFlow.LidDrivenCavity(1.0)
+
+  assign_velocity!(u,v,b,m,0.0)
+
+  @test all(u[200:297] .== 1.0)
+  @test all(u[1:199] .== 0.0)
+  @test all(u[298:end] .== 0.0)
+  @test all(v .== 0.0)
+end
+
 @testset "PointForce" begin
 
   Re = 200
