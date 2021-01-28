@@ -3,14 +3,9 @@ import Base: size
 const NDIM = 2
 
 
-#import ConstrainedSystems: r₁, r₂, B₁ᵀ, B₂, plan_constraints
 import CartesianGrids: cellsize, origin
 import RigidBodyTools: assign_velocity!
 import ImmersedLayers: normals, areas
-
-#const DEFAULT_RK = ConstrainedSystems.RK31
-#const DEFAULT_RK = ConstrainedSystems.LiskaIFHERK()
-
 
 """
 $(TYPEDEF)
@@ -24,28 +19,35 @@ grid. It should be set to `false` if a supplied motion requires that the points 
 
 `NavierStokes(Re,Δx,xlimits,ylimits,Δt
               [,freestream = (0.0, 0.0)]
-              [,store_operators=true][,static_points=true]
-              [,rk=LiskaIFHERK()]
-              [,flow_side=ExternalInternalFlow]
-              [,ddftype=CartesianGrids.Yang3])`specifies the Reynolds number `Re`, the grid
+              [,pulses=nothing])` specifies the Reynolds number `Re`, the grid
               spacing `Δx`, the dimensions of the domain in the tuples `xlimits`
               and `ylimits` (excluding the ghost cells), and the time step size `Δt`.
-              The other arguments are optional. Note that `store_operators` set to `true`
-              stores matrix versions of the operators. This makes the method
-              faster, at the cost of storage. The `freestream` argument can be
+              The other arguments are optional. The `freestream` argument can be
               passed as either a tuple (a static freestream) or a `RigidBodyMotion`
-              for a time-varying freestream. The `flow_side` can be set to
-              `ExternalFlow` (default), `InternalFlow`, or `ExternalInternalFlow`.
+              for a time-varying freestream. The `pulses` argument can be
+              used to pass in one or more spatiotemporal pulses.
 
-`NavierStokes(Re,Δx,xlimits,ylimits,Δt,bodies::Body/BodyList)` passes the body
-              information. The other keywords can also be supplied. This
+
+`NavierStokes(Re,Δx,xlimits,ylimits,Δt,bodies::Body/BodyList
+              [,flow_side=ExternalInternalFlow]
+              [,ddftype=CartesianGrids.Yang3])` passes the body
+              information. This constructor
               sets the motions of the body/ies to be stationary.
+              The same optional arguments used for the basic constructor
+              also apply for this one. In addition, the `flow_side` can be set to
+              `ExternalFlow` (default), `InternalFlow`, or `ExternalInternalFlow`.
+              However, it is forced to `ExternalInternalFlow` for open Bodies
+              (like `Plate` type).
 
 `NavierStokes(Re,Δx,xlimits,ylimits,Δt,bodies::Body/BodyList,
-              motions::RigidBodyMotion/RigidMotionList)`
+              motions::RigidBodyMotion/RigidMotionList
+              [,static_points=false])`
               passes the body and associated motion information.
-              The other keywords can also be supplied. The list of
-              motions must be the same length as the list of bodies.
+              The list of motions must be the same length as the list of bodies.
+              The same optional arguments used for the other constructors
+              also apply for this one. In addition, `static_points` can
+              be set to `true` if the supplied motion should not cause the
+              points to move.
 
 """
 mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, SD<:FlowSide, DDF<:CartesianGrids.DDFType, FT, SP, FST} #, RKT}
@@ -64,14 +66,8 @@ mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, 
     # Discretization
     "Grid metadata"
     grid::CartesianGrids.PhysicalGrid{2}
-    #"Grid spacing"
-    #Δx::Float64
-    #"Indices of the primal node corresponding to the physical origin"
-    #I0::Tuple{Int,Int}
     "Time step"
     Δt::Float64
-    #"Time marching method"
-    #rk::RKT
 
     # Operators
     "Laplacian operator"
@@ -119,9 +115,6 @@ mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, 
     DVf::EdgeGradient{Primal,Dual,NX,NY,Float64}
     VDVf::EdgeGradient{Primal,Dual,NX,NY,Float64}
 
-    # Flags
-    _isstored :: Bool
-
 end
 
 function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Real}, Δt::Real;
@@ -129,7 +122,6 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
                        bodies::Union{BodyList,Nothing} = nothing,
                        motions::Union{RigidMotionList,Nothing} = nothing,
                        pulses::PT = nothing,
-                       store_operators = true,
                        static_points = true,
                        flow_side::Type{SD} = ExternalFlow,
                        ddftype=CartesianGrids.Yang3) where {FST,PT,SD<:FlowSide}
@@ -154,6 +146,12 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
 
     pulsefields = _process_pulses(pulses,Sn,g)
 
+
+    # for now, if there are any bodies that are Open,
+    # then force flow_side to ExternalInternalFlow.
+    # but should be more flexible here
+    flow_side_internal = _any_open_bodies(bodies) ? ExternalInternalFlow : flow_side
+
     N = numpts(bodies)
 
     Vb = VectorData(N)
@@ -162,7 +160,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
     τ = VectorData(N)
 
     points, dlf, slc, sln, Rf, Ef, Cf, Rc, Ec, Rn, En =
-              _immersion_operators(bodies,g,flow_side,ddftype,Vf,Sc,Vb)
+              _immersion_operators(bodies,g,flow_side_internal,ddftype,Vf,Sc,Vb)
 
 
     viscous_L = plan_laplacian(Sn,factor=1/(Re*Δx^2))
@@ -191,7 +189,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
 
 
 
-    NavierStokes{NX, NY, N, _motiontype(static_points), _fstype(FST), flow_side, ddftype, typeof(f), typeof(state_prototype),FST}( #,typeof(rk)}(
+    NavierStokes{NX, NY, N, _motiontype(static_points), _fstype(FST), flow_side_internal, ddftype, typeof(f), typeof(state_prototype),FST}( #,typeof(rk)}(
                           Re, freestream, bodies, motions, pulsefields,
                           g, Δt, # rk,
                           L,
@@ -199,8 +197,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
                           points, Rf, Ef, Cf, Rc, Ec, Rn, En,
                           f,state_prototype,
                           Vb, Sb, Δus, τ,
-                          Vf, Vv, Vn, Sc, Sn, Wn, Vtf, DVf, VDVf,
-                          store_operators)
+                          Vf, Vv, Vn, Sc, Sn, Wn, Vtf, DVf, VDVf)
 end
 
 NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList;
@@ -417,6 +414,11 @@ end
 _hasfilter(sys::NavierStokes) = !isnothing(sys.Cf)
 _motiontype(isstatic::Bool) = isstatic ? StaticPoints : MovingPoints
   _fstype(F) = F <: Union{RigidBodyMotion,Kinematics} ? VariableFreestream : StaticFreestream
+
+_body_closure_type(b::T) where {T<:Body{N,C}} where {N,C} = C
+
+_any_open_bodies(nothing) = false
+_any_open_bodies(bodies::BodyList) =  any(b -> _body_closure_type(b) == RigidBodyTools.OpenBody,bodies)
 
 
 include("navierstokes/surfacevelocities.jl")
