@@ -42,7 +42,7 @@ abstract type ExternalInternalFlow <: FlowSide end
 include("utils/pulses.jl")
 include("navier_stokes.jl")
 include("plot_recipes.jl")
-
+include("LidDrivenCavity.jl")
 
 
 end
