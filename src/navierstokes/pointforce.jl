@@ -3,7 +3,7 @@ struct PointForce{T}
   f0 :: Union{Float64,Vector{Float64}}
   t0 :: Float64
   σt :: Float64
-  pulse :: PulseField
+  pulse :: ModulatedField
 end
 
 function PointForce(u::GridData,x0::Vector{Float64},f0,t0,σt,sys::NavierStokes)

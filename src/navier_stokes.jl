@@ -249,7 +249,9 @@ function _immersion_operators(bodies::BodyList,g::PhysicalGrid,flow_side::Type{S
     sln = nothing
   end
 
-  regop = Regularize(points,cellsize(g);I0=CartesianGrids.origin(g),weights=body_areas.data,ddftype=ddftype)
+  #regop = Regularize(points,cellsize(g);I0=CartesianGrids.origin(g),weights=body_areas.data,ddftype=ddftype)
+  regop = _regularization(points,g,bodies,ddftype)
+
   Rf = RegularizationMatrix(regop,Vb,Vf) # Used by B₁ᵀ
   Ef = InterpolationMatrix(regop,Vf,Vb) # Used by constraint_rhs! and B₂
 
@@ -419,6 +421,12 @@ _body_closure_type(b::T) where {T<:Body{N,C}} where {N,C} = C
 
 _any_open_bodies(nothing) = false
 _any_open_bodies(bodies::BodyList) =  any(b -> _body_closure_type(b) == RigidBodyTools.OpenBody,bodies)
+
+_regularization(sys::NavierStokes{NX, NY, N, MT, FS, SD, DDF}) where {NX,NY,N,MT,FS,SD,DDF} =
+        _regularization(sys.points,sys.grid,sys.bodies,DDF)
+
+_regularization(points,g,bodies,ddftype) = Regularize(points,cellsize(g),
+                                I0=CartesianGrids.origin(g),weights=areas(bodies).data,ddftype=ddftype)
 
 
 include("navierstokes/surfacevelocities.jl")

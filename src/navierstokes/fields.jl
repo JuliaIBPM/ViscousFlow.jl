@@ -9,7 +9,37 @@ import CartesianGrids: convective_derivative!
 Return the vorticity field associated with state vector `u` on the grid in `sys`,
 at time `t`.
 """
-@inline vorticity(w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY} = w/cellsize(sys)
+@inline vorticity(w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY} =
+            vorticity!(sys.Wn,w,sys,t)
+
+function vorticity!(w::Nodes{Dual,NX,NY},win::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY}
+  w .= 0.0
+  _vorticity!(w,win,sys,t)
+  _vorticity_sheet!(w,sys,t)
+  return w
+end
+
+@inline _vorticity!(w::Nodes{Dual,NX,NY},win::Nodes{Dual,NX,NY},
+                    sys::NavierStokes{NX,NY},t::Real) where {NX,NY} = w .+= win/cellsize(sys)
+
+_vorticity_sheet!(w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY,0},t::Real) where {NX,NY} = w
+
+_vorticity_sheet!(w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY,N,MT,FS,
+                                              ExternalInternalFlow},t::Real) where {NX,NY,N,MT,FS} = w
+
+function _vorticity_sheet!(w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY,N,MT,FS,SD},t::Real) where {NX,NY,N,MT,FS,SD}
+  if isnothing(sys.Rn)
+    regop = _regularization(sys)
+    Rn = RegularizationMatrix(regop,sys.Sb,sys.Sn)
+  else
+    Rn = sys.Rn
+  end
+  surface_velocity_jump!(sys.Δus,sys,t)
+  cross!(sys.Sb,sys.Δus,normals(sys))
+  w .+= Rn*sys.Sb
+  return w
+end
+
 
 function velocity!(u::Edges{Primal,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY,N},t::Real) where {NX,NY,N}
     u .= 0.0
@@ -230,12 +260,8 @@ force(τ,sys::NavierStokes{NX,NY,0},t,bodyi::Int) where {NX,NY} = Vector{Float64
 
 function force(τ::VectorData{N},sys::NavierStokes,t,bodyi::Int) where {N}
     product!(sys.τ,traction(τ,sys,t),areas(sys.bodies))
-    fxvec = Vector{Float64}(undef,length(sys.bodies))
-    fyvec = Vector{Float64}(undef,length(sys.bodies))
-    #for i in 1:length(sys.bodies)
     fxvec = sum(sys.τ.u,sys.bodies,bodyi)
     fyvec = sum(sys.τ.v,sys.bodies,bodyi)
-    #end
     return fxvec, fyvec
 end
 
@@ -261,4 +287,47 @@ function force(sol::ConstrainedSystems.OrdinaryDiffEq.ODESolution,sys::NavierSto
     fx = map((u,t) -> force(u,sys,t,bodyi)[1],sol.u,sol.t)
     fy = map((u,t) -> force(u,sys,t,bodyi)[2],sol.u,sol.t)
     fx, fy
+end
+
+
+function moment(τ::VectorData{N},bodies::BodyList,sys::NavierStokes,t,bodyi::Int;center=(0.0,0.0)) where {N}
+    xc, yc = center
+    x, y = collect(bodies)
+    dX = VectorData(x .- xc,  y .- yc)
+    product!(sys.τ,traction(τ,sys,t),areas(bodies))
+    return sum(cross(dX,sys.τ),bodies,bodyi)
+end
+
+
+function moment(s::ConstrainedSystems.ArrayPartition,sys::NavierStokes{NX,NY,N,MovingPoints},t,bodyi;center=(0.0,0.0)) where {NX,NY,N}
+    bodies = deepcopy(sys.bodies)
+    tl! = RigidTransformList(aux_state(s))
+    tl!(bodies)
+    moment(constraint(s),bodies,sys,t,bodyi;center=center)
+end
+
+moment(s::ConstrainedSystems.ArrayPartition,sys::NavierStokes{NX,NY,N,StaticPoints},t,bodyi;center=(0.0,0.0)) where {NX,NY,N} =
+        moment(constraint(s),sys.bodies,sys,t,bodyi;center=center)
+
+
+"""
+    moment(integ,bodyindex[,center=(0,0))
+
+Given the state of the system in integrator `integ`, return the current moment
+on the body with index `bodyindex`.  The center of the
+moment can be passed as an optional tuple argument.
+"""
+moment(integ::ConstrainedSystems.OrdinaryDiffEq.ODEIntegrator,bodyi;center=(0.0,0.0)) =
+      moment(integ.u,integ.p,integ.t,bodyi,center=center)
+
+
+"""
+    moment(sol,sys::NavierStokes,bodyindex[,center=(0,0)]) -> Vector
+
+Given the solution history vector `sol` and the system `sys`, return the moment
+history on the body with index `bodyindex` as a vector. The center of the
+moment can be passed as an optional tuple argument.
+"""
+function moment(sol::ConstrainedSystems.OrdinaryDiffEq.ODESolution,sys::NavierStokes,bodyi::Int;center=(0.0,0.0))
+    mom = map((u,t) -> moment(u,sys,t,bodyi,center=center),sol.u,sol.t)
 end
