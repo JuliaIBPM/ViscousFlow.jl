@@ -15,7 +15,7 @@ function _process_pulses(params::PulseParams,s,grid)
 end
 
 function _process_pulses(params::Vector{<:PulseParams},s,grid)
-  pulses = PulseField[]
+  pulses = ModulatedField[]
   for p in params
     gf = GeneratedField(s,p.field,grid)
     push!(pulses,PulseField(gf,p.t0,p.σt))
