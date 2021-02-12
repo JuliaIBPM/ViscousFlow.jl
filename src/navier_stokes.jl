@@ -61,7 +61,7 @@ mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, 
     "Body motions"
     motions::Union{RigidMotionList,Nothing}
     "Pulses"
-    pulses::Union{Vector{PulseField},Nothing}
+    pulses::Union{Vector{ModulatedField},Nothing}
 
     # Discretization
     "Grid metadata"
