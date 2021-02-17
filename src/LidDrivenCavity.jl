@@ -15,8 +15,6 @@ function assign_velocity!(u::AbstractVector{Float64},
 fill!(v,0.0)
 fill!(u,0.0)
 
-println("here I am")
-
 #get normal coordinates of the body surface
 nx,ny = normalmid(b)
 
