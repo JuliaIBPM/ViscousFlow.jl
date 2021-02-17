@@ -43,7 +43,7 @@ include("utils/pulses.jl")
 include("navier_stokes.jl")
 include("directmotion.jl")
 include("plot_recipes.jl")
-
+include("LidDrivenCavity.jl")
 
 
 end
