@@ -40,7 +40,7 @@ grid. It should be set to `false` if a supplied motion requires that the points 
               (like `Plate` type).
 
 `NavierStokes(Re,Δx,xlimits,ylimits,Δt,bodies::Body/BodyList,
-              motions::RigidBodyMotion/RigidMotionList
+              motions::Motion/MotionList
               [,static_points=false])`
               passes the body and associated motion information.
               The list of motions must be the same length as the list of bodies.
@@ -59,7 +59,7 @@ mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, 
     "Bodies"
     bodies::Union{BodyList,Nothing}
     "Body motions"
-    motions::Union{RigidMotionList,Nothing}
+    motions::Union{RigidMotionList,DirectlySpecifiedMotionList,Nothing}
     "Pulses"
     pulses::Union{Vector{PulseField},Nothing}
 
@@ -120,7 +120,7 @@ end
 function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tuple{Real,Real}, Δt::Real;
                        freestream::FST = (0.0, 0.0),
                        bodies::Union{BodyList,Nothing} = nothing,
-                       motions::Union{RigidMotionList,Nothing} = nothing,
+                       motions::Union{RigidMotionList,DirectlySpecifiedMotionList,Nothing} = nothing,
                        pulses::PT = nothing,
                        static_points = true,
                        flow_side::Type{SD} = ExternalFlow,
@@ -207,13 +207,17 @@ NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList;
 NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body;kwargs...) =
         NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]);kwargs...)
 
-function NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList,motions::RigidMotionList;static_points=false,kwargs...)
+function NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList,motions::Union{RigidMotionList,DirectlySpecifiedMotionList};static_points=false,kwargs...)
     length(bodies) == length(motions) || error("Inconsistent lengths of bodies and motions lists")
     NavierStokes(Re,Δx,xlim,ylim,Δt,bodies;motions=motions,static_points=static_points,kwargs...)
 end
 
 NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,motion::RigidBodyMotion;static_points=false,kwargs...) =
         NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]),RigidMotionList([motion]);static_points=static_points,kwargs...)
+
+
+NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,motion::DirectlySpecifiedMotion;static_points=false,kwargs...) =
+        NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]),DirectlySpecifiedMotionList([motion]);static_points=static_points,kwargs...)
 
 
 function Base.show(io::IO, sys::NavierStokes{NX,NY,N,MT,FS,SD}) where {NX,NY,N,MT,FS,SD}

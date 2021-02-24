@@ -1,9 +1,6 @@
 
 import RigidBodyTools: assign_velocity!
 
-
-abstract type DirectlySpecifiedMotion end
-
 struct LidDrivenCavity <: DirectlySpecifiedMotion
     U :: Float64
 end
