@@ -98,8 +98,8 @@ Now let's make a movie, like we did last time.
 =#
 
 sol = integrator.sol;
-@gif for (u,t) in zip(sol.u,sol.t)
-    plot(vorticity(u,sys,t),sys,clim=(-10,10),levels=range(-10,10,length=30), color = :RdBu)
+@gif for t in sol.t
+    plot(vorticity(sol,sys,t),sys,clim=(-10,10),levels=range(-10,10,length=30), color = :RdBu)
 end every 5
 
 #=
