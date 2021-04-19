@@ -86,10 +86,10 @@ plot(streamfunction(integrator),sys,title="Streamlines",ylim=ylim,color = :Black
     )
 
 # Now let's make a movie
-@gif for (u,t) in zip(sol.u,sol.t)
+@gif for t in sol.t
     #plot(streamfunction(u,sys,t),sys, color = :Black)
-    plot(vorticity(u,sys,t),sys,clim=(-10,10),levels=range(-10,10,length=30), color = :RdBu)
-    end every 10
+    plot(vorticity(sol,sys,t),sys,clim=(-10,10),levels=range(-10,10,length=30), color = :RdBu)
+end every 10
 
 #=
 #### Compute the force history

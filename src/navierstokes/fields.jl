@@ -4,10 +4,10 @@ import LinearAlgebra: transpose!
 import CartesianGrids: convective_derivative!
 
 """
-    vorticity(u,sys::NavierStokes,t)
+    vorticity(sol::ODESolution,sys::NavierStokes,t)
 
-Return the vorticity field associated with state vector `u` on the grid in `sys`,
-at time `t`.
+Return the vorticity field associated with solution vector `sol` on the grid in `sys`,
+at time(s) `t`.
 """
 @inline vorticity(w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY} =
             vorticity!(sys.Wn,w,sys,t)
@@ -84,10 +84,10 @@ function _velocity_freestream!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY,N,
 end
 
 """
-    velocity(u,sys::NavierStokes,t)
+    velocity(sol::ODESolution,sys::NavierStokes,t)
 
-Return the velocity field associated with state vector `u` on the grid in `sys`,
-at time `t`.
+Return the velocity field associated with solution vector `sol` on the grid in `sys`,
+at time(s) `t`.
 """
 velocity(w::Nodes{Dual,NX,NY},a...) where {NX,NY} = velocity!(Edges(Primal,(NX,NY)),w,a...)
 
@@ -114,10 +114,10 @@ function _streamfunction_freestream!(ψ::Nodes{Dual,NX,NY},sys::NavierStokes{NX,
 end
 
 """
-    streamfunction(u,sys::NavierStokes,t)
+    streamfunction(sol::ODESolution,sys::NavierStokes,t)
 
-Return the streamfunction field associated with state vector `u` on the grid in `sys`,
-at time `t`.
+Return the streamfunction field associated with solution vector `sol` on the grid in `sys`,
+at time(s) `t`.
 """
 streamfunction(w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY} = streamfunction!(Nodes(Dual,(NX,NY)),w,sys,t)
 
@@ -135,10 +135,10 @@ function _unscaled_scalarpotential!(ϕ::Nodes{Primal,NX,NY},dil::Nodes{Primal,NX
 end
 
 """
-    scalarpotential(u,sys::NavierStokes,t)
+    scalarpotential(sol::ODESolution,sys::NavierStokes,t)
 
-Return the scalar potential field associated with state vector `u` on the grid in `sys`,
-at time `t`.
+Return the scalar potential field associated with solution vector `sol` on the grid in `sys`,
+at time(s) `t`.
 """
 scalarpotential(dil::Nodes{Primal,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY} = scalarpotential!(Nodes(Primal,(NX,NY)),dil,sys,t)
 
@@ -153,58 +153,20 @@ function convective_derivative!(out::Edges{Primal,NX,NY},u::Edges{Primal,NX,NY},
 end
 
 """
-    convective_derivative(u,sys::NavierStokes,t)
+    convective_derivative(sol::ODESolution,sys::NavierStokes,t)
 
-Return the convective derivative associated with state vector `u` on the grid in `sys`,
-at time `t`.
+Return the convective derivative associated with solution vector `sol` on the grid in `sys`,
+at time(s) `t`.
 """
 convective_derivative(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY} =
       convective_derivative!(Edges(Primal,(NX,NY)),u,sys,t)
 
-
 """
-    vorticity(integrator)
+    pressure(sol::ODESolution,sys::NavierStokes,t)
 
-Return the vorticity field associated with `integrator` at its current state.
+Return the pressure field associated with solution vector `sol` on the grid in `sys`,
+at time(s) `t`.
 """
-function vorticity end
-
-"""
-    velocity(integrator)
-
-Return the velocity field associated with `integrator` at its current state.
-"""
-function velocity end
-
-"""
-    streamfunction(integrator)
-
-Return the streamfunction field associated with `integrator` at its current state.
-"""
-function streamfunction end
-
-"""
-    scalarpotential(integrator)
-
-Return the scalar potential field associated with `integrator` at its current state.
-"""
-function scalarpotential end
-
-"""
-    convective_derivative(integrator)
-
-Return the convective derivative associated with `integrator` at its current state.
-"""
-function convective_derivative end
-
-
-for fcn in (:vorticity,:velocity,:streamfunction,:scalarpotential,:convective_derivative)
-  @eval $fcn(s::ConstrainedSystems.ArrayPartition,sys::NavierStokes,t) = $fcn(state(s),sys,t)
-
-  @eval $fcn(integ::ConstrainedSystems.OrdinaryDiffEq.ODEIntegrator) = $fcn(integ.u,integ.p,integ.t)
-end
-
-
 function pressure(u::ConstrainedSystems.ArrayPartition,sys::NavierStokes{NX,NY},t) where {NX,NY}
     w, τ = state(u), constraint(u)
     fill!(sys.Vn,0.0)
@@ -220,15 +182,95 @@ function pressure(u::ConstrainedSystems.ArrayPartition,sys::NavierStokes{NX,NY},
     press .*= cellsize(sys)
     return press
 end
-pressure(integ::ConstrainedSystems.OrdinaryDiffEq.ODEIntegrator) = pressure(integ.u,integ.p,integ.t)
+
+
+"""
+    vorticity(integrator)
+
+Return the vorticity field associated with `integrator` at its current state.
+""" function vorticity end
+
+"""
+    velocity(integrator)
+
+Return the velocity field associated with `integrator` at its current state.
+""" function velocity end
+
+"""
+    streamfunction(integrator)
+
+Return the streamfunction field associated with `integrator` at its current state.
+""" function streamfunction end
+
+"""
+    scalarpotential(integrator)
+
+Return the scalar potential field associated with `integrator` at its current state.
+""" function scalarpotential end
+
+"""
+    convective_derivative(integrator)
+
+Return the convective derivative associated with `integrator` at its current state.
+""" function convective_derivative end
+
+"""
+    pressure(integrator)
+
+Return the pressure field associated with `integrator` at its current state.
+""" function pressure end
+
+
+for fcn in (:vorticity,:velocity,:streamfunction,:scalarpotential,:convective_derivative)
+
+  @eval $fcn(s::ConstrainedSystems.ArrayPartition,sys::NavierStokes,t) = $fcn(state(s),sys,t)
+
+end
+
+for fcn in (:vorticity,:velocity,:streamfunction,:scalarpotential,:convective_derivative,:pressure)
+  @eval $fcn(integ::ConstrainedSystems.OrdinaryDiffEq.ODEIntegrator) = $fcn(integ.u,integ.p,integ.t)
+
+  @eval $fcn(sol::ConstrainedSystems.OrdinaryDiffEq.ODESolution,sys::NavierStokes,t) = $fcn(sol(t),sys,t)
+
+  @eval $fcn(sol::ConstrainedSystems.OrdinaryDiffEq.ODESolution,sys::NavierStokes,t::AbstractArray) =
+      map(ti -> $fcn(sol(ti),sys,ti),t)
+
+end
+
 
 # Surface field quantities
+
+"""
+    traction(integrator)
+
+Return the traction at all of the surface points associated with `integrator` at
+its current state.
+""" function traction end
+
+"""
+    pressurejump(integrator)
+
+Return the pressure jump at all of the surface points associated with `integrator` at
+its current state.
+""" function pressurejump end
+
 
 for fcn in (:traction,:pressurejump)
   @eval $fcn(s::ConstrainedSystems.ArrayPartition,a...;kwargs...) = $fcn(constraint(s),a...;kwargs...)
   @eval $fcn(integ::ConstrainedSystems.OrdinaryDiffEq.ODEIntegrator) = $fcn(integ.u,integ.p,integ.t)
+  @eval $fcn(sol::ODESolution,sys::NavierStokes,t) = $fcn(sol(t),sys,t)
+
+  @eval $fcn(sol::ODESolution,sys::NavierStokes,t::AbstractArray) =
+        map(ti -> $fcn(sol(ti),sys,ti),t)
+
 end
 
+"""
+    traction(sol::ODESolution,sys::NavierStokes,t)
+
+Return the traction at all of the surface points associated with solution `sol` on
+grid in `sys` at time(s) t.
+"""
 traction(τ,sys::NavierStokes{NX,NY,0,MT,FS,SD},t) where {NX,NY,MT,FS,SD} = τ
 
 traction(τ::VectorData{N},sys::NavierStokes{NX,NY,N,MT,FS,ExternalInternalFlow},t) where {NX,NY,N,MT,FS} = τ
@@ -242,6 +284,12 @@ function traction(τ::VectorData{N},sys::NavierStokes{NX,NY,N,MT,FS,SD},t) where
     return τ + sys.Vb
 end
 
+"""
+    pressurejump(sol::ODESolution,sys::NavierStokes,t)
+
+Return the pressure jump at all of the surface points associated with solution `sol` on
+grid in `sys` at time(s) t.
+"""
 function pressurejump(τ::VectorData{N},sys::NavierStokes{NX,NY,N},t) where {NX,NY,N}
 
     #_hasfilter(sys) ? (τf = similar(τ); τf .= sys.Cf*force(τ,sys)) : τf = deepcopy(force(τ,sys))
