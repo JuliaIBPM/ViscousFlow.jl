@@ -1,6 +1,6 @@
 using Documenter, ViscousFlow
 
-ENV["GKSwstype"] = "nul"
+ENV["GKSwstype"] = "nul" # removes GKS warnings during plotting
 
 makedocs(
     sitename = "ViscousFlow.jl",
