@@ -19,7 +19,7 @@ using SparseArrays
 
 export NavierStokes, PulseParams, PointForce, SpatialDGaussian,
        ExternalFlow, InternalFlow, ExternalInternalFlow,
-       setstepsizes, timestep, timerange, newstate,
+       setstepsizes, timestep, timerange, newstate, flowside,
        update_immersion_operators!,
        vorticity, velocity, velocity!, streamfunction, streamfunction!,
        scalarpotential, scalarpotential!, convective_derivative, convective_derivative!,
@@ -41,8 +41,8 @@ abstract type ExternalInternalFlow <: FlowSide end
 
 include("utils/pulses.jl")
 include("navier_stokes.jl")
+include("directmotion.jl")
 include("plot_recipes.jl")
-
 
 
 end
