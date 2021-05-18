@@ -1,5 +1,7 @@
 using Documenter, ViscousFlow
 
+ENV["GKSwstype"] = "nul" # removes GKS warnings during plotting
+
 makedocs(
     sitename = "ViscousFlow.jl",
     doctest = true,
