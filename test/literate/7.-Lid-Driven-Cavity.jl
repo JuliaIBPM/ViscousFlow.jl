@@ -1,6 +1,7 @@
 #=
 # 7. Lid Driven Cavity Flow
-In this notebook we will simulate the flow with a top moving wall. To demonstrate this, we will solve for internal flow in a square cavity by enforcing no-slip at the walls.
+In this notebook we will simulate the flow with a top moving wall. To demonstrate this, we will solve
+for internal flow in a square cavity by enforcing no-slip at the walls.
 =#
 using ViscousFlow
 #-
@@ -8,13 +9,15 @@ using Plots
 
 #=
 ##Problem specification
-Take $Re=100$ for example. We will set the Reynolds number to 100
+Take $Re=100$ for example:
 =#
 Re = 100 # Reynolds number
 
 #=
 ##Discretization
-Note that the rectangle function used for making the cavity shape requires a specified half length. The immersed boundary projection method for internal flow requires the size of the domain to be at least a step size greater at the boundaries (i.e. half length + Δx).
+Note that the rectangle function used for making the cavity shape requires a specified half length. The
+immersed boundary projection method for internal flow requires the size of the domain to
+be at least a step size greater at the boundaries (i.e. `halflength + Δx`).
 =#
 Δt,Δx = setstepsizes(Re,gridRe=1.0)
 halflength=0.5 # to make rectangle with side length of 1
@@ -23,22 +26,19 @@ xlim, ylim = (-domain_lim,domain_lim),(-domain_lim,domain_lim)
 
 #=
 ##Cavity Geometry
-A square cavity can be created using the $rectangle()$ function with the half length defined above.
+A square cavity can be created using the `Rectangle()` function with the half length defined above.
 The `shifted=true` argument ensures that points are not placed at the corners, where
 they have ill-defined normal vectors.
 =#
 body = Rectangle(halflength,halflength,1.5*Δx,shifted=true)
-plot(body)
+plot(body,fillrange=nothing)
 
 #=
 ##Boundary Condition at the moving wall
-Assign velocity to the top boundary.
-
-The `LidDrivenCavity()`` function can be used to specify the velocity value at the top wall.
-
-Note : Non-dimensional velocity = 1
+Assign velocity to the top boundary. The `LidDrivenCavity()` function can be used
+to specify the velocity value at the top wall. Note : Non-dimensional velocity = 1
 =#
-m = ViscousFlow.LidDrivenCavity(1.0); # motion type
+m = ViscousFlow.LidDrivenCavity(1.0)
 
 #=
 ##Construct the system structure
@@ -67,8 +67,7 @@ step!(integrator,10)
 
 #=
 ## Examine
-### RE=100, ΔX=0.008
-plot for vorticity and streamlines
+Plot the vorticity and streamlines
 =#
 
 plot(
@@ -76,6 +75,9 @@ plot(vorticity(integrator),sys,title="Vorticity (Computed)",clim=(-10,10),color=
 plot(streamfunction(integrator),sys,fillrange=nothing,color=:black,levels=vcat(0.009:0.01:0.11,0.1145,0.11468,0.11477))
    )
 
+#=
+Make a movie:
+=#
 sol = integrator.sol;
 @gif for (u,t) in zip(sol.u,sol.t)
     plot(vorticity(u,sys,t),sys,clim=(-10,10),levels=range(-10,10,length=30),color=:turbo,fillrange=nothing)
