@@ -57,8 +57,8 @@ step!(integrator,5.0)
 ### Examine
 =#
 sol = integrator.sol
-@gif for (u,t) in zip(sol.u,sol.t)
-    plot(vorticity(u,sys,t),sys)
+@gif for t in sol.t
+    plot(vorticity(sol,sys,t),sys)
 end every 5
 #-
 plot(streamfunction(integrator),sys,title="Streamfunction at t = $(round(integrator.t,digits=2))")
@@ -79,6 +79,6 @@ step!(integrator,4.0)
 ### Examine
 =#
 sol = integrator.sol
-@gif for (u,t) in zip(sol.u,sol.t)
-    plot(vorticity(u,sys,t),sys)
+@gif for t in sol.t
+    plot(vorticity(sol,sys,t),sys)
 end every 5

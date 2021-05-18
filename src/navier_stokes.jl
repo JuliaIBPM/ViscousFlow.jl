@@ -321,7 +321,7 @@ julia> Δx, Δt = setstepsizes(100)
 """
 function setstepsizes(Re::Real; gridRe = 2.0, cfl = 0.5, fourier = 0.5)
     Δx = gridRe/Re
-    Δt = min(fourier*Δx,cfl*Δx^2*Re)
+    Δt = min(cfl*Δx,fourier*Δx^2*Re)
     return Δx, Δt
 end
 

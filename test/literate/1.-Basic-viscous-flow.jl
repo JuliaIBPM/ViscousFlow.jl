@@ -97,7 +97,7 @@ plot(
  plot(velocity(integrator),sys))
 
 # For this problem, we can compare with the exact solution. The exact solution is also a Gaussian,
-# but with a radius $\\sqrt{\\sigma^2+4t/Re}$
+# but with a radius $\sqrt{\sigma^2+4t/Re}$
 oseen_exact(t) = SpatialGaussian(sqrt(σ^2+4*t/Re),x0,y0,A)
 exactsol(t) = newstate(oseen_exact(t),sys)
 
@@ -118,8 +118,10 @@ x02, y02 = -0.5, 0.0
 A = 1
 twogauss = SpatialGaussian(σ,x01,y01,A) + SpatialGaussian(σ,x02,y02,A)
 
+#=
 ### Initialize
 # Now, we create an instance of this vorticity distribution on the grid.
+=#
 u0 = newstate(twogauss,sys)
 
 #-
@@ -143,8 +145,8 @@ our commands:
 sol = integrator.sol;
 
 # Now we will animate the solution, plotting the vorticity every 5 steps
-@gif for (u,t) in zip(sol.u,sol.t)
-    plot(vorticity(u,sys,t),sys)
+@gif for t in sol.t
+    plot(vorticity(sol,sys,t),sys)
 end every 5
 
 # The vortices orbit each other and then eventually merge together. If we wish to make a nice
@@ -153,7 +155,7 @@ plt = plot(layout = (2,4), size = (800, 400), legend=:false)
 framejump = 100
 nframes = 8
 for (i, frame) in enumerate(1:framejump:(nframes-1)*framejump+1)
-    plot!(plt[i],vorticity(sol[frame],sys,sol.t[frame]),sys,levels=range(0.1,5,length=31))
+    plot!(plt[i],vorticity(sol,sys,sol.t[frame]),sys,levels=range(0.1,5,length=31))
 end
 savefig(plt,"CoRotating.pdf")
 plt

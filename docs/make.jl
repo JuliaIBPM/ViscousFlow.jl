@@ -1,6 +1,6 @@
 using Documenter, ViscousFlow
 
-ENV["GKSwstype"] = "nul"
+ENV["GKSwstype"] = "nul" # removes GKS warnings during plotting
 
 makedocs(
     sitename = "ViscousFlow.jl",
@@ -14,7 +14,8 @@ makedocs(
                      "manual/4.-Multiple-stationary-bodies.md",
                      "manual/5.-Viscous-flow-about-a-moving-body.md",
                      "manual/6.-Variable-free-stream.md",
-                     "manual/7.-Lid-driven-cavity.md"
+                     "manual/7.-Lid-driven-cavity.md",
+                     "manual/functions.md"
                      ]
         #"Internals" => [ "internals/properties.md"]
     ],

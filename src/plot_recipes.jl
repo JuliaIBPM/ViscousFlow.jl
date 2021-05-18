@@ -1,7 +1,5 @@
 using RecipesBase
 using ColorTypes
-using LaTeXStrings
-import PlotUtils: cgrad
 
 
 @recipe function f(w::T,sys::NavierStokes) where {T<:GridData}
