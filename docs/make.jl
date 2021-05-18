@@ -13,7 +13,8 @@ makedocs(
                      "manual/3.-Applying-pulse-forcing-to-a-flow.md",
                      "manual/4.-Multiple-stationary-bodies.md",
                      "manual/5.-Viscous-flow-about-a-moving-body.md",
-                     "manual/6.-Variable-free-stream.md"
+                     "manual/6.-Variable-free-stream.md",
+                     "manual/7.-Lid-driven-cavity.md"
                      ]
         #"Internals" => [ "internals/properties.md"]
     ],
