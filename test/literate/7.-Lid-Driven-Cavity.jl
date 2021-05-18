@@ -54,13 +54,13 @@ u0 = newstate(sys)
 #=
 Set up integrator
 =#
-tspan = (0.0,100.0)
+tspan = (0.0,5.0)
 integrator = init(u0,tspan,sys)
 
 #=
 ## Solve
 =#
-step!(integrator,100)
+step!(integrator,5)
 
 #=
 ## Examine
@@ -69,9 +69,9 @@ plot for vorticity and streamlines
 =#
 
 plot(
-plot(vorticity(integrator),sys,title="Vorticity (Computed)",clim=(-5,5),levels=[-3,-2,-1,-0.5,0,0.344828,1,2,3,5,6],color=:turbo,linewidth=1.5,ylim=ylim,fillrange=nothing),
-plot(streamfunction(integrator),sys,title="Streamlines (Computed)",levels=[-0.459174,-0.468933,-0.449415,-0.420139,-0.41,-0.429898,-0.439657,-0.4]),
-   size=(700,300))
+plot(vorticity(integrator),sys,title="Vorticity (Computed)",clim=(-5,5),color=:turbo,linewidth=1.5,ylim=ylim,fillrange=nothing),
+plot(streamfunction(integrator),sys,title="Streamlines (Computed)",size=(700,300))
+   )
 
 sol = integrator.sol;
 @gif for (u,t) in zip(sol.u,sol.t)
