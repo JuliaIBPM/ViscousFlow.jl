@@ -416,6 +416,13 @@ function newstate(s::AbstractSpatialField,sys::NavierStokes)
   return u
 end
 
+"""
+    flowside(sys::NavierStokes) -> FlowSide
+
+Returns the side of the body on which the flow is to be computed.
+"""
+flowside(::NavierStokes{NX,NY,N,MT,FS,SD}) where {NX,NY,N,MT,FS,SD} = SD
+
 # Other functions
 _hasfilter(sys::NavierStokes) = !isnothing(sys.Cf)
 _motiontype(isstatic::Bool) = isstatic ? StaticPoints : MovingPoints

@@ -11,6 +11,7 @@ import PlotUtils: cgrad
   end
 
   if !(isnothing(sys.bodies))
+    flowside(sys) == InternalFlow ? fillrange := nothing : nothing
     if typeof(w) <: ScalarGridData
       @series begin
         sys.bodies
