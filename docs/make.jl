@@ -1,5 +1,7 @@
 using Documenter, ViscousFlow
 
+ENV["GKSwstype"] = "nul"
+
 makedocs(
     sitename = "ViscousFlow.jl",
     doctest = true,
