@@ -16,23 +16,25 @@ Re = 100 # Reynolds number
 ##Discretization
 Note that the rectangle function used for making the cavity shape requires a specified half length. The immersed boundary projection method for internal flow requires the size of the domain to be at least a step size greater at the boundaries (i.e. half length + Δx).
 =#
-Δt,Δx = setstepsizes(Re,gridRe=1.6)
+Δt,Δx = setstepsizes(Re,gridRe=1.0)
 halflength=0.5 # to make rectangle with side length of 1
 domain_lim=halflength+1.01*Δx; # 1.01 is just an abitrary factor chosen to be greater than 1
 xlim, ylim = (-domain_lim,domain_lim),(-domain_lim,domain_lim)
 
-#= 
+#=
 ##Cavity Geometry
 A square cavity can be created using the $rectangle()$ function with the half length defined above.
+The `shifted=true` argument ensures that points are not placed at the corners, where
+they have ill-defined normal vectors.
 =#
-body = Rectangle(halflength,halflength,1.5*Δx) 
+body = Rectangle(halflength,halflength,1.5*Δx,shifted=true)
 plot(body)
 
 #=
 ##Boundary Condition at the moving wall
 Assign velocity to the top boundary.
 
-The $LidDrivenCavity()$ function can be used to specify the velocity value at the top wall.
+The `LidDrivenCavity()`` function can be used to specify the velocity value at the top wall.
 
 Note : Non-dimensional velocity = 1
 =#
@@ -40,9 +42,10 @@ m = ViscousFlow.LidDrivenCavity(1.0); # motion type
 
 #=
 ##Construct the system structure
-The last two input "flow_side" and "static_points" must specified so the default setting in the $NavierStokes()$ function can be overwritten.
+The last two input `flow_side` and `static_points` must specified so the default setting in the
+ `NavierStokes()` function can be overwritten.
 
-"static_points" is true because the cavity is not moving.
+`static_points` is set to true because the cavity wall points are not actually moving.
 =#
 sys = NavierStokes(Re,Δx,xlim,ylim,Δt,body,m,flow_side = InternalFlow,static_points = true)
 
@@ -54,13 +57,13 @@ u0 = newstate(sys)
 #=
 Set up integrator
 =#
-tspan = (0.0,5.0)
+tspan = (0.0,10.0)
 integrator = init(u0,tspan,sys)
 
 #=
 ## Solve
 =#
-step!(integrator,5)
+step!(integrator,10)
 
 #=
 ## Examine
@@ -69,8 +72,8 @@ plot for vorticity and streamlines
 =#
 
 plot(
-plot(vorticity(integrator),sys,title="Vorticity (Computed)",clim=(-5,5),color=:turbo,linewidth=1.5,ylim=ylim,fillrange=nothing),
-plot(streamfunction(integrator),sys,title="Streamlines (Computed)",size=(700,300))
+plot(vorticity(integrator),sys,title="Vorticity (Computed)",clim=(-10,10),color=:turbo,linewidth=1.5,ylim=ylim,fillrange=nothing,levels=-6:0.25:5),
+plot(streamfunction(integrator),sys,fillrange=nothing,color=:black,levels=vcat(0.009:0.01:0.11,0.1145,0.11468,0.11477))
    )
 
 sol = integrator.sol;
