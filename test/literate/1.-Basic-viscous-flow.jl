@@ -125,7 +125,7 @@ twogauss = SpatialGaussian(σ,x01,y01,A) + SpatialGaussian(σ,x02,y02,A)
 
 #=
 ### Initialize
-# Now, we create an instance of this vorticity distribution on the grid.
+Now, we create an instance of this vorticity distribution on the grid.
 =#
 u0 = newstate(twogauss,sys)
 
