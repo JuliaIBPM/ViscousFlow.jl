@@ -2,7 +2,12 @@
 # In this example, we will simulate various examples of a basic *unbounded* viscous flow---a flow
 # without boundaries. Our initial condition will be a distribution of *vorticity*.
 
+#md # ```@setup compileplots
+#md # using Plots
+#md # ```
+
 using ViscousFlow
+#-
 using Plots
 
 #=
