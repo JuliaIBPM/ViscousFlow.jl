@@ -45,7 +45,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
         with:
-          version: '1.4'
+          version: '1.6'
       - run: julia --project=docs -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
       - run: julia --project=docs -e 'ENV["PYTHON"]=""; using Pkg; Pkg.add("Conda"); using Conda; Conda.add("matplotlib"); Conda.add("pyqt"); Pkg.add("PyCall"); Pkg.build("PyCall"); Pkg.add("PyPlot")'
       - run: julia --project=docs docs/make.jl
