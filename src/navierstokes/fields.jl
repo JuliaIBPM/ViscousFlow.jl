@@ -168,17 +168,17 @@ Return the pressure field associated with solution vector `sol` on the grid in `
 at time(s) `t`.
 """
 function pressure(u::ConstrainedSystems.ArrayPartition,sys::NavierStokes{NX,NY},t) where {NX,NY}
+    @unpack pressure_cache = sys
+    @unpack dvp, dvf, lp = pressure_cache
     w, τ = state(u), constraint(u)
-    fill!(sys.Vn,0.0)
-    _vel_ns_rhs_convectivederivative!(sys.Vn,w,sys,t)
-    _vel_ns_rhs_double_layer!(sys.Vn,sys,t)
-    fill!(sys.Vf,0.0)
-    _vel_ns_op_constraint_force!(sys.Vf,τ,sys)
-    sys.Vn .-= sys.Vf
-    fill!(sys.Sc,0.0)
-    divergence!(sys.Sc,sys.Vn)
-    press = zero(sys.Sc)
-    ldiv!(press,sys.L,sys.Sc)
+    ns_rhs_velocity!(dvp,w,sys,t)
+    fill!(dvf,0.0)
+    _vel_ns_op_constraint_force!(dvf,τ,sys)
+    dvp .-= dvf
+    fill!(lp,0.0)
+    divergence!(lp,dvp)
+    press = zero(lp)
+    ldiv!(press,sys.L,lp)
     press .*= cellsize(sys)
     return press
 end

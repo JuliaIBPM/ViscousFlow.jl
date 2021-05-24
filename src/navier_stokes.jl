@@ -50,7 +50,7 @@ grid. It should be set to `false` if a supplied motion requires that the points 
               points to move.
 
 """
-mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, SD<:FlowSide, DDF<:CartesianGrids.DDFType, FT, SP, FST} #, RKT}
+mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, SD<:FlowSide, DDF<:CartesianGrids.DDFType, FT, SP, FST, RHST, CDT, PCT}
     # Physical Parameters
     "Reynolds number"
     Re::Float64
@@ -107,13 +107,18 @@ mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, 
     τ::VectorData{N,Float64}
     Vf::Edges{Primal, NX, NY, Float64}
     Vv::Edges{Primal, NX, NY, Float64}
-    Vn::Edges{Primal, NX, NY, Float64}
+    #Vn::Edges{Primal, NX, NY, Float64}
     Sc::Nodes{Primal, NX, NY,Float64}
     Sn::Nodes{Dual, NX, NY,Float64}
     Wn::Nodes{Dual, NX, NY,Float64}
-    Vtf::EdgeGradient{Primal,Dual,NX,NY,Float64}
-    DVf::EdgeGradient{Primal,Dual,NX,NY,Float64}
-    VDVf::EdgeGradient{Primal,Dual,NX,NY,Float64}
+    #Vtf::EdgeGradient{Primal,Dual,NX,NY,Float64}
+    #DVf::EdgeGradient{Primal,Dual,NX,NY,Float64}
+    #VDVf::EdgeGradient{Primal,Dual,NX,NY,Float64}
+
+    # Caches
+    rhs_cache :: RHST
+    convderiv_cache :: CDT
+    pressure_cache :: PCT
 
 end
 
@@ -134,13 +139,20 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
     # Set up buffers
     Vf = Edges{Primal,NX,NY,Float64}()
     Vv = Edges{Primal,NX,NY,Float64}()
-    Vn = Edges{Primal,NX,NY,Float64}()
+    #Vn = Edges{Primal,NX,NY,Float64}()
     Sc = Nodes{Primal,NX,NY,Float64}()
     Sn = Nodes{Dual,NX,NY,Float64}()
     Wn = Nodes{Dual,NX,NY,Float64}()
-    Vtf = EdgeGradient{Primal,Dual,NX,NY,Float64}()
-    DVf = EdgeGradient{Primal,Dual,NX,NY,Float64}()
-    VDVf = EdgeGradient{Primal,Dual,NX,NY,Float64}()
+
+    rhs_cache = RHSCache(Edges{Primal,NX,NY,Float64}())
+
+    convderiv_cache = ConvectiveDerivativeCache(Edges{Primal,NX,NY,Float64}(),
+                                                EdgeGradient{Primal,Dual,NX,NY,Float64}(),
+                                                EdgeGradient{Primal,Dual,NX,NY,Float64}(),
+                                                EdgeGradient{Primal,Dual,NX,NY,Float64}())
+    pressure_cache = PressureCache(Edges{Primal,NX,NY,Float64}(),
+                                   Edges{Primal,NX,NY,Float64}(),
+                                   Nodes{Primal,NX,NY,Float64}())
 
     L = plan_laplacian(Sn,with_inverse=true)
 
@@ -189,7 +201,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
 
 
 
-    NavierStokes{NX, NY, N, _motiontype(static_points), _fstype(FST), flow_side_internal, ddftype, typeof(f), typeof(state_prototype),FST}( #,typeof(rk)}(
+    NavierStokes{NX, NY, N, _motiontype(static_points), _fstype(FST), flow_side_internal, ddftype, typeof(f), typeof(state_prototype),FST,typeof(rhs_cache), typeof(convderiv_cache), typeof(pressure_cache)}(
                           Re, freestream, bodies, motions, pulsefields,
                           g, Δt, # rk,
                           L,
@@ -197,7 +209,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
                           points, Rf, Ef, Cf, Rc, Ec, Rn, En,
                           f,state_prototype,
                           Vb, Sb, Δus, τ,
-                          Vf, Vv, Vn, Sc, Sn, Wn, Vtf, DVf, VDVf)
+                          Vf, Vv, Sc, Sn, Wn, rhs_cache, convderiv_cache, pressure_cache)
 end
 
 NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList;
