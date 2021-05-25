@@ -1,18 +1,5 @@
 #=
-Create subtypes for all terms in the equations here.
-The goal of this should be to change NavierStokes into
-a more general type for any PDEs, similar to the structures
-used for OrdinaryDiffEq.
-
-Rule of thumb: keep the typing generic!
-
-Other things to keep in mind:
-- For MovingPoints problems, the immersion operators will get changed. These
-   need to be easily accessible from the overall system. We can endow
-   the term type with a parameter for types that must be updated if the points
-   update. Each such type will need to be accompanied by an operator for
-   setting it up (and possibly a separate one for updating it).
-- Some operators, such as Rf and Ef, may get used by more than one term.
+Create caches for terms in the equations here.
 =#
 
 abstract type AbstractPDECache end
@@ -28,8 +15,40 @@ struct RHSCache{VT} <: AbstractPDECache
   dv :: VT
 end
 
-struct PressureCache{DVT,PT} <: AbstractPDECache
-  dvp :: DVT
-  dvf :: DVT
+struct PressureCache{VT,PT} <: AbstractPDECache
+  dvp :: VT
+  dvf :: VT
   lp :: PT
+end
+
+struct VelocityCache{WT,VT,FT,VBT,SBT} <: AbstractPDECache
+  Wn :: WT
+  Vf :: VT
+  Sc :: FT
+  Δus :: VBT
+  Sb :: SBT
+end
+
+struct StreamfunctionCache{ST} <: AbstractPDECache
+  Sn :: ST
+end
+
+struct ConstraintOperatorCache{VT,VBT} <: AbstractPDECache
+  Vv :: VT
+  Δus :: VBT
+end
+
+struct DoubleLayerCache{VT,VBT} <: AbstractPDECache
+  Vv :: VT
+  Δus :: VBT
+end
+
+struct SurfaceVelocityCache{VBT} <: AbstractPDECache
+  Vb :: VBT
+end
+
+struct SurfaceTractionCache{VBT,SBT} <: AbstractPDECache
+  Vb :: VBT
+  Δus :: VBT
+  Sb :: SBT
 end

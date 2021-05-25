@@ -68,11 +68,13 @@ end
 @inline _vel_ns_rhs_double_layer!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY,0},t::Real) where {NX,NY} = u
 
 function _vel_ns_rhs_double_layer!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY,N,MT,FS,SD},t::Real) where {NX,NY,N,MT,FS,SD}
+    @unpack doublelayer_cache = sys
+    @unpack Vv, Δus = doublelayer_cache
     Δx⁻¹ = 1/cellsize(sys)
     fact = Δx⁻¹/sys.Re
-    surface_velocity_jump!(sys.Δus,sys,t)
-    fill!(sys.Vf,0.0)
-    sys.dlf(sys.Vf,sys.Δus)
-    sys.Vf .*= fact
-    u .-= sys.Vf
+    surface_velocity_jump!(Δus,sys,t)
+    fill!(Vv,0.0)
+    sys.dlf(Vv,Δus)
+    Vv .*= fact
+    u .-= Vv
 end
