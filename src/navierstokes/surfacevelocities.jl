@@ -1,8 +1,10 @@
 # Routines to compute surface velocities and their jumps
 
 @inline function surface_velocity_jump!(Δus::VectorData{N},sys::NavierStokes{NX,NY,N},t::Real) where {NX,NY,N}
-    assign_velocity!(sys.Vb,sys.bodies,sys.motions,t)
-    surface_velocity_jump!(Δus,sys.Vb,sys)
+    @unpack surfacevel_cache, motions, bodies = sys
+    @unpack Vb = surfacevel_cache
+    assign_velocity!(Vb,bodies,motions,t)
+    surface_velocity_jump!(Δus,Vb,sys)
     return Δus
   end
 
@@ -20,8 +22,10 @@
 
 
 @inline function surface_velocity!(ūs::VectorData{N},sys::NavierStokes{NX,NY,N},t::Real) where {NX,NY,N}
-    assign_velocity!(sys.Vb,sys.bodies,sys.motions,t)
-    surface_velocity!(ūs,sys.Vb,sys)
+    @unpack surfacevel_cache, motions, bodies = sys
+    @unpack Vb = surfacevel_cache
+    assign_velocity!(Vb,bodies,motions,t)
+    surface_velocity!(ūs,Vb,sys)
     return ūs
   end
 
@@ -34,7 +38,9 @@
                                (ūs .= 0.5*us; ūs)
 
 @inline function relative_surface_velocity!(ūsr::VectorData{N},sys::NavierStokes{NX,NY,N},t::Real) where {NX,NY,N}
-  assign_velocity!(sys.Vb,sys.bodies,sys.motions,t)
-  surface_velocity!(ūsr,sys.Vb,sys)
-  ūsr .-= sys.Vb
+  @unpack surfacevel_cache, motions, bodies = sys
+  @unpack Vb = surfacevel_cache
+  assign_velocity!(Vb,bodies,motions,t)
+  surface_velocity!(ūsr,Vb,sys)
+  ūsr .-= Vb
 end

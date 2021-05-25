@@ -7,6 +7,22 @@ import CartesianGrids: cellsize, origin
 import RigidBodyTools: assign_velocity!
 import ImmersedLayers: normals, areas
 
+#=
+The goal of this should be to change NavierStokes into
+a more general type for any PDEs, similar to the structures
+used for OrdinaryDiffEq.
+
+Rule of thumb: keep the typing generic!
+
+Other things to keep in mind:
+- For MovingPoints problems, the immersion operators will get changed. These
+   need to be easily accessible from the overall system. We can endow
+   the term type with a parameter for types that must be updated if the points
+   update. Each such type will need to be accompanied by an operator for
+   setting it up (and possibly a separate one for updating it).
+- Some operators, such as Rf and Ef, may get used by more than one term.
+=#
+
 """
 $(TYPEDEF)
 
@@ -50,7 +66,9 @@ grid. It should be set to `false` if a supplied motion requires that the points 
               points to move.
 
 """
-mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, SD<:FlowSide, DDF<:CartesianGrids.DDFType, FT, SP, FST} #, RKT}
+mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, SD<:FlowSide, DDF<:CartesianGrids.DDFType, FT,
+                            SP, WP, VP, SPP, GVP, VBP, SBP, FST,
+                            RHST, CDT, COT, DLT, VCT, PCT, SCT, SVCT, STCT}
     # Physical Parameters
     "Reynolds number"
     Re::Float64
@@ -87,33 +105,29 @@ mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, 
     Rf::Union{RegularizationMatrix,Nothing} # faces (edges)
     Ef::Union{InterpolationMatrix,Nothing}
     Cf::Union{AbstractMatrix,Nothing}
-    Rc::Union{RegularizationMatrix,Nothing} # cell centers
-    Ec::Union{InterpolationMatrix,Nothing}
-    Rn::Union{RegularizationMatrix,Nothing} # cell nodes
-    En::Union{InterpolationMatrix,Nothing}
 
     # Operators
     f :: FT
 
-    # state vector
+    # prototypes
     state_prototype :: SP
+    vorticity_prototype :: WP
+    velocity_prototype :: VP
+    scapot_prototype :: SPP
+    gradv_prototype :: GVP
+    surfacevel_prototype :: VBP
+    surfacescalar_prototype :: SBP
 
-    # Scratch space
-
-    ## Pre-allocated space for intermediate values
-    Vb::VectorData{N,Float64}
-    Sb::ScalarData{N,Float64}
-    Δus::VectorData{N,Float64}
-    τ::VectorData{N,Float64}
-    Vf::Edges{Primal, NX, NY, Float64}
-    Vv::Edges{Primal, NX, NY, Float64}
-    Vn::Edges{Primal, NX, NY, Float64}
-    Sc::Nodes{Primal, NX, NY,Float64}
-    Sn::Nodes{Dual, NX, NY,Float64}
-    Wn::Nodes{Dual, NX, NY,Float64}
-    Vtf::EdgeGradient{Primal,Dual,NX,NY,Float64}
-    DVf::EdgeGradient{Primal,Dual,NX,NY,Float64}
-    VDVf::EdgeGradient{Primal,Dual,NX,NY,Float64}
+    # Caches
+    rhs_cache :: RHST
+    convderiv_cache :: CDT
+    constraintop_cache :: COT
+    doublelayer_cache :: DLT
+    velocity_cache :: VCT
+    pressure_cache :: PCT
+    streamfunction_cache :: SCT
+    surfacevel_cache :: SVCT
+    surfacetraction_cache :: STCT
 
 end
 
@@ -129,22 +143,20 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
     g = PhysicalGrid(xlimits,ylimits,Δx)
     NX, NY = size(g)
 
+    N = numpts(bodies)
+
     α = Δt/(Re*Δx^2)
 
-    # Set up buffers
-    Vf = Edges{Primal,NX,NY,Float64}()
-    Vv = Edges{Primal,NX,NY,Float64}()
-    Vn = Edges{Primal,NX,NY,Float64}()
-    Sc = Nodes{Primal,NX,NY,Float64}()
-    Sn = Nodes{Dual,NX,NY,Float64}()
-    Wn = Nodes{Dual,NX,NY,Float64}()
-    Vtf = EdgeGradient{Primal,Dual,NX,NY,Float64}()
-    DVf = EdgeGradient{Primal,Dual,NX,NY,Float64}()
-    VDVf = EdgeGradient{Primal,Dual,NX,NY,Float64}()
+    vorticity_prototype = Nodes{Dual,NX,NY,Float64}()
+    velocity_prototype = Edges{Primal,NX,NY,Float64}()
+    scapot_prototype = Nodes{Primal,NX,NY,Float64}()
+    gradv_prototype = EdgeGradient{Primal,Dual,NX,NY,Float64}()
+    surfacevel_prototype = VectorData(N)
+    surfacescalar_prototype = ScalarData(N)
 
-    L = plan_laplacian(Sn,with_inverse=true)
+    L = plan_laplacian(vorticity_prototype,with_inverse=true)
 
-    pulsefields = _process_pulses(pulses,Sn,g)
+    pulsefields = _process_pulses(pulses,vorticity_prototype,g)
 
 
     # for now, if there are any bodies that are Open,
@@ -152,30 +164,56 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
     # but should be more flexible here
     flow_side_internal = _any_open_bodies(bodies) ? ExternalInternalFlow : flow_side
 
-    N = numpts(bodies)
 
-    Vb = VectorData(N)
-    Sb = ScalarData(N)
-    Δus = VectorData(N)
-    τ = VectorData(N)
-
-    points, dlf, slc, sln, Rf, Ef, Cf, Rc, Ec, Rn, En =
-              _immersion_operators(bodies,g,flow_side_internal,ddftype,Vf,Sc,Vb)
+    points, dlf, slc, sln, Rf, Ef, Cf =
+              _immersion_operators(bodies,g,flow_side_internal,ddftype,
+                        velocity_prototype,scapot_prototype,surfacevel_prototype)
 
 
-    viscous_L = plan_laplacian(Sn,factor=1/(Re*Δx^2))
+    viscous_L = plan_laplacian(similar(vorticity_prototype),
+                               factor=1/(Re*Δx^2))
+
+    rhs_cache = RHSCache(similar(velocity_prototype))
+
+    convderiv_cache = ConvectiveDerivativeCache(similar(velocity_prototype),
+                                                similar(gradv_prototype),
+                                                similar(gradv_prototype),
+                                                similar(gradv_prototype))
+    constraintop_cache = ConstraintOperatorCache(similar(velocity_prototype),
+                                                 similar(surfacevel_prototype))
+
+    doublelayer_cache = DoubleLayerCache(similar(velocity_prototype),
+                                         similar(surfacevel_prototype))
+
+    velocity_cache = VelocityCache(similar(vorticity_prototype),
+                                   similar(velocity_prototype),
+                                   similar(scapot_prototype),
+                                   VectorData(N),
+                                   ScalarData(N))
+
+    pressure_cache = PressureCache(similar(velocity_prototype),
+                                   similar(velocity_prototype),
+                                   similar(scapot_prototype))
+
+    streamfunction_cache = StreamfunctionCache(similar(vorticity_prototype))
+
+    surfacevel_cache = SurfaceVelocityCache(similar(surfacevel_prototype))
+
+    surfacetraction_cache = SurfaceTractionCache(similar(surfacevel_prototype),
+                                                similar(surfacevel_prototype),
+                                                similar(surfacescalar_prototype))
 
     if isnothing(bodies)
-      state_prototype = solvector(state=Sn)
+      state_prototype = solvector(state=vorticity_prototype)
       f = ConstrainedODEFunction(ns_rhs!,viscous_L,_func_cache=state_prototype)
     else
       if static_points
-        state_prototype = solvector(state=Sn,constraint=τ)
+        state_prototype = solvector(state=vorticity_prototype,constraint=surfacevel_prototype)
         f = ConstrainedODEFunction(ns_rhs!,bc_constraint_rhs!,
                                       ns_op_constraint_force!,bc_constraint_op!,
                                       viscous_L,_func_cache=state_prototype)
       else
-        state_prototype = solvector(state=Sn,constraint=τ,aux_state=zero_body_state(bodies))
+        state_prototype = solvector(state=vorticity_prototype,constraint=surfacevel_prototype,aux_state=zero_body_state(bodies))
         rhs! = ConstrainedSystems.r1vector(state_r1 = ns_rhs!,aux_r1 = rigid_body_rhs!)
         f = ConstrainedODEFunction(rhs!,bc_constraint_rhs!,
                                       ns_op_constraint_force!,bc_constraint_op!,
@@ -189,15 +227,26 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
 
 
 
-    NavierStokes{NX, NY, N, _motiontype(static_points), _fstype(FST), flow_side_internal, ddftype, typeof(f), typeof(state_prototype),FST}( #,typeof(rk)}(
+    NavierStokes{NX, NY, N, _motiontype(static_points), _fstype(FST), flow_side_internal,
+                  ddftype, typeof(f), typeof(state_prototype),typeof(vorticity_prototype),
+                  typeof(velocity_prototype),typeof(scapot_prototype),typeof(gradv_prototype),
+                  typeof(surfacevel_prototype),typeof(surfacescalar_prototype),
+                  FST,typeof(rhs_cache),
+                  typeof(convderiv_cache), typeof(constraintop_cache), typeof(doublelayer_cache),
+                  typeof(velocity_cache), typeof(pressure_cache),
+                  typeof(streamfunction_cache),typeof(surfacevel_cache),typeof(surfacetraction_cache)}(
                           Re, freestream, bodies, motions, pulsefields,
                           g, Δt, # rk,
                           L,
                           dlf,slc,sln,
-                          points, Rf, Ef, Cf, Rc, Ec, Rn, En,
+                          points, Rf, Ef, Cf,
                           f,state_prototype,
-                          Vb, Sb, Δus, τ,
-                          Vf, Vv, Vn, Sc, Sn, Wn, Vtf, DVf, VDVf)
+                          vorticity_prototype, velocity_prototype, scapot_prototype,
+                          gradv_prototype, surfacevel_prototype, surfacescalar_prototype,
+                          rhs_cache, convderiv_cache, constraintop_cache,
+                          doublelayer_cache,
+                          velocity_cache, pressure_cache, streamfunction_cache,
+                          surfacevel_cache,surfacetraction_cache)
 end
 
 NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList;
@@ -234,7 +283,9 @@ end
 
 # Routines to set up the immersion operators
 
-function _immersion_operators(bodies::BodyList,g::PhysicalGrid,flow_side::Type{SD},ddftype,Vf::GridData{NX,NY},Sc::GridData{NX,NY},Vb::PointData{N}) where {NX,NY,N,SD<:ViscousFlow.FlowSide}
+function _immersion_operators(bodies::BodyList,g::PhysicalGrid,flow_side::Type{SD},ddftype,
+                              gridvector_prototype::GridData{NX,NY},gridscalar_prototype::GridData{NX,NY},
+                              surfvector_prototype::PointData{N}) where {NX,NY,N,SD<:ViscousFlow.FlowSide}
 
   points = VectorData(collect(bodies))
   numpts(bodies) == N || error("Inconsistent size of bodies")
@@ -243,8 +294,8 @@ function _immersion_operators(bodies::BodyList,g::PhysicalGrid,flow_side::Type{S
   body_normals = normals(bodies)
 
   if !(flow_side==ExternalInternalFlow)
-    dlf = DoubleLayer(bodies,g,Vf)
-    slc = SingleLayer(bodies,g,Sc)
+    dlf = DoubleLayer(bodies,g,gridvector_prototype)
+    slc = SingleLayer(bodies,g,gridscalar_prototype)
     #sln = SingleLayer(bodies,g,Sn)
     sln = nothing
   else
@@ -256,23 +307,14 @@ function _immersion_operators(bodies::BodyList,g::PhysicalGrid,flow_side::Type{S
   #regop = Regularize(points,cellsize(g);I0=CartesianGrids.origin(g),weights=body_areas.data,ddftype=ddftype)
   regop = _regularization(points,g,bodies,ddftype)
 
-  Rf = RegularizationMatrix(regop,Vb,Vf) # Used by B₁ᵀ
-  Ef = InterpolationMatrix(regop,Vf,Vb) # Used by constraint_rhs! and B₂
-
-  #Rc = RegularizationMatrix(regop,Sb,Sc)
-  #Ec = InterpolationMatrix(regop,Sc,Sb)
-  #Rn = RegularizationMatrix(regop,Sb,Sn)
-  #En = InterpolationMatrix(regop,Sn,Sb)
-  Rc = nothing
-  Ec = nothing
-  Rn = nothing
-  En = nothing
+  Rf = RegularizationMatrix(regop,surfvector_prototype,gridvector_prototype) # Used by B₁ᵀ
+  Ef = InterpolationMatrix(regop,gridvector_prototype,surfvector_prototype) # Used by constraint_rhs! and B₂
 
   regopfilt = Regularize(points,cellsize(g);I0=CartesianGrids.origin(g),filter=true,weights=cellsize(g)^2,ddftype=ddftype)
-  Ẽf = InterpolationMatrix(regopfilt,Vf,Vb)
+  Ẽf = InterpolationMatrix(regopfilt,gridvector_prototype,surfvector_prototype)
   Cf = sparse(Ẽf*Rf)
 
-  return points, dlf, slc, sln, Rf, Ef, Cf, Rc, Ec, Rn, En
+  return points, dlf, slc, sln, Rf, Ef, Cf
 end
 
 _immersion_operators(::Nothing,a...) =
@@ -282,9 +324,10 @@ _immersion_operators(::Nothing,a...) =
 # For updating the system with body data
 
 function update_immersion_operators!(sys::NavierStokes{NX,NY,N,MT,FS,SD,DDF},bodies::BodyList) where {NX,NY,N,MT,FS,SD,DDF<:CartesianGrids.DDFType}
+    @unpack velocity_prototype, scapot_prototype, surfacevel_prototype = sys
     sys.bodies = deepcopy(bodies)
-    sys.points, sys.dlf, sys.slc, sys.sln, sys.Rf, sys.Ef, sys.Cf, sys.Rc, sys.Ec, sys.Rn, sys.En =
-      _immersion_operators(sys.bodies,sys.grid,SD,DDF,sys.Vf,sys.Sc,sys.Vb)
+    sys.points, sys.dlf, sys.slc, sys.sln, sys.Rf, sys.Ef, sys.Cf =
+      _immersion_operators(sys.bodies,sys.grid,SD,DDF,velocity_prototype,scapot_prototype,surfacevel_prototype)
     return sys
 end
 

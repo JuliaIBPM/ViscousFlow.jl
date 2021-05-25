@@ -16,12 +16,19 @@ if GROUP == "All" || GROUP == "Auxiliary"
   include("pointforce.jl")
 end
 
+if GROUP == "Literate"
+  for (root, dirs, files) in walkdir(litdir)
+    for file in files
+      endswith(file,".jl") && @testset "$file" begin include(joinpath(root,file)) end
+    end
+  end
+end
+
 
 if GROUP == "All" || GROUP == "Notebooks"
   for (root, dirs, files) in walkdir(litdir)
     for file in files
-
-      #endswith(file,".jl") && startswith(file,"1") && Literate.notebook(joinpath(root, file),notebookdir)
+      #endswith(file,".jl") && startswith(file,"3") && Literate.notebook(joinpath(root, file),notebookdir)
       endswith(file,".jl") && Literate.notebook(joinpath(root, file),notebookdir)
     end
   end

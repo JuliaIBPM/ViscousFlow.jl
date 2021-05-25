@@ -1,7 +1,6 @@
 #=
-# 7. Lid Driven Cavity Flow
-In this notebook we will simulate the flow with a top moving wall. To demonstrate this, we will solve
-for internal flow in a square cavity by enforcing no-slip at the walls.
+# 7. Lid-driven cavity flow
+In this notebook we will simulate the flow in a square cavity with a top moving wall.
 =#
 using ViscousFlow
 #-
@@ -11,7 +10,7 @@ using Plots
 ## Problem specification
 Take $Re=100$ for example:
 =#
-Re = 100 # Reynolds number
+Re = 100
 
 #=
 ## Discretization
@@ -20,8 +19,8 @@ immersed boundary projection method for internal flow requires the size of the d
 be at least a step size greater at the boundaries (i.e. `halflength + Δx`).
 =#
 Δt,Δx = setstepsizes(Re,gridRe=1.0)
-halflength=0.5 # to make rectangle with side length of 1
-domain_lim=halflength+1.01*Δx; # 1.01 is just an abitrary factor chosen to be greater than 1
+halflength=0.5
+domain_lim=halflength+1.01*Δx
 xlim, ylim = (-domain_lim,domain_lim),(-domain_lim,domain_lim)
 
 #=

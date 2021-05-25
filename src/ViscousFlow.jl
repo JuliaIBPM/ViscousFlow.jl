@@ -16,6 +16,7 @@ using Reexport
 
 using LinearAlgebra
 using SparseArrays
+using UnPack
 
 export NavierStokes, PulseParams, PointForce, SpatialDGaussian,
        ExternalFlow, InternalFlow, ExternalInternalFlow,
@@ -40,6 +41,7 @@ abstract type ExternalInternalFlow <: FlowSide end
 
 
 include("utils/pulses.jl")
+include("types.jl")
 include("navier_stokes.jl")
 include("directmotion.jl")
 include("plot_recipes.jl")

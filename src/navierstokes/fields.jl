@@ -10,11 +10,11 @@ Return the vorticity field associated with solution vector `sol` on the grid in 
 at time(s) `t`.
 """
 @inline vorticity(w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY} =
-            vorticity!(sys.Wn,w,sys,t)
+            vorticity!(sys.velocity_cache.Wn,w,sys,t)
 
-function vorticity!(w::Nodes{Dual,NX,NY},win::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY}
+function vorticity!(w::Nodes{Dual,NX,NY},w_in::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY}
   w .= 0.0
-  _vorticity!(w,win,sys,t)
+  _vorticity!(w,w_in,sys,t)
   _vorticity_sheet!(w,sys,t)
   return w
 end
@@ -28,15 +28,17 @@ _vorticity_sheet!(w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY,N,MT,FS,
                                               ExternalInternalFlow},t::Real) where {NX,NY,N,MT,FS} = w
 
 function _vorticity_sheet!(w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY,N,MT,FS,SD},t::Real) where {NX,NY,N,MT,FS,SD}
-  if isnothing(sys.Rn)
-    regop = _regularization(sys)
-    Rn = RegularizationMatrix(regop,sys.Sb,sys.Sn)
-  else
-    Rn = sys.Rn
-  end
-  surface_velocity_jump!(sys.Δus,sys,t)
-  cross!(sys.Sb,sys.Δus,normals(sys))
-  w .+= Rn*sys.Sb
+  @unpack velocity_cache = sys
+  @unpack Sb, Δus = velocity_cache
+  #if isnothing(sys.Rn)
+  regop = _regularization(sys)
+  Rn = RegularizationMatrix(regop,Sb,w)
+  #else
+  #  Rn = sys.Rn
+  #end
+  surface_velocity_jump!(Δus,sys,t)
+  cross!(Sb,Δus,normals(sys))
+  w .+= Rn*Sb
   return w
 end
 
@@ -50,12 +52,14 @@ function velocity!(u::Edges{Primal,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes
 end
 
 function _velocity_vorticity!(u::Edges{Primal,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY,N}) where {NX,NY,N}
-    sys.Wn .= 0.0
-    _unscaled_streamfunction_vorticity!(sys.Wn,w,sys)
-    sys.Vf .= 0.0
-    curl!(sys.Vf,sys.Wn)
-    u .+= sys.Vf
-    return u
+  @unpack velocity_cache = sys
+  @unpack Wn, Vf = velocity_cache
+  Wn .= 0.0
+  _unscaled_streamfunction_vorticity!(Wn,w,sys)
+  Vf .= 0.0
+  curl!(Vf,Wn)
+  u .+= Vf
+  return u
 end
 
 @inline _velocity_single_layer!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY,N,MT,FS,
@@ -65,14 +69,16 @@ end
 
 
 function _velocity_single_layer!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY,N,MT,FS,SD},t::Real) where {NX,NY,N,MT,FS,SD}
-    surface_velocity_jump!(sys.Δus,sys,t)
-    pointwise_dot!(sys.Sb,sys.Δus,normals(sys))
-    sys.Sb .*= cellsize(sys)
-    sys.slc(sys.Sc,sys.Sb)
-    _unscaled_scalarpotential!(sys.Sc,sys.Sc,sys)
-    sys.Vf .= 0.0
-    grad!(sys.Vf,sys.Sc)
-    u .+= sys.Vf
+    @unpack velocity_cache = sys
+    @unpack Vf, Sc, Sb, Δus = velocity_cache
+    surface_velocity_jump!(Δus,sys,t)
+    pointwise_dot!(Sb,Δus,normals(sys))
+    Sb .*= cellsize(sys)
+    sys.slc(Sc,Sb)
+    _unscaled_scalarpotential!(Sc,Sc,sys)
+    fill!(Vf,0.0)
+    grad!(Vf,Sc)
+    u .+= Vf
     return u
 end
 
@@ -101,8 +107,11 @@ function streamfunction!(ψ::Nodes{Dual,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierS
 end
 
 function _unscaled_streamfunction_vorticity!(ψ::Nodes{Dual,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY}) where {NX,NY}
-  ldiv!(sys.Sn,sys.L,w)
-  ψ .-= sys.Sn
+  @unpack streamfunction_cache, L = sys
+  @unpack Sn = streamfunction_cache
+  Sn .= 0.0
+  ldiv!(Sn,L,w)
+  ψ .-= Sn
   return ψ
 end
 
@@ -168,17 +177,17 @@ Return the pressure field associated with solution vector `sol` on the grid in `
 at time(s) `t`.
 """
 function pressure(u::ConstrainedSystems.ArrayPartition,sys::NavierStokes{NX,NY},t) where {NX,NY}
+    @unpack pressure_cache = sys
+    @unpack dvp, dvf, lp = pressure_cache
     w, τ = state(u), constraint(u)
-    fill!(sys.Vn,0.0)
-    _vel_ns_rhs_convectivederivative!(sys.Vn,w,sys,t)
-    _vel_ns_rhs_double_layer!(sys.Vn,sys,t)
-    fill!(sys.Vf,0.0)
-    _vel_ns_op_constraint_force!(sys.Vf,τ,sys)
-    sys.Vn .-= sys.Vf
-    fill!(sys.Sc,0.0)
-    divergence!(sys.Sc,sys.Vn)
-    press = zero(sys.Sc)
-    ldiv!(press,sys.L,sys.Sc)
+    ns_rhs_velocity!(dvp,w,sys,t)
+    fill!(dvf,0.0)
+    _vel_ns_op_constraint_force!(dvf,τ,sys)
+    dvp .-= dvf
+    fill!(lp,0.0)
+    divergence!(lp,dvp)
+    press = zero(lp)
+    ldiv!(press,sys.L,lp)
     press .*= cellsize(sys)
     return press
 end
@@ -276,12 +285,14 @@ traction(τ,sys::NavierStokes{NX,NY,0,MT,FS,SD},t) where {NX,NY,MT,FS,SD} = τ
 traction(τ::VectorData{N},sys::NavierStokes{NX,NY,N,MT,FS,ExternalInternalFlow},t) where {NX,NY,N,MT,FS} = τ
 
 function traction(τ::VectorData{N},sys::NavierStokes{NX,NY,N,MT,FS,SD},t) where {NX,NY,N,MT,FS,SD}
-    nrm = normals(sys.bodies)
-    relative_surface_velocity!(sys.Δus,sys,t)
-    pointwise_dot!(sys.Sb,nrm,sys.Δus)
-    surface_velocity_jump!(sys.Δus,sys,t)
-    product!(sys.Vb,sys.Δus,sys.Sb)
-    return τ + sys.Vb
+    @unpack surfacetraction_cache, bodies = sys
+    @unpack Vb, Δus, Sb = surfacetraction_cache
+    nrm = normals(bodies)
+    relative_surface_velocity!(Δus,sys,t)
+    pointwise_dot!(Sb,nrm,Δus)
+    surface_velocity_jump!(Δus,sys,t)
+    product!(Vb,Δus,Sb)
+    return τ + Vb
 end
 
 """
@@ -291,13 +302,15 @@ Return the pressure jump at all of the surface points associated with solution `
 grid in `sys` at time(s) t.
 """
 function pressurejump(τ::VectorData{N},sys::NavierStokes{NX,NY,N},t) where {NX,NY,N}
+    @unpack surfacetraction_cache, bodies = sys
+    @unpack Sb = surfacetraction_cache
 
     #_hasfilter(sys) ? (τf = similar(τ); τf .= sys.Cf*force(τ,sys)) : τf = deepcopy(force(τ,sys))
     #τf = deepcopy(τ)
     #return nrm.u∘τf.u + nrm.v∘τf.v # This might need some modification
 
-    press = zero(sys.Sb)
-    nrm = normals(sys.bodies)
+    press = zero(Sb)
+    nrm = normals(bodies)
     pointwise_dot!(press,nrm,traction(τ,sys,t))
     return -press
 end
@@ -307,9 +320,11 @@ end
 force(τ,sys::NavierStokes{NX,NY,0},t,bodyi::Int) where {NX,NY} = Vector{Float64}(), Vector{Float64}()
 
 function force(τ::VectorData{N},sys::NavierStokes,t,bodyi::Int) where {N}
-    product!(sys.τ,traction(τ,sys,t),areas(sys.bodies))
-    fxvec = sum(sys.τ.u,sys.bodies,bodyi)
-    fyvec = sum(sys.τ.v,sys.bodies,bodyi)
+    @unpack surfacetraction_cache, bodies = sys
+    @unpack Vb = surfacetraction_cache
+    product!(Vb,traction(τ,sys,t),areas(bodies))
+    fxvec = sum(Vb.u,bodies,bodyi)
+    fyvec = sum(Vb.v,bodies,bodyi)
     return fxvec, fyvec
 end
 
@@ -339,11 +354,13 @@ end
 
 
 function moment(τ::VectorData{N},bodies::BodyList,sys::NavierStokes,t,bodyi::Int;center=(0.0,0.0)) where {N}
+    @unpack surfacetraction_cache = sys
+    @unpack Vb = surfacetraction_cache
     xc, yc = center
     x, y = collect(bodies)
     dX = VectorData(x .- xc,  y .- yc)
-    product!(sys.τ,traction(τ,sys,t),areas(bodies))
-    return sum(cross(dX,sys.τ),bodies,bodyi)
+    product!(Vb,traction(τ,sys,t),areas(bodies))
+    return sum(cross(dX,Vb),bodies,bodyi)
 end
 
 
