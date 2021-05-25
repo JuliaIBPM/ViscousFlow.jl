@@ -143,22 +143,16 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
     g = PhysicalGrid(xlimits,ylimits,Δx)
     NX, NY = size(g)
 
+    N = numpts(bodies)
+
     α = Δt/(Re*Δx^2)
 
     vorticity_prototype = Nodes{Dual,NX,NY,Float64}()
     velocity_prototype = Edges{Primal,NX,NY,Float64}()
     scapot_prototype = Nodes{Primal,NX,NY,Float64}()
     gradv_prototype = EdgeGradient{Primal,Dual,NX,NY,Float64}()
-
-    # Set up buffers
-    #Vf = Edges{Primal,NX,NY,Float64}()
-    #Vv = Edges{Primal,NX,NY,Float64}()
-    #Vn = Edges{Primal,NX,NY,Float64}()
-    #Sc = Nodes{Primal,NX,NY,Float64}()
-    #Sn = Nodes{Dual,NX,NY,Float64}()
-    #Wn = Nodes{Dual,NX,NY,Float64}()
-
-
+    surfacevel_prototype = VectorData(N)
+    surfacescalar_prototype = ScalarData(N)
 
     L = plan_laplacian(vorticity_prototype,with_inverse=true)
 
@@ -170,15 +164,6 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
     # but should be more flexible here
     flow_side_internal = _any_open_bodies(bodies) ? ExternalInternalFlow : flow_side
 
-    N = numpts(bodies)
-
-    surfacevel_prototype = VectorData(N)
-    surfacescalar_prototype = ScalarData(N)
-
-    #Vb = VectorData(N)
-    #Sb = ScalarData(N)
-    #Δus = VectorData(N)
-    #τ = VectorData(N)
 
     points, dlf, slc, sln, Rf, Ef, Cf =
               _immersion_operators(bodies,g,flow_side_internal,ddftype,
