@@ -7,6 +7,8 @@ import CartesianGrids: cellsize, origin
 import RigidBodyTools: assign_velocity!
 import ImmersedLayers: normals, areas
 
+include("navierstokes/linesource.jl")
+
 #=
 The goal of this should be to change NavierStokes into
 a more general type for any PDEs, similar to the structures
@@ -80,7 +82,10 @@ mutable struct NavierStokes{NX, NY, N, MT<:PointMotionType, FS<:FreestreamType, 
     motions::Union{RigidMotionList,DirectlySpecifiedMotionList,Nothing}
     "Pulses"
     pulses::Union{Vector{ModulatedField},Nothing}
-
+    
+    ## ADD τ_bc HERE (PRESCRIBED LINE SOURCE)
+    τ_bc::Union{Vector{PrescribedLineSource},Nothing}
+    
     # Discretization
     "Grid metadata"
     grid::CartesianGrids.PhysicalGrid{2}
@@ -136,6 +141,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
                        bodies::Union{BodyList,Nothing} = nothing,
                        motions::Union{RigidMotionList,DirectlySpecifiedMotionList,Nothing} = nothing,
                        pulses::PT = nothing,
+                       τ_bc = nothing,
                        static_points = true,
                        flow_side::Type{SD} = ExternalFlow,
                        ddftype=CartesianGrids.Yang3) where {FST,PT,SD<:FlowSide}
@@ -236,6 +242,7 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
                   typeof(velocity_cache), typeof(pressure_cache),
                   typeof(streamfunction_cache),typeof(surfacevel_cache),typeof(surfacetraction_cache)}(
                           Re, freestream, bodies, motions, pulsefields,
+                          _line_source(τ_bc,Edges(Primal,size(g)),g),
                           g, Δt, # rk,
                           L,
                           dlf,slc,sln,
@@ -253,8 +260,12 @@ NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList;
         motions=RigidMotionList(map(x -> RigidBodyMotion(0.0,0.0),bodies)),kwargs...) =
         NavierStokes(Re,Δx,xlim,ylim,Δt;bodies=bodies,motions=motions,kwargs...)
 
-NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body;kwargs...) =
-        NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]);kwargs...)
+NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,kwargs...) =
+        NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]),kwargs...)
+
+NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,τ_bc,kwargs...) =
+        NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]),τ_bc=τ_bc,kwargs...)
+
 
 function NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList,motions::Union{RigidMotionList,DirectlySpecifiedMotionList};static_points=false,kwargs...)
     length(bodies) == length(motions) || error("Inconsistent lengths of bodies and motions lists")
@@ -311,8 +322,9 @@ function _immersion_operators(bodies::BodyList,g::PhysicalGrid,flow_side::Type{S
   Ef = InterpolationMatrix(regop,gridvector_prototype,surfvector_prototype) # Used by constraint_rhs! and B₂
 
   regopfilt = Regularize(points,cellsize(g);I0=CartesianGrids.origin(g),filter=true,weights=cellsize(g)^2,ddftype=ddftype)
-  Ẽf = InterpolationMatrix(regopfilt,gridvector_prototype,surfvector_prototype)
-  Cf = sparse(Ẽf*Rf)
+
+  Ẽf = InterpolationMatrix(regopfilt,gridvector_prototype,surfvector_prototype)
+  Cf = sparse(Ẽf*Rf)
 
   return points, dlf, slc, sln, Rf, Ef, Cf
 end
@@ -435,8 +447,8 @@ Return the value of the freestream in `sys` at time `t` as a tuple.
 freestream(t::Real,sys::NavierStokes{NX,NY,N,MT,StaticFreestream}) where {NX,NY,N,MT} = sys.U∞
 
 function freestream(t::Real,sys::NavierStokes{NX,NY,N,MT,VariableFreestream}) where {NX,NY,N,MT}
-    _,ċ,_,_,_,_ = sys.U∞(t)
-    return reim(ċ)
+    _,ċ,_,_,_,_ = sys.U∞(t)
+    return reim(ċ)
 end
 
 """
@@ -481,6 +493,39 @@ _regularization(sys::NavierStokes{NX, NY, N, MT, FS, SD, DDF}) where {NX,NY,N,MT
 
 _regularization(points,g,bodies,ddftype) = Regularize(points,cellsize(g),
                                 I0=CartesianGrids.origin(g),weights=areas(bodies).data,ddftype=ddftype)
+
+
+function _line_source(lineparams::Vector{<:LineSourceParams},u::VectorGridData,g::PhysicalGrid)
+  τ_bc = PrescribedLineSource[]
+  for p in lineparams
+    push!(τ_bc,PrescribedLineSource(p,u,g))
+  end
+  τ_bc
+end
+
+_line_source(lineparams::LineSourceParams,u::VectorGridData,g::PhysicalGrid) =
+    _line_source([lineparams],u,g)
+
+_line_source(::Nothing,u,g) = nothing
+
+
+
+function set_linesource_strength!(sys::NavierStokes,q::Vector{T}) where {T<:Real}
+    @unpack τ_bc = sys
+    if isnothing(τ_bc)
+      return sys
+    else
+      total_len = mapreduce(τl -> length(τl.τ),+,τ_bc)
+      @assert total_len == length(q)
+      qcpy = copy(q)
+      first_index = 0
+      for τl in τ_bc
+        τl.τ .= view(q,first_index+1:first_index+length(τl.τ))
+        first_index += length(τl.τ)
+      end
+    end
+    return sys
+end
 
 
 include("navierstokes/surfacevelocities.jl")

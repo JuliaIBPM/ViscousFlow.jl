@@ -21,6 +21,7 @@ function ns_rhs_velocity!(dv::Edges{Primal,NX,NY},w::Nodes{Dual,NX,NY},sys::Navi
   fill!(dv,0.0)
   _vel_ns_rhs_convectivederivative!(dv,w,sys,t)
   _vel_ns_rhs_double_layer!(dv,sys,t)
+  _vel_ns_rhs_traction!(dv,sys)
   return dv
 end
 
@@ -78,3 +79,17 @@ function _vel_ns_rhs_double_layer!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,N
     Vv .*= fact
     u .-= Vv
 end
+
+_vel_ns_rhs_traction!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY}) where {NX,NY} =
+    _vel_ns_rhs_traction!(u,sys,sys.τ_bc)
+
+function _vel_ns_rhs_traction!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY},τ_bc) where {NX,NY}
+    
+  for τl in τ_bc
+    τl.cache1 .= τl.R*τl.τ
+    u .-= τl.cache1
+  end
+    
+end
+
+_vel_ns_rhs_traction!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY},::Nothing) where {NX,NY} = u
