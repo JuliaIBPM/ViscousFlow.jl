@@ -18,7 +18,7 @@ Note that the rectangle function used for making the cavity shape requires a spe
 immersed boundary projection method for internal flow requires the size of the domain to
 be at least a step size greater at the boundaries (i.e. `halflength + Δx`).
 =#
-Δx,Δt = setstepsizes(Re,gridRe=1.0)
+Δt,Δx = setstepsizes(Re,gridRe=1.0)
 halflength=0.5
 domain_lim=halflength+1.01*Δx
 xlim, ylim = (-domain_lim,domain_lim),(-domain_lim,domain_lim)

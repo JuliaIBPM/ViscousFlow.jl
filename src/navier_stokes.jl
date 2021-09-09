@@ -508,18 +508,7 @@ _line_source(lineparams::LineSourceParams,u::VectorGridData,g::PhysicalGrid) =
 
 _line_source(::Nothing,u,g) = nothing
 
-# function set_linesource_strength!(τcoor::body,qu::Scalar{T},qv::Scalar{T}) where {T<:Real}
-    ### can only set a uniform strength
 
-#     @unpack τ_bc = sys
-    
-#     TractionStrength_coor = VectorData(collect(τcoor))
-#     fill!(TractionStrength_coor.u,qu)
-#     fill!(TractionStrength_coor.v,qv)
-#     set_linesource_strength!(sys.τ_bc[*],TractionStrength_coor)
-### would need to know the order of τ to get *
-    
-# end
 
 function set_linesource_strength!(sys::NavierStokes,q::Vector{T}) where {T<:Real}
     @unpack τ_bc = sys
