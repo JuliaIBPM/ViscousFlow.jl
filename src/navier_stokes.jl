@@ -257,14 +257,14 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
 end
 
 NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList;
-        motions=RigidMotionList(map(x -> RigidBodyMotion(0.0,0.0),bodies)),kwargs...) =
-        NavierStokes(Re,Δx,xlim,ylim,Δt;bodies=bodies,motions=motions,kwargs...)
+        motions=RigidMotionList(map(x -> RigidBodyMotion(0.0,0.0),bodies));kwargs...) =
+        NavierStokes(Re,Δx,xlim,ylim,Δt;bodies=bodies,motions=motions;kwargs...)
 
-NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,kwargs...) =
-        NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]),kwargs...)
+NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body;kwargs...) =
+        NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]);kwargs...)
 
-NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,τ_bc,kwargs...) =
-        NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]),τ_bc=τ_bc,kwargs...)
+NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,τ_bc::PrescribedLineSource;kwargs...) =
+        NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]),τ_bc=τ_bc;kwargs...)
 
 
 function NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList,motions::Union{RigidMotionList,DirectlySpecifiedMotionList};static_points=false,kwargs...)
@@ -272,12 +272,12 @@ function NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList,motions::Union{Rigid
     NavierStokes(Re,Δx,xlim,ylim,Δt,bodies;motions=motions,static_points=static_points,kwargs...)
 end
 
-NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,motion::RigidBodyMotion;static_points=false,kwargs...) =
-        NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]),RigidMotionList([motion]);static_points=static_points,kwargs...)
+NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,motion::RigidBodyMotion;static_points=false;kwargs...) =
+        NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]),RigidMotionList([motion]);static_points=static_points;kwargs...)
 
 
-NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,motion::DirectlySpecifiedMotion;static_points=false,kwargs...) =
-        NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]),DirectlySpecifiedMotionList([motion]);static_points=static_points,kwargs...)
+NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body,motion::DirectlySpecifiedMotion;static_points=false;kwargs...) =
+        NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]),DirectlySpecifiedMotionList([motion]);static_points=static_points;kwargs...)
 
 
 function Base.show(io::IO, sys::NavierStokes{NX,NY,N,MT,FS,SD}) where {NX,NY,N,MT,FS,SD}
