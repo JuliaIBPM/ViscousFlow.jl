@@ -257,8 +257,8 @@ function NavierStokes(Re::Real, Δx::Real, xlimits::Tuple{Real,Real},ylimits::Tu
 end
 
 NavierStokes(Re,Δx,xlim,ylim,Δt,bodies::BodyList;
-        motions=RigidMotionList(map(x -> RigidBodyMotion(0.0,0.0),bodies));kwargs...) =
-        NavierStokes(Re,Δx,xlim,ylim,Δt;bodies=bodies,motions=motions;kwargs...)
+        motions=RigidMotionList(map(x -> RigidBodyMotion(0.0,0.0),bodies)),kwargs...) =
+        NavierStokes(Re,Δx,xlim,ylim,Δt;bodies=bodies,motions=motions,kwargs...)
 
 NavierStokes(Re,Δx,xlim,ylim,Δt,body::Body;kwargs...) =
         NavierStokes(Re,Δx,xlim,ylim,Δt,BodyList([body]);kwargs...)
