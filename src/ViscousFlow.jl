@@ -24,7 +24,8 @@ export NavierStokes, PulseParams, PointForce, SpatialDGaussian,
        update_immersion_operators!,
        vorticity, velocity, velocity!, streamfunction, streamfunction!,
        scalarpotential, scalarpotential!, convective_derivative, convective_derivative!,
-       pressure, traction, force, moment, pressurejump
+       pressure, traction, force, moment, pressurejump,
+       LineSourceParams,PrescribedLineSource,set_linesource_strength!
 
 abstract type PointMotionType end
 abstract type StaticPoints <: PointMotionType end
