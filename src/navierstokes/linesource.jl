@@ -7,21 +7,22 @@ function LineSourceParams(x::Vector{T},y::Vector{T};closure=:closed) where {T}
       LineSourceParams(BasicBody(x,y,closuretype=closuretype))
 end
 
-struct PrescribedLineSource{BT<:Body,AT,GT<:ScalarGridData,ST<:ScalarData,RT<:RegularizationMatrix,ET<:InterpolationMatrix}
+struct PrescribedLineSource{BT<:Body,AT,GT<:VectorGridData,ST<:VectorData,RT<:RegularizationMatrix,ET<:InterpolationMatrix}
     body :: BT
     arccoord :: AT
     cache1 :: GT
-    q :: ST
+    τ :: ST
     R :: RT
     E :: ET
 end
 
-function PrescribedLineSource(params::LineSourceParams,u::ScalarGridData,g::PhysicalGrid;ddftype=CartesianGrids.Yang3)
+function PrescribedLineSource(params::LineSourceParams,u::VectorGridData,g::PhysicalGrid;ddftype=CartesianGrids.Yang3)
     @unpack body = params
+
     pts = VectorData(collect(body))
     regop = _regularization(pts,g,body,ddftype)
 
-    s = ScalarData(pts)
+    s = VectorData(pts)
 
     arccoord = ScalarData(pts)
     arccoord .= accumulate(+,dlengthmid(body))
@@ -31,9 +32,9 @@ function PrescribedLineSource(params::LineSourceParams,u::ScalarGridData,g::Phys
     PrescribedLineSource(body,arccoord,similar(u),similar(s),R,E)
 end
 
-set_linesource_strength!(qline::PrescribedLineSource{BT,GT,ST},q::ST) where {BT,GT,ST} = qline.q .= q
+set_linesource_strength!(τ_bc::PrescribedLineSource{BT,AT,GT,ST},q::ST) where {BT,AT,GT,ST} = τ_bc.τ .= q
 
-function set_linesource_strength!(qline::PrescribedLineSource,q::AbstractVector{T}) where {T<:Real}
-    @assert length(q) == length(qline.q)
-    set_linesource_strength!(qline,ScalarData(q))
-end
+# function set_linesource_strength!(τ_bc::PrescribedLineSource,q::AbstractVector{T}) where {T<:Real}
+#     @assert length(q) == length(τ_bc.τ)
+#     set_linesource_strength!(τ_bc,VectorData(q))
+# end
