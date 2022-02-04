@@ -3,6 +3,21 @@ using LinearAlgebra
 import LinearAlgebra: transpose!
 import CartesianGrids: convective_derivative!
 
+#=
+State is the curl of the masked velocity field
+- create vorticity! function that obtains masked vorticity from the state
+and jump in velocity (using masked_curlv_from_curlv_masked!)
+- create a velocity! function that obtains velocity from the state,
+the jump in velocity, and free stream
+    - masked_curlv_from_curlv_masked! and vecfield_helmholtz!
+    - VectorPotentialCache and ScalarPotentialCache
+    - Need v as an extra cache (or just use gdata_cache)
+- create a streamfunction! function that obtains streamfunction from the
+state, the jump in velocity (not needed), and the free stream
+
+=#
+
+
 """
     vorticity(sol::ODESolution,sys::NavierStokes,t)
 

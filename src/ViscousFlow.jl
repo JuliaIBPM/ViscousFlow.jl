@@ -4,20 +4,21 @@ The `ViscousFlow` module is here
 """
 module ViscousFlow
 
-using DocStringExtensions
+#using DocStringExtensions
 using Reexport
 
-@reexport using CartesianGrids
+#@reexport using CartesianGrids
 @reexport using ImmersedLayers
-@reexport using RigidBodyTools
-@reexport using ConstrainedSystems
-@reexport using GridUtilities
+#@reexport using RigidBodyTools
+#@reexport using ConstrainedSystems
+#@reexport using GridUtilities
 
 
-using LinearAlgebra
-using SparseArrays
-using UnPack
+#using LinearAlgebra
+#using SparseArrays
+#using UnPack
 
+#=
 export NavierStokes, PulseParams, PointForce, SpatialDGaussian,
        ExternalFlow, InternalFlow, ExternalInternalFlow,
        setstepsizes, timestep, timerange, newstate, flowside,
@@ -39,13 +40,13 @@ abstract type FlowSide end
 abstract type ExternalFlow <: FlowSide end
 abstract type InternalFlow <: FlowSide end
 abstract type ExternalInternalFlow <: FlowSide end
+=#
 
-
-include("utils/pulses.jl")
-include("types.jl")
-include("navier_stokes.jl")
-include("directmotion.jl")
-include("plot_recipes.jl")
+#include("utils/pulses.jl")
+#include("types.jl")
+#include("navier_stokes.jl")
+#include("directmotion.jl")
+#include("plot_recipes.jl")
 
 
 end

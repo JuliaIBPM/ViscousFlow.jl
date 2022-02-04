@@ -17,6 +17,16 @@ function ns_rhs!(dw::Nodes{Dual,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX
   return dw
 end
 
+
+#=
+in ns_rhs_velocity!
+- call velocity! to get current velocity
+- use convective_derivative! (need cache)
+- use surface_divergence_symm! for double-layer term
+- omit the traction term for now
+- use apply_forcing!
+=#
+
 function ns_rhs_velocity!(dv::Edges{Primal,NX,NY},w::Nodes{Dual,NX,NY},sys::NavierStokes{NX,NY},t::Real) where {NX,NY}
   fill!(dv,0.0)
   _vel_ns_rhs_convectivederivative!(dv,w,sys,t)
@@ -84,12 +94,12 @@ _vel_ns_rhs_traction!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY}) where {NX
     _vel_ns_rhs_traction!(u,sys,sys.τ_bc)
 
 function _vel_ns_rhs_traction!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY},τ_bc) where {NX,NY}
-    
+
   for τl in τ_bc
     τl.cache1 .= τl.R*τl.τ
     u .-= τl.cache1
   end
-    
+
 end
 
 _vel_ns_rhs_traction!(u::Edges{Primal,NX,NY},sys::NavierStokes{NX,NY},::Nothing) where {NX,NY} = u
