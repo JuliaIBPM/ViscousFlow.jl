@@ -4,14 +4,22 @@ module ViscousFlow
 using Reexport
 using UnPack
 @reexport using ImmersedLayers
+@reexport using GridUtilities
+
 
 export ViscousIncompressibleFlowProblem
 export setup_grid, viscousflow_system, setup_problem, surface_point_spacing
 
 #= Supporting functions =#
 
-setup_problem(args...;kwargs...) =
-    ViscousIncompressibleFlowProblem(args...;timestep_func=DEFAULT_TIMESTEP_FUNC,kwargs...)
+setup_problem(g;kwargs...) =
+    ViscousIncompressibleFlowProblem(g;timestep_func=DEFAULT_TIMESTEP_FUNC,
+                                       kwargs...)
+
+setup_problem(g,bl;bc=nothing,kwargs...) =
+    ViscousIncompressibleFlowProblem(g,bl;timestep_func=DEFAULT_TIMESTEP_FUNC,
+                                       bc=get_bc_func(bc),
+                                       kwargs...)
 
 
 function grid_spacing(phys_params)
@@ -42,6 +50,17 @@ function default_freestream(t,phys_params)
     return Uinf, Vinf
 end
 
+function default_vsplus(t,base_cache,phys_params,motions)
+  vsplus = zeros_surface(base_cache)
+  return vsplus
+end
+
+function default_vsminus(t,base_cache,phys_params,motions)
+    vsminus = zeros_surface(base_cache)
+    return vsminus
+end
+
+
 
 const DEFAULT_GRID_RE = 2.0
 const DEFAULT_FOURIER_NUMBER = 1.0
@@ -49,6 +68,9 @@ const DEFAULT_CFL_NUMBER = 0.5
 const DEFAULT_DS_TO_DX_RATIO = 1.4
 const DEFAULT_FREESTREAM_FUNC = default_freestream
 const DEFAULT_TIMESTEP_FUNC = default_timestep
+const DEFAULT_VSPLUS_FUNC = default_vsplus
+const DEFAULT_VSMINUS_FUNC = default_vsminus
+
 
 #=
 Process keywords
@@ -65,6 +87,16 @@ function get_forcing_models(forcing::Dict)
 end
 
 get_forcing_models(::Nothing) = get_forcing_models(Dict())
+
+function get_bc_func(bc_in::Dict)
+    bc = Dict()
+    bc["exterior"] = haskey(bc_in,"exterior") ? bc_in["exterior"] : DEFAULT_VSPLUS_FUNC
+    bc["interior"] = haskey(bc_in,"interior") ? bc_in["interior"] : DEFAULT_VSMINUS_FUNC
+    return bc
+end
+
+get_bc_func(::Nothing) = get_bc_func(Dict())
+
 
 
 #=
@@ -104,7 +136,7 @@ function ImmersedLayers.prob_cache(prob::ViscousIncompressibleFlowProblem,
     velcache = VectorFieldCache(base_cache)
 
     # Construct a Lapacian outfitted with the viscosity
-    Re = phys_params["Re"]
+    Re = get_Reynolds_number(phys_params)
     viscous_L = Laplacian(base_cache,gcurl_cache,1.0/Re)
 
     # Create cache for the convective derivative
@@ -154,7 +186,7 @@ end
 
 Calculate the surface point spacing for a given grid, using
 the specified parameter "point spacing ratio" in the physical parameters,
-or the default value (1.4) if not specified. 
+or the default value (1.4) if not specified.
 """
 function surface_point_spacing(g::PhysicalGrid,phys_params)
     ds_to_dx = get(phys_params,"point spacing ratio",DEFAULT_DS_TO_DX_RATIO)
@@ -209,7 +241,7 @@ function viscousflow_velocity_ode_rhs!(dv,v,sys::ILMSystem,t)
     @unpack bc, forcing, phys_params, extra_cache, base_cache = sys
     @unpack dvb, dv_tmp, cdcache, fcache = extra_cache
 
-    Re = phys_params["Re"]
+    Re = get_Reynolds_number(phys_params)
     over_Re = 1.0/Re
 
     fill!(dv,0.0)

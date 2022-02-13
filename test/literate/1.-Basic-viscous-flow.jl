@@ -61,12 +61,13 @@ Then we set up the grid
 g = setup_grid(xlim,ylim,my_params)
 
 # ### Construct the system structure
-# This part is easy - you just supply the parameters you have just set up.
+# This part is easy - you supply the parameters you have just set up.
 # It returns a structure with all of the necessary mathematical operators:
 sys = viscousflow_system(g,phys_params=my_params);
 
 
-# Now, we will solve a few different problems
+# This is now ready to solve any unbounded viscous flow problems.
+# Now, we will solve a few different problems to see how it works.
 
 #=
 ## A basic example: the Lamb-Oseen vortex
