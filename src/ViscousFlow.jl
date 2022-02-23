@@ -148,7 +148,6 @@ function ImmersedLayers.prob_cache(prob::ViscousIncompressibleFlowProblem,
     fmods = get_forcing_models(forcing)
     fcache = ForcingModelAndRegion(fmods,base_cache)
 
-
     # The state here is vorticity, the constraint is the surface traction
     f = _get_ode_function_list(viscous_L,base_cache)
 
