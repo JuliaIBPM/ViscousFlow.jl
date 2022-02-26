@@ -33,12 +33,20 @@ function get_Reynolds_number(phys_params)
   return phys_params["Re"]
 end
 
-function default_timestep(g::PhysicalGrid,phys_params)
+function default_timestep(sys)
+    @unpack phys_params, motions, forcing = sys
+    g = get_grid(sys)
     Fo = get(phys_params,"Fourier",DEFAULT_FOURIER_NUMBER)
     Co = get(phys_params,"CFL",DEFAULT_CFL_NUMBER)
     Re = get_Reynolds_number(phys_params)
 
-    Δt = min(Fo*Re*cellsize(g)^2,Co*cellsize(g))
+    Uscale = 1.0
+    if !isnothing(motions)
+      Uscale, _ = maxlistvelocity(sys)
+    end
+
+
+    Δt = min(Fo*Re*cellsize(g)^2,Co*cellsize(g)/Uscale)
     return Δt
 end
 

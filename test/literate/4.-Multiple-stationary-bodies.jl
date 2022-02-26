@@ -86,10 +86,10 @@ fx2, fy2 = force(sol,sys,2)
 fx3, fy3 = force(sol,sys,3);
 #-
 plt = plot(layout = (2,1), size = (600, 400))
-plot!(plt[1],sol.t,2*fx1,xlim=(0,3),ylim=(0,4),xlabel="Convective time",ylabel="\$C_D\$",label="Lead body",title="Drag force")
-plot!(plt[2],sol.t,2*fy1,xlim=(0,3),ylim=(-2,2),xlabel="Convective time",ylabel="\$C_L\$",label="Lead body",title="Side force")
-plot!(plt[1],sol.t,2*fx2,xlim=(0,3),ylim=(0,4),xlabel="Convective time",ylabel="\$C_D\$",label="Trailing body",title="Drag force")
-plot!(plt[2],sol.t,2*fy2,xlim=(0,3),ylim=(-2,2),xlabel="Convective time",ylabel="\$C_L\$",label="Trailing body",title="Side force")
+plot!(plt[1],sol.t,2*fx1,xlim=(0,Inf),ylim=(0,4),xlabel="Convective time",ylabel="\$C_D\$",label="Lead body",title="Drag force")
+plot!(plt[2],sol.t,2*fy1,xlim=(0,Inf),ylim=(-2,2),xlabel="Convective time",ylabel="\$C_L\$",label="Lead body",title="Side force")
+plot!(plt[1],sol.t,2*fx2,xlim=(0,Inf),ylim=(0,4),xlabel="Convective time",ylabel="\$C_D\$",label="Trailing body",title="Drag force")
+plot!(plt[2],sol.t,2*fy2,xlim=(0,Inf),ylim=(-2,2),xlabel="Convective time",ylabel="\$C_L\$",label="Trailing body",title="Side force")
 #-
 println("Mean drag coefficient on lead body = ", GridUtilities.mean(2*fx1[3:end]))
 #-

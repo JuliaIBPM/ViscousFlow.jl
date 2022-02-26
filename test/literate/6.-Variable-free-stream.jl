@@ -14,40 +14,64 @@ using Plots
 ### Problem specification
 We will set the Reynolds number to 200
 =#
-Re = 200 # Reynolds number
+my_params = Dict()
+my_params["Re"] = 200
 
 #=
-In order to set the time-varying free stream, we will use the `OscillationX` function,
-which generates a set of oscillatory kinematics. Type `?OscillationX` to
-learn more.
-
-Since we are using this function to specify the velocity (the first derivative of
-the position), then we set
+In order to set a time-varying free stream, we have to define a function
+that provides the instantaneous free stream components and pass that
+function into the system definition. In this function, we will
+use the `Sinusoid` function (available via the `RigidBodyTools` module)
+to create the modulated free stream. To demonstrate its possibilities,
+we will pass in the parameters for the sinusoid via the `my_params` dictionary.
+The "freestream average" specifies a mean free stream, if desired.
 =#
-Ux = 0.0
-Ω  = 1.0
-Ax = 1.0
-fs = OscillationX(Ux,Ω,Ax,π/2)
+my_params["freestream average"] = 0.0
+my_params["freestream frequency"]  = 2.0
+my_params["freestream amplitude"] = 1.0
+my_params["freestream phase"] = 0.0
 
 #=
-As with body motion, it is useful to verify that this provides the expected behavior
-by plotting it:
+Now we define the function. We can call it anything we want,
+but it has to have the argument signature as shown. The
+`Sinusoid` function is used, with the shift operator `>>`
+to apply any phase lag.
 =#
-plot(fs)
+function my_freestream(t,phys_params)
+    U = phys_params["freestream average"]
+    Ω = phys_params["freestream frequency"]
+    Ax = phys_params["freestream amplitude"]
+    ϕx = phys_params["freestream phase"]
+    Vinfmag = Ax*(RigidBodyTools.Sinusoid(Ω) >> (ϕx/Ω))
+    Vinf_angle = get(phys_params,"freestream angle",0.0)
+
+    Uinf = (U + Vinfmag(t))*cos(Vinf_angle)
+    Vinf = (U + Vinfmag(t))*sin(Vinf_angle)
+    return Uinf, Vinf
+end
+
+#=
+The freestream function is generically considered a forcing function,
+so we pass it in via the "freestream" key in the forcing dictionary.
+=#
+forcing_dict = Dict("freestream" => my_freestream)
+
 
 # Now let us carry on with the other usual steps:
 
 # ### Discretize
 xlim = (-2.0,2.0)
 ylim = (-1.5,1.5)
-
-Δx, Δt = setstepsizes(Re,gridRe=3.0)
+my_params["grid Re"] = 4.0
+g = setup_grid(xlim,ylim,my_params)
 
 #=
 ### Set up bodies
 Here, we will set up a rectangle in the center of the domain
 =#
-body = Rectangle(0.25,0.5,1.5Δx)
+Δs = surface_point_spacing(g,my_params)
+body = Ellipse(0.25,0.5,Δs)
+
 T = RigidTransform((0.0,0.0),0.0)
 T(body)
 #-
@@ -57,39 +81,34 @@ plot(body,xlim=xlim,ylim=ylim)
 ### Construct the system structure
 This step is like the previous notebook, but now we also provide the body and the freestream:
 =#
-sys = NavierStokes(Re,Δx,xlim,ylim,Δt,body,freestream = fs)
-
+sys = viscousflow_system(g,body,phys_params=my_params,forcing=forcing_dict);
 #=
 ### Initialize
 Now, we initialize with zero vorticity
 =#
-u0 = newstate(sys)
+u0 = init_sol(sys)
 # and create the integrator
 tspan = (0.0,10.0)
 integrator = init(u0,tspan,sys)
 
 #=
 ### Solve
-Now we are ready to solve the problem. Let's advance the solution to $t = 1$.
+Now we are ready to solve the problem. Let's advance the solution to $t = 2.5$.
 =#
-@time step!(integrator,1.0)
-sol = integrator.sol;
+@time step!(integrator,2.5)
 
 #=
 ### Examine
 Let's look at the flow field at the end of this interval
 =#
-plot(
-plot(vorticity(integrator),sys,title="Vorticity",clim=(-10,10),levels=range(-10,10,length=30), color = :RdBu,ylim=ylim),
-plot(streamfunction(integrator),sys,title="Streamlines",ylim=ylim,color = :Black),
-    size=(700,300)
-    )
-
-# Now let's make a movie
-@gif for t in sol.t
-    #plot(streamfunction(u,sys,t),sys, color = :Black)
-    plot(vorticity(sol,sys,t),sys,clim=(-10,10),levels=range(-10,10,length=30), color = :RdBu)
-end every 10
+sol = integrator.sol
+plt = plot(layout = (2,2), size = (800, 600), legend=:false)
+tsnap = 1.0:0.5:2.5
+for (i, t) in enumerate(tsnap)
+    plot!(plt[i],vorticity(sol,sys,t),sys,layers=false,title="t = $(round(t,digits=2))",clim=(-10,10),levels=range(-10,10,length=30),color = :RdBu)
+    plot!(plt[i],surfaces(sol,sys,t))
+end
+plt
 
 #=
 #### Compute the force history
@@ -104,6 +123,6 @@ plot(sol.t,2*fy,xlim=(0,Inf),ylim=(-6,6),xlabel="Convective time",ylabel="\$C_L\
 )
 
 # The mean drag and lift coefficients are
-meanCD = GridUtilities.mean(2*fx)
+meanCD = GridUtilities.mean(2*fx[3:end])
 #-
-meanCL = GridUtilities.mean(2*fy)
+meanCL = GridUtilities.mean(2*fy[3:end])
