@@ -19,8 +19,8 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 [compat]
 ColorTypes = "<0.10.1, 0.10, 0.11"
 DocStringExtensions = "0.8.1"
-GridUtilities = "0.1.2"
-ImmersedLayers = "0.3"
+GridUtilities = "0.1.3"
+ImmersedLayers = "0.3.5"
 RecipesBase = "1.0"
 Reexport = "0.2.0, 1.0"
 StatsFuns = "0.9.8"
@@ -35,8 +35,7 @@ Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
-Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "Random", "SpecialFunctions", "Literate", "Suppressor", "Plots"]
+test = ["Test", "Random", "SpecialFunctions", "Literate", "Plots"]
