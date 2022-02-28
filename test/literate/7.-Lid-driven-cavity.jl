@@ -96,7 +96,7 @@ Plot the vorticity and streamlines. We take a little care with the
 streamlines to show the small recirculation zones in the lower corners.
 =#
 mins, maxs = extrema(streamfunction(integrator))
-slevs = vcat(range(mins,maxs,11),maxs-0.00438,maxs-0.00353,maxs-0.00348)
+slevs = vcat(range(mins,maxs,length=11),maxs-0.00438,maxs-0.00353,maxs-0.00348)
 plot(
 plot(vorticity(integrator),sys,title="Vorticity",clim=(-10,10),color=:turbo,linewidth=1.5,ylim=ylim,levels=-6:0.5:5),
 plot(streamfunction(integrator),sys,title="Streamfunction",color=:black,ylim=ylim,levels=slevs)
