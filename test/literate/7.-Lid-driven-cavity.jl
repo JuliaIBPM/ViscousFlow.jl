@@ -85,9 +85,10 @@ integrator = init(u0,tspan,sys)
 
 #=
 ## Solve
-We run this over 10 convective time units to get it to steady state
+For demonstration purposes, we run this over 2 convective time units. (You can run it longer to get it
+to steady state.)
 =#
-step!(integrator,10)
+step!(integrator,2)
 
 #=
 ## Examine

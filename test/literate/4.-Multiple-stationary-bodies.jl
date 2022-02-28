@@ -67,7 +67,7 @@ integrator = init(u0,tspan,sys)
 ### Solve
 Here, we run it for a little while, just to demonstrate:
 =#
-@time step!(integrator,3.0)
+@time step!(integrator,2.0)
 #=
 ### Examine
 Let's inspect the results

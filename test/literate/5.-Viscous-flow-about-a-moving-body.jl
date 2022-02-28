@@ -106,9 +106,9 @@ integrator = init(u0,tspan,sys)
 #=
 ### Solve
 This takes longer per time step than it does for stationary bodies. Here, we only
-run it for two time units just to demonstrate it.
+run it for 1.5 time units just to demonstrate it.
 =#
-@time step!(integrator,2.0)
+@time step!(integrator,1.5)
 
 #=
 ### Examine the solution
