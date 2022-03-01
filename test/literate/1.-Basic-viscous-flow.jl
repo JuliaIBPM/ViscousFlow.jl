@@ -13,40 +13,61 @@ using Plots
 #=
 ### The basic steps
 To carry out any simulation in `ViscousFlow`, we need to carry out a few basic steps:
-* **Specify the problem**: Set the Reynolds number and free stream
-* **Discretize**: Set up a solution domain, grid cell size, time step size
+* **Specify the problem**: Set the Reynolds number, the free stream, and any other problem parameters
+* **Discretize**: Set up a solution domain, choose the grid Reynolds number and the critical time step limits
 * **Construct the system structure**: Create the operators that will be used to perform the simulation
 * **Initialize**: Set the initial flow field and initialize the integrator
 * **Solve**: Solve the flow field
 * **Examine**: Examine the results
 
 We will go through all of these here. For the examples we will carry out in this notebook,
-the first three steps need only be carried out once.
+the first two steps need only be carried out once.
+
+The package utilizes parameters arranged into a dictionary, or `Dict`.
+The dictionary associates names (or *keys*) with values. Most of these
+key have standardizes names. We
+will describe the entries in this as we go, adding them in one at a time for
+expositional purposes. We initializing it first and call it `my_params`
+for this example.
 =#
+my_params = Dict()
 
 #=
 ### Problem specification
-We will set the Reynolds number to be 200 and no free stream
+We will set the Reynolds number to be 200 and no free stream. The
+Reynolds number key is "Re". If we had a free stream, then we would
+set this with two keys: "freestream speed" and "freestream angle".
+They default to zero if we don't put anything into the dictionary.
+But we always have to put in the Reynolds number.
 =#
-Re = 200
+my_params["Re"] = 200
 
 #=
 ### Discretize
 We will set up a domain from x = -2 to x = 2, and y = -2 to y = 2. The Reynolds number helps us
-determine the grid spacing `Δx` and time step size `Δt`. To set these, we set a target *grid Reynolds
-number*, `gridRe`. We will set this to 4 here; if we ignore it, it defaults to 2. Note that this choice is a compromise
-* smaller grid Reynolds number means smaller grid spacing, and slower simulations
+determine the grid spacing and time step size. To set these, we set a target *grid Reynolds
+number*, with the key "grid Re". We will set this to 4 here; if we don't set it, it
+defaults to 2. Note that the choice we make here is a compromise:
+* smaller grid Reynolds number means smaller grid spacing, but slower simulations
 * larger grid Reynolds number means less accurate results
 =#
 xlim = (-2.0,2.0)
 ylim = (-2.0,2.0)
-Δx, Δt = setstepsizes(Re,gridRe=4)
+my_params["grid Re"] = 4.0
+
+#=
+Then we set up the grid
+=#
+g = setup_grid(xlim,ylim,my_params)
 
 # ### Construct the system structure
-# This part is easy - you just supply the parameters you have just set up. It returns a structure with all of the necessary mathematical operators:
-sys = NavierStokes(Re,Δx,xlim,ylim,Δt)
+# This part is easy - you supply the parameters you have just set up.
+# It returns a structure with all of the necessary mathematical operators:
+sys = viscousflow_system(g,phys_params=my_params);
 
-# Now, we will solve a few different problems
+
+# This is now ready to solve any unbounded viscous flow problems.
+# Now, we will solve a few different problems to see how it works.
 
 #=
 ## A basic example: the Lamb-Oseen vortex
@@ -62,9 +83,9 @@ gauss = SpatialGaussian(σ,x0,y0,A)
 #=
 ### Initialize
 Now, we create an instance of this vorticity distribution on the grid by
-calling `newstate` with this vortex.
+calling [`init_sol`](@ref) with this vortex.
 =#
-u0 = newstate(gauss,sys)
+u0 = init_sol(gauss,sys)
 
 #=
 We use this initial condition to initialize the **integrator**. The integrator is the structure that
@@ -103,8 +124,8 @@ plot(
 
 # For this problem, we can compare with the exact solution. The exact solution is also a Gaussian,
 # but with a radius $\sqrt{\sigma^2+4t/Re}$
-oseen_exact(t) = SpatialGaussian(sqrt(σ^2+4*t/Re),x0,y0,A)
-exactsol(t) = newstate(oseen_exact(t),sys)
+oseen_exact(t) = SpatialGaussian(sqrt(σ^2+4*t/my_params["Re"]),x0,y0,A)
+exactsol(t) = init_sol(oseen_exact(t),sys)
 
 #-
 plot(vorticity(integrator)[:,104],label="Numerical")
@@ -127,7 +148,7 @@ twogauss = SpatialGaussian(σ,x01,y01,A) + SpatialGaussian(σ,x02,y02,A)
 ### Initialize
 Now, we create an instance of this vorticity distribution on the grid.
 =#
-u0 = newstate(twogauss,sys)
+u0 = init_sol(twogauss,sys)
 
 #-
 plot(vorticity(u0,sys,0.0),sys)
@@ -149,21 +170,25 @@ our commands:
 =#
 sol = integrator.sol;
 
-# Now we will animate the solution, plotting the vorticity every 5 steps
-@gif for t in sol.t
-    plot(vorticity(sol,sys,t),sys)
-end every 5
 
 # The vortices orbit each other and then eventually merge together. If we wish to make a nice
 # figure, we can arrange snapshots on a grid:
 plt = plot(layout = (2,4), size = (800, 400), legend=:false)
-framejump = 100
-nframes = 8
-for (i, frame) in enumerate(1:framejump:(nframes-1)*framejump+1)
-    plot!(plt[i],vorticity(sol,sys,sol.t[frame]),sys,levels=range(0.1,5,length=31))
+tsnap = 0.0:1.0:7.0
+for (i, t) in enumerate(tsnap)
+    plot!(plt[i],vorticity(sol,sys,t),sys,levels=range(0.1,5,length=31))
 end
 savefig(plt,"CoRotating.pdf")
 plt
+
+#=
+If you wish to animate the solution, e.g., plotting the vorticity every 5 steps
+you can use
+
+    @gif for t in sol.t
+       plot(vorticity(sol,sys,t),sys)
+    end every 5
+=#
 
 #=
 **Try other examples!**
