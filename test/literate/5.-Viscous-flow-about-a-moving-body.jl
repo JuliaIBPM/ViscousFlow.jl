@@ -118,7 +118,7 @@ function to generate the instantaneous configuration of the plate.
 =#
 sol = integrator.sol
 plt = plot(layout = (1,3), size = (800, 300), legend=:false)
-tsnap = 0.5:1.0:1.5
+tsnap = 0.5:0.5:1.5
 for (i, t) in enumerate(tsnap)
     plot!(plt[i],vorticity(sol,sys,t),sys,layers=false,title="t = $(round(t,digits=2))",clim=(-5,5),levels=range(-5,5,length=30),color = :RdBu)
     plot!(plt[i],surfaces(sol,sys,t))

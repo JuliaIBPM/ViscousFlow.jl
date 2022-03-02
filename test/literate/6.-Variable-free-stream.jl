@@ -67,7 +67,7 @@ g = setup_grid(xlim,ylim,my_params)
 
 #=
 ### Set up bodies
-Here, we will set up a rectangle in the center of the domain
+Here, we will set up an ellipse in the center of the domain
 =#
 Δs = surface_point_spacing(g,my_params)
 body = Ellipse(0.25,0.5,Δs)
