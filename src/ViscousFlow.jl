@@ -209,7 +209,7 @@ The `kwargs` are the optional keyword aguments. There are several, some of
 which are crucial for certain types of problems.
 
 - `ddftype = ` to set the DDF type. The default is `CartesianGrids.Yang3`.
-- `scaling = ` to set the scaling type, `IndexScaling` (default) or `GridScaling`.
+- `scaling = ` to set the scaling type, `GridScaling` (default) or `IndexScaling`.
 - `dtype = ` to set the element type to `Float64` (default) or `ComplexF64`.
 - `phys_params = ` A dictionary to pass in physical parameters
 - `bc = ` A dictionary to pass in boundary condition data or functions, using "external"
