@@ -18,7 +18,7 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 [compat]
 ColorTypes = "<0.10.1, 0.10, 0.11"
-DocStringExtensions = "0.8.1"
+DocStringExtensions = "0.8.1, 0.9"
 GridUtilities = "0.1.3"
 ImmersedLayers = "0.3.5"
 RecipesBase = "1.0"
