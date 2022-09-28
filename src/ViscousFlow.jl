@@ -441,6 +441,18 @@ pressure(w::Nodes{Dual},τ,sys::ILMSystem,t) = pressure!(zeros_griddiv(sys),w,τ
 
 @snapshotoutput pressure
 
+function convective_acceleration!(vdv::Edges{Primal},w::Nodes{Dual},sys::ILMSystem,t)
+    @unpack extra_cache, base_cache = sys
+    @unpack v_tmp, cdcache = extra_cache
+    velocity!(v_tmp,w,sys,t)
+    convective_derivative!(vdv,v_tmp,base_cache,cdcache)
+    return vdv
+end
+
+convective_acceleration(w::Nodes{Dual},τ,sys::ILMSystem,t) = convective_acceleration!(zeros_grid(sys),w,sys,t)
+
+@snapshotoutput convective_acceleration
+
 
 #= Surface fields =#
 
