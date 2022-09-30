@@ -12,6 +12,10 @@ notebookdir = "../examples"
 docdir = "../docs/src/manual"
 litdir = "./literate"
 
+if GROUP == "All" || GROUP == "Base"
+    include("basicfields.jl")
+end
+
 if GROUP == "All" || GROUP == "Literate"
   for (root, dirs, files) in walkdir(litdir)
     for file in files
