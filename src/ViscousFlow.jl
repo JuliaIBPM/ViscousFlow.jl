@@ -228,7 +228,7 @@ which are crucial for certain types of problems.
                   It defaults to the basic Fourier/CFL type function `default_timestep`
 """
 function viscousflow_system(args...;phys_params=Dict(), kwargs...)
-  prob = setup_problem(args...;phys_params,kwargs...)
+  prob = setup_problem(args...;phys_params=phys_params,kwargs...)
   return construct_system(prob)
 end
 
