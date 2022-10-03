@@ -27,3 +27,21 @@ using ImmersedLayers
   ψ = streamfunction(u,sys,t)
 
 end
+
+@testset "Inviscid system" begin
+
+  xlim = (-2.0,2.0)
+  ylim = (-2.0,2.0)
+  g = setup_grid(xlim,ylim,0.02)
+
+  sys = viscousflow_system(g)
+
+  σ = 0.2
+  x0 = 0.0
+  y0 = 0.0
+  A = 1
+  gauss = SpatialGaussian(σ,x0,y0,A)
+  u = init_sol(gauss,sys)
+
+
+end

@@ -27,10 +27,12 @@ function grid_spacing(phys_params)
     Δx = gridRe/get_Reynolds_number(phys_params)
 end
 
+grid_spacing(Δx::Float64) = Δx
 
 function get_Reynolds_number(phys_params)
-  haskey(phys_params,"Re") || error("No Reynolds number set")
-  return phys_params["Re"]
+  #haskey(phys_params,"Re") || error("No Reynolds number set")
+  #return phys_params["Re"]
+  return get(phys_params,"Re",Inf)
 end
 
 function default_timestep(sys)
@@ -145,7 +147,8 @@ function ImmersedLayers.prob_cache(prob::ViscousIncompressibleFlowProblem,
 
     # Construct a Lapacian outfitted with the viscosity
     Re = get_Reynolds_number(phys_params)
-    viscous_L = Laplacian(base_cache,gcurl_cache,1.0/Re)
+    over_Re = isinf(Re) ? 0.0 : 1.0/Re
+    viscous_L = Laplacian(base_cache,gcurl_cache,over_Re)
 
     # Create cache for the convective derivative
     cdcache = ConvectiveDerivativeCache(base_cache)
@@ -224,12 +227,10 @@ which are crucial for certain types of problems.
                   the `grid::PhysicalGrid` and `phys_params`, and returns the time step.
                   It defaults to the basic Fourier/CFL type function `default_timestep`
 """
-function viscousflow_system(args...;kwargs...)
-  prob = setup_problem(args...;kwargs...)
+function viscousflow_system(args...;phys_params=Dict(), kwargs...)
+  prob = setup_problem(args...;phys_params,kwargs...)
   return construct_system(prob)
 end
-
-
 
 #= ODE functions =#
 
