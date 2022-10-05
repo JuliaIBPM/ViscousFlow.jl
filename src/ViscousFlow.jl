@@ -106,6 +106,21 @@ end
 get_bc_func(::Nothing) = get_bc_func(Dict())
 
 
+# Default functions for rotation
+function default_rotation(t,phys_params)
+    omega = get(phys_params,"angular velocity",0.0)
+    return omega
+end
+
+const DEFAULT_ROTATION_FUNC = default_rotation
+
+function get_rotation_func(forcing::Dict)
+    return get(forcing,"rotation",DEFAULT_ROTATION_FUNC)
+end
+
+get_rotation_func(::Nothing) = get_rotation_func(Dict())
+
+
 
 #=
 Defining the extra cache and extending prob_cache
@@ -120,6 +135,7 @@ struct ViscousIncompressibleFlowCache{CDT,FRT,DVT,VFT,VORT,DILT,VELT,FCT} <: Abs
    vb_tmp :: DVT
    v_tmp :: VFT
    dv :: VFT
+   v_rot ::VFT
    dv_tmp :: VFT
    w_tmp :: VORT
    divv_tmp :: DILT
@@ -137,6 +153,7 @@ function ImmersedLayers.prob_cache(prob::ViscousIncompressibleFlowProblem,
 
     v_tmp = zeros_grid(base_cache)
     dv = zeros_grid(base_cache)
+    v_rot = zeros_grid(base_cache)
     dv_tmp = zeros_grid(base_cache)
     w_tmp = zeros_gridcurl(base_cache)
     divv_tmp = zeros_griddiv(base_cache)
@@ -159,7 +176,7 @@ function ImmersedLayers.prob_cache(prob::ViscousIncompressibleFlowProblem,
     # The state here is vorticity, the constraint is the surface traction
     f = _get_ode_function_list(viscous_L,base_cache)
 
-    ViscousIncompressibleFlowCache(cdcache,fcache,dvb,vb_tmp,v_tmp,dv,dv_tmp,w_tmp,divv_tmp,velcache,f)
+    ViscousIncompressibleFlowCache(cdcache,fcache,dvb,vb_tmp,v_tmp,dv,v_rot,dv_tmp,w_tmp,divv_tmp,velcache,f)
 end
 
 _get_ode_function_list(viscous_L,base_cache::BasicILMCache{N}) where {N} =
@@ -254,6 +271,8 @@ function viscousflow_velocity_ode_rhs!(dv,v,sys::ILMSystem,t)
     fill!(dv,0.0)
 
     # Calculate the convective derivative
+    v_rot
+
     convective_derivative!(dv_tmp,v,base_cache,cdcache)
     dv .-= dv_tmp
 
