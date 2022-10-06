@@ -58,6 +58,11 @@ function default_freestream(t,phys_params)
     return Uinf, Vinf
 end
 
+function default_rotation(t,phys_params)
+    omega = get(phys_params,"angular velocity",0.0)
+    return omega
+end
+
 function default_vsplus(t,base_cache,phys_params,motions)
   vsplus = zeros_surface(base_cache)
   return vsplus
@@ -75,6 +80,7 @@ const DEFAULT_FOURIER_NUMBER = 1.0
 const DEFAULT_CFL_NUMBER = 0.5
 const DEFAULT_DS_TO_DX_RATIO = 1.4
 const DEFAULT_FREESTREAM_FUNC = default_freestream
+const DEFAULT_ROTATION_FUNC = default_rotation
 const DEFAULT_TIMESTEP_FUNC = default_timestep
 const DEFAULT_VSPLUS_FUNC = default_vsplus
 const DEFAULT_VSMINUS_FUNC = default_vsminus
@@ -89,6 +95,12 @@ function get_freestream_func(forcing::Dict)
 end
 
 get_freestream_func(::Nothing) = get_freestream_func(Dict())
+
+function get_rotation_func(forcing::Dict)
+    return get(forcing,"rotation",DEFAULT_ROTATION_FUNC)
+end
+
+get_rotation_func(::Nothing) = get_rotation_func(Dict())
 
 function get_forcing_models(forcing::Dict)
     return get(forcing,"forcing models",nothing)
@@ -105,20 +117,6 @@ end
 
 get_bc_func(::Nothing) = get_bc_func(Dict())
 
-
-# Default functions for rotation
-function default_rotation(t,phys_params)
-    omega = get(phys_params,"angular velocity",0.0)
-    return omega
-end
-
-const DEFAULT_ROTATION_FUNC = default_rotation
-
-function get_rotation_func(forcing::Dict)
-    return get(forcing,"rotation",DEFAULT_ROTATION_FUNC)
-end
-
-get_rotation_func(::Nothing) = get_rotation_func(Dict())
 
 
 
@@ -250,6 +248,57 @@ end
 
 #= ODE functions =#
 
+function get_rotational_vel!(u_prime::Edges{Primal},t,sys)
+    @unpack bc, forcing, phys_params, extra_cache, base_cache = sys
+
+    rot_func=get_rotation_func(forcing)
+    omega=rot_func(t,phys_params)
+
+    xc,yc=get(phys_params,"center of rotation",(0.0,0.0))
+    #ensure center is a tuple containing (xc,yc)
+
+    xg, yg = x_grid(base_cache), y_grid(base_cache)
+
+    #calculate cross product of omega and (x-xc).
+    #rot_vel= zeros_grid(base_cache)
+    u_prime.u .-= omega.*(yg.u .- yc)
+    u_prime.v .+= omega.*(xg.v .- xc)
+
+    return u_prime
+    #contains both components u and v stored at primal edges.
+
+end
+
+function get_rotational_vel_primalnode(t,sys)
+    @unpack bc, forcing, phys_params, extra_cache, base_cache = sys
+
+    rot_func=get_rotation_func(forcing)
+    omega=rot_func(t,phys_params)
+
+    xc,yc=get(phys_params,"center of rotation",(0.0,0.0))
+    #ensure center is a tuple containing (xc,yc)
+
+    xg, yg = x_grid(base_cache), y_grid(base_cache)
+
+    #Should i define surfacescalarcache and get xg yg of cell center and do w cross x and return that or should i do surfacevectorcache
+    #and then interpolate?
+
+    #grid_interpolate xg and yg to location of primal node? doesnt mag do the required interpolation for us?
+
+    #compute the vector (x-xc)
+    x=xg-xc;
+    y=yg-yc;
+
+    #calculate cross product of omega and (x-xc).
+    rot_vel= zeros_grid(base_cache)
+    rot_vel.u .= -omega*y.u;
+    rot_vel.v .=  omega*x.v;
+
+    return magsq(rot_vel)
+end
+
+
+
 function viscousflow_vorticity_ode_rhs!(dw,w,sys::ILMSystem,t)
   @unpack extra_cache, base_cache = sys
   @unpack v_tmp, dv = extra_cache
@@ -263,7 +312,7 @@ end
 
 function viscousflow_velocity_ode_rhs!(dv,v,sys::ILMSystem,t)
     @unpack bc, forcing, phys_params, extra_cache, base_cache = sys
-    @unpack dvb, dv_tmp, cdcache, fcache = extra_cache
+    @unpack dvb, v_rot, dv_tmp, cdcache, fcache = extra_cache
 
     Re = get_Reynolds_number(phys_params)
     over_Re = 1.0/Re
@@ -271,9 +320,9 @@ function viscousflow_velocity_ode_rhs!(dv,v,sys::ILMSystem,t)
     fill!(dv,0.0)
 
     # Calculate the convective derivative
-    v_rot
+    v_rot=get_rotational_vel!(v,t,sys)
 
-    convective_derivative!(dv_tmp,v,base_cache,cdcache)
+    convective_derivative!(dv_tmp,v_rot,base_cache,cdcache)
     dv .-= dv_tmp
 
     # Calculate the double-layer term
@@ -453,6 +502,8 @@ function pressure!(press::Nodes{Primal},w::Nodes{Dual},τ,sys::ILMSystem,t)
 
       divergence!(divv_tmp,dv,base_cache)
       inverse_laplacian!(press,divv_tmp,base_cache)
+      #whats the velocity that goes into magsq?
+      press.-=(0.5*magsq(get_rotational_vel!(v_tmp,t,sys)) - (0.5*get_rotational_vel_primalnode(t,sys)))
       return press
 end
 
