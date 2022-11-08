@@ -64,7 +64,8 @@ function default_rotation(t,phys_params)
 end
 
 function default_vsplus(t,base_cache,phys_params,motions)
-  vsplus = zeros_surface(base_cache)
+  vsplus=get_surface_velocity(phys_params,t,base_cache)
+  #vsplus = zeros_surface(base_cache)
   return vsplus
 end
 
@@ -96,8 +97,8 @@ end
 
 get_freestream_func(::Nothing) = get_freestream_func(Dict())
 
-function get_rotation_func(forcing::Dict)
-    return get(forcing,"rotation",DEFAULT_ROTATION_FUNC)
+function get_rotation_func(phys_params)
+    return get(phys_params,"rotation",DEFAULT_ROTATION_FUNC)
 end
 
 get_rotation_func(::Nothing) = get_rotation_func(Dict())
@@ -248,10 +249,32 @@ end
 
 #= ODE functions =#
 
+function convective_derivative_rot!(uw::Edges{Primal},u::Edges{Primal},w::Nodes{Dual},base_cache::BasicILMCache,extra_cache::ConvectiveDerivativeCache)
+    fill!(uw,0.0)
+    if !iszero(w) && !iszero(u)
+      _unscaled_convective_derivative_rot!(uw,u,w,extra_cache)
+      #ImmersedLayers._scale_derivative!(uw,base_cache)
+    end
+end
+
+function _unscaled_convective_derivative_rot!(uw::Edges{Primal},u::Edges{Primal},w::Nodes{Dual},extra_cache::ConvectiveDerivativeCache)
+    @unpack vt1_cache, vt2_cache, vt3_cache = extra_cache
+
+    #ensure these caches are at primal edges
+    u_dual = Nodes(Dual,u)
+    ucrossw = Edges(Primal,u) #replace this with vt2_cache
+
+    grid_interpolate!(ucrossw.u,grid_interpolate!(u_dual, u.v) ∘ w)
+    grid_interpolate!(ucrossw.v,grid_interpolate!(u_dual,-u.u) ∘ w)
+    uw .= -ucrossw
+    return uw
+
+end
+
 function get_rotational_vel!(u_prime::Edges{Primal},t,sys)
     @unpack bc, forcing, phys_params, extra_cache, base_cache = sys
 
-    rot_func=get_rotation_func(forcing)
+    rot_func=get_rotation_func(phys_params)
     omega=rot_func(t,phys_params)
 
     xc,yc=get(phys_params,"center of rotation",(0.0,0.0))
@@ -272,7 +295,7 @@ end
 function get_rotational_vel_primalnode(t,sys)
     @unpack bc, forcing, phys_params, extra_cache, base_cache = sys
 
-    rot_func=get_rotation_func(forcing)
+    rot_func=get_rotation_func(phys_params)
     omega=rot_func(t,phys_params)
 
     xc,yc=get(phys_params,"center of rotation",(0.0,0.0))
@@ -297,20 +320,32 @@ function get_rotational_vel_primalnode(t,sys)
     return magsq(rot_vel)
 end
 
+function get_surface_velocity(phys_params,t,base_cache)
 
+    rot_func=get_rotation_func(phys_params)
+    omega=rot_func(t,phys_params)
+
+    xc,yc=get(phys_params,"center of rotation",(0.0,0.0))
+
+    pts=points(base_cache)
+    vs_tmp = zeros_surface(base_cache)
+    vs_tmp.u.= -omega.*(pts.v-yc)
+    vs_tmp.v.= omega.*(pts.u-xc)
+    vs_tmp
+end
 
 function viscousflow_vorticity_ode_rhs!(dw,w,sys::ILMSystem,t)
   @unpack extra_cache, base_cache = sys
   @unpack v_tmp, dv = extra_cache
 
   velocity!(v_tmp,w,sys,t)
-  viscousflow_velocity_ode_rhs!(dv,v_tmp,sys,t)
+  viscousflow_velocity_ode_rhs!(dv,v_tmp,w,sys,t)
   curl!(dw,dv,base_cache)
 
   return dw
 end
 
-function viscousflow_velocity_ode_rhs!(dv,v,sys::ILMSystem,t)
+function viscousflow_velocity_ode_rhs!(dv,v,w,sys::ILMSystem,t)
     @unpack bc, forcing, phys_params, extra_cache, base_cache = sys
     @unpack dvb, v_rot, dv_tmp, cdcache, fcache = extra_cache
 
@@ -320,9 +355,12 @@ function viscousflow_velocity_ode_rhs!(dv,v,sys::ILMSystem,t)
     fill!(dv,0.0)
 
     # Calculate the convective derivative
-    v_rot=get_rotational_vel!(v,t,sys)
+    v_rot .= v
+    get_rotational_vel!(v_rot,t,sys)
 
-    convective_derivative!(dv_tmp,v_rot,base_cache,cdcache)
+    convective_derivative_rot!(dv_tmp,v_rot,w,base_cache,cdcache)
+    #convective_derivative!(dv_tmp,v_rot,base_cache,cdcache)
+    #dv_tmp is at primal edges
     dv .-= dv_tmp
 
     # Calculate the double-layer term
@@ -358,9 +396,9 @@ function viscousflow_vorticity_bc_rhs!(vb,sys::ILMSystem,t)
     Uinf, Vinf = freestream_func(t,phys_params)
     vb.u .-= Uinf
     vb.v .-= Vinf
-
-    return vb
 end
+
+
 
 function viscousflow_velocity_bc_rhs!(vb,sys::ILMSystem,t)
     prescribed_surface_average!(vb,t,sys)
@@ -496,14 +534,16 @@ function pressure!(press::Nodes{Primal},w::Nodes{Dual},τ,sys::ILMSystem,t)
       @unpack velcache, v_tmp, dv_tmp, dv, divv_tmp = extra_cache
 
       velocity!(v_tmp,w,sys,t)
-      viscousflow_velocity_ode_rhs!(dv,v_tmp,sys,t)
+      viscousflow_velocity_ode_rhs!(dv,v_tmp,w,sys,t)
       viscousflow_velocity_constraint_force!(dv_tmp,τ,sys)
       dv .-= dv_tmp
 
+
+      #change to v_rot here?
       divergence!(divv_tmp,dv,base_cache)
       inverse_laplacian!(press,divv_tmp,base_cache)
       #whats the velocity that goes into magsq?
-      press.-=(0.5*magsq(get_rotational_vel!(v_tmp,t,sys)) - (0.5*get_rotational_vel_primalnode(t,sys)))
+      press.-=(0.5*magsq(get_rotational_vel!(dv,t,sys)) - (0.5*get_rotational_vel_primalnode(t,sys)))
       return press
 end
 
