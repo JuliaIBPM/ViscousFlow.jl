@@ -67,6 +67,7 @@ function default_vsplus(t,base_cache,phys_params,motions)
   vsplus=get_surface_velocity(phys_params,t,base_cache)
   #vsplus = zeros_surface(base_cache)
   return vsplus
+  #This has to be modified to work for all cases
 end
 
 function default_vsminus(t,base_cache,phys_params,motions)
