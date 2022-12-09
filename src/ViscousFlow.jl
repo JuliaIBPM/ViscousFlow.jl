@@ -64,8 +64,8 @@ function default_rotation(t,phys_params)
 end
 
 function default_vsplus(t,base_cache,phys_params,motions)
-  vsplus=get_surface_velocity(phys_params,t,base_cache)
-  #vsplus = zeros_surface(base_cache)
+  #vsplus=get_surface_velocity(phys_params,t,base_cache)
+  vsplus = zeros_surface(base_cache)
   return vsplus
   #This has to be modified to work for all cases
 end
@@ -340,15 +340,18 @@ function viscousflow_vorticity_ode_rhs!(dw,w,sys::ILMSystem,t)
   @unpack v_tmp, dv = extra_cache
 
   velocity!(v_tmp,w,sys,t)
-  viscousflow_velocity_ode_rhs!(dv,v_tmp,w,sys,t)
+  viscousflow_velocity_ode_rhs!(dv,v_tmp,sys,t)
   curl!(dw,dv,base_cache)
 
   return dw
 end
 
-function viscousflow_velocity_ode_rhs!(dv,v,w,sys::ILMSystem,t)
+function viscousflow_velocity_ode_rhs!(dv,v,sys::ILMSystem,t)
     @unpack bc, forcing, phys_params, extra_cache, base_cache = sys
-    @unpack dvb, v_rot, dv_tmp, cdcache, fcache = extra_cache
+    @unpack dvb, v_rot, dv_tmp, cdcache, fcache, w_tmp = extra_cache
+
+    # to avoid having to deliver w as input here
+    curl!(w_tmp,v,base_cache)
 
     Re = get_Reynolds_number(phys_params)
     over_Re = 1.0/Re
@@ -357,10 +360,10 @@ function viscousflow_velocity_ode_rhs!(dv,v,w,sys::ILMSystem,t)
 
     # Calculate the convective derivative
     v_rot .= v
-    get_rotational_vel!(v_rot,t,sys)
+    #get_rotational_vel!(v_rot,t,sys)
 
-    convective_derivative_rot!(dv_tmp,v_rot,w,base_cache,cdcache)
-    #convective_derivative!(dv_tmp,v_rot,base_cache,cdcache)
+    #convective_derivative_rot!(dv_tmp,v_rot,w_tmp,base_cache,cdcache)
+    convective_derivative!(dv_tmp,v_rot,base_cache,cdcache)
     #dv_tmp is at primal edges
     dv .-= dv_tmp
 
@@ -397,6 +400,8 @@ function viscousflow_vorticity_bc_rhs!(vb,sys::ILMSystem,t)
     Uinf, Vinf = freestream_func(t,phys_params)
     vb.u .-= Uinf
     vb.v .-= Vinf
+
+    return vb
 end
 
 
@@ -535,7 +540,7 @@ function pressure!(press::Nodes{Primal},w::Nodes{Dual},τ,sys::ILMSystem,t)
       @unpack velcache, v_tmp, dv_tmp, dv, divv_tmp = extra_cache
 
       velocity!(v_tmp,w,sys,t)
-      viscousflow_velocity_ode_rhs!(dv,v_tmp,w,sys,t)
+      viscousflow_velocity_ode_rhs!(dv,v_tmp,sys,t)
       viscousflow_velocity_constraint_force!(dv_tmp,τ,sys)
       dv .-= dv_tmp
 
