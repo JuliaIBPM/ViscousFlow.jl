@@ -90,8 +90,8 @@ const DEFAULT_CENTER_OF_ROTATION = (0.0,0.0)
 Process keywords
 =#
 
-function get_freestream_func(forcing::Dict)
-    return get(forcing,"freestream",DEFAULT_FREESTREAM_FUNC)
+function get_freestream_func(phys_params::Dict)
+    return get(phys_params,"freestream",DEFAULT_FREESTREAM_FUNC)
 end
 
 get_freestream_func(::Nothing) = get_freestream_func(Dict())
@@ -230,13 +230,13 @@ which are crucial for certain types of problems.
 - `ddftype = ` to set the DDF type. The default is `CartesianGrids.Yang3`.
 - `scaling = ` to set the scaling type, `GridScaling` (default) or `IndexScaling`.
 - `dtype = ` to set the element type to `Float64` (default) or `ComplexF64`.
-- `phys_params = ` A dictionary to pass in physical parameters
+- `phys_params = ` A dictionary to pass in physical parameters, or to pass in
+                  alternative models for the freestream velocity (with the "freestream" key)
+                  or overall rotational motion (with the "rotational motion" key)
 - `bc = ` A dictionary to pass in boundary condition data or functions, using "external"
           and "internal" keys to pass in functions that provide the
           corresponding surface data outside and inside the surface(s).
-- `forcing = ` A dictionary to pass in forcing models (via the "forcing models" key),
-                or to pass in an alternative model for
-               the freestream velocity (with the "freestream" key)
+- `forcing = ` A dictionary to pass in forcing models (via the "forcing models" key)
 - `motions = ` to provide function(s) that specify the velocity of the immersed surface(s). Note: if this keyword is used, it is assumed that surfaces will move.
 - `timestep_func =` to pass in a function for time-dependent problems that provides the time-step size.
                   It is expected that this function takes in two arguments,
@@ -251,46 +251,6 @@ end
 
 
 #= ODE functions =#
-
-#=
-"""
-    RotConvectiveDerivativeCache(w::Nodes{Dual})
-
-Create a cache (a subtype of [`AbstractExtraILMCache`](@ref)) for computing
-the convective derivative, using `dv` to define the cache data.
-"""
-struct RotConvectiveDerivativeCache{VTT} <: AbstractExtraILMCache
-   vt1_cache :: VTT
-end
-
-
-"""
-    RotConvectiveDerivativeCache(cache::BasicILMCache)
-
-Create a cache for computing the rotational convective derivative, based on
-the basic ILM cache `cache`.
-"""
-RotConvectiveDerivativeCache(cache::BasicILMCache) = RotConvectiveDerivativeCache(similar_gridcurl(cache))
-
-
-function convective_derivative_rot!(uw::Edges{Primal},u::Edges{Primal},w::Nodes{Dual},base_cache::BasicILMCache,extra_cache::RotConvectiveDerivativeCache)
-    fill!(uw,0.0)
-    if !iszero(w) && !iszero(u)
-      _unscaled_convective_derivative_rot!(uw,u,w,extra_cache)
-    end
-end
-
-function _unscaled_convective_derivative_rot!(uw::Edges{Primal},u::Edges{Primal},w::Nodes{Dual},extra_cache::RotConvectiveDerivativeCache)
-    @unpack vt1_cache = extra_cache
-
-    fill!(vt1_cache,0.0)
-    grid_interpolate!(uw.u,grid_interpolate!(vt1_cache, -u.v) ∘ w)
-    fill!(vt1_cache,0.0)
-    grid_interpolate!(uw.v,grid_interpolate!(vt1_cache,  u.u) ∘ w)
-    return uw
-
-end
-=#
 
 """
     velocity_rel_to_rotating_frame!(u_prime,t,sys::ILMSystem)
@@ -360,9 +320,6 @@ function viscousflow_velocity_ode_rhs!(dv,v,sys::ILMSystem,t)
     @unpack bc, forcing, phys_params, extra_cache, base_cache = sys
     @unpack dvb, dv_tmp, cdcache, fcache, w_tmp = extra_cache
 
-    # to avoid having to deliver w as input here
-    #curl!(w_tmp,v,base_cache)
-
     Re = get_Reynolds_number(phys_params)
     over_Re = 1.0/Re
 
@@ -391,6 +348,8 @@ function convective_term!(dv,v,t,base_cache,extra_cache,phys_params,cdcache::Rot
     @unpack v_rot, w_tmp = extra_cache
 
     v_rot .= v
+
+    # to avoid having to deliver w as input here
     curl!(w_tmp,v_rot,base_cache) # v_rot is v' (relative to inertial frame)
     velocity_rel_to_rotating_frame!(v_rot,t,base_cache,phys_params)  # Now v_rot is v̂ (rel. to rotating frame)
     convective_derivative_rot!(dv,v_rot,w_tmp,base_cache,cdcache)
