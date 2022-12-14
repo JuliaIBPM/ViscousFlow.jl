@@ -352,7 +352,7 @@ function convective_term!(dv,v,t,base_cache,extra_cache,phys_params,cdcache::Rot
     # to avoid having to deliver w as input here
     curl!(w_tmp,v_rot,base_cache) # v_rot is v' (relative to inertial frame)
     velocity_rel_to_rotating_frame!(v_rot,t,base_cache,phys_params)  # Now v_rot is v̂ (rel. to rotating frame)
-    convective_derivative_rot!(dv,v_rot,w_tmp,base_cache,cdcache)
+    w_cross_v!(dv,w_tmp,v_rot,base_cache,cdcache)
 end
 
 function viscousflow_vorticity_bc_rhs!(vb,sys::ILMSystem,t)
@@ -371,7 +371,7 @@ function viscousflow_vorticity_bc_rhs!(vb,sys::ILMSystem,t)
     vb .-= vb_tmp
 
     # Subtract influence of free stream
-    freestream_func = get_freestream_func(forcing)
+    freestream_func = get_freestream_func(phys_params)
     Uinf, Vinf = freestream_func(t,phys_params)
     vb.u .-= Uinf
     vb.v .-= Vinf
@@ -469,7 +469,7 @@ function velocity!(v::Edges{Primal},w::Nodes{Dual},sys::ILMSystem,t)
 
     prescribed_surface_jump!(dvb,t,sys)
 
-    freestream_func = get_freestream_func(forcing)
+    freestream_func = get_freestream_func(phys_params)
     Vinf = freestream_func(t,phys_params)
 
     fill!(divv_tmp,0.0)
@@ -500,7 +500,7 @@ function streamfunction!(ψ::Nodes{Dual},w::Nodes{Dual},sys::ILMSystem,t)
     @unpack velcache = extra_cache
     @unpack wcache = velcache
 
-    freestream_func = get_freestream_func(forcing)
+    freestream_func = get_freestream_func(phys_params)
     Vinf = freestream_func(t,phys_params)
 
     streamfunction!(ψ,w,Vinf,base_cache,wcache)
