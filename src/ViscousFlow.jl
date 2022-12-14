@@ -34,33 +34,40 @@ function get_Reynolds_number(phys_params)
 end
 
 function default_timestep(sys)
-    @unpack phys_params, motions, forcing = sys
+    @unpack base_cache, phys_params, motions = sys
     g = get_grid(sys)
     Fo = get(phys_params,"Fourier",DEFAULT_FOURIER_NUMBER)
     Co = get(phys_params,"CFL",DEFAULT_CFL_NUMBER)
     Re = get_Reynolds_number(phys_params)
 
-    Uscale = 1.0
-    if !isnothing(motions)
-      Uscale, _ = maxlistvelocity(sys)
-    end
+    Uscale = !isnothing(motions) ? maxlistvelocity(sys) : 1.0
 
+    freestream_func = get_freestream_func(phys_params)
+    Uinf, Vinf = freestream_func(0.0,phys_params)
+    Uscale = max(Uscale,sqrt(Uinf^2+Vinf^2))
+
+    mot = get_rotation_func(phys_params)
+    Umot,_,_,_ = maxlistvelocity(surfaces(sys),mot)
+    Uscale = max(Uscale,Umot)
 
     Δt = min(Fo*Re*cellsize(g)^2,Co*cellsize(g)/Uscale)
     return Δt
 end
 
+
 function default_freestream(t,phys_params)
     Vinfmag = get(phys_params,"freestream speed",0.0)
     Vinf_angle = get(phys_params,"freestream angle",0.0)
-    Uinf = Vinfmag*cos(Vinf_angle)
-    Vinf = Vinfmag*sin(Vinf_angle)
-    return Uinf, Vinf
-end
 
-function default_rotation(t,phys_params)
-    omega = get(phys_params,"angular velocity",0.0)
-    return RigidBodyTools.RigidBodyMotion(RigidBodyTools.Constant(0.0,omega))
+    # This computes R^T*Vinf to provide freestream
+    # velocity in the corotating coordinate system, if appropriate
+    mot = get_rotation_func(phys_params)
+    k = mot(t)
+    α = angular_position(k)
+
+    Uinf = Vinfmag*cos(Vinf_angle - α)
+    Vinf = Vinfmag*sin(Vinf_angle - α)
+    return Uinf, Vinf
 end
 
 function default_vsplus(t,base_cache,phys_params,motions)
@@ -80,7 +87,7 @@ const DEFAULT_FOURIER_NUMBER = 1.0
 const DEFAULT_CFL_NUMBER = 0.5
 const DEFAULT_DS_TO_DX_RATIO = 1.4
 const DEFAULT_FREESTREAM_FUNC = default_freestream
-const DEFAULT_ROTATION_FUNC = default_rotation
+#const DEFAULT_ROTATION_FUNC = default_rotation
 const DEFAULT_TIMESTEP_FUNC = default_timestep
 const DEFAULT_VSPLUS_FUNC = default_vsplus
 const DEFAULT_VSMINUS_FUNC = default_vsminus
@@ -97,7 +104,9 @@ end
 get_freestream_func(::Nothing) = get_freestream_func(Dict())
 
 function get_rotation_func(phys_params::Dict)
-    return get(phys_params,"rotational motion",DEFAULT_ROTATION_FUNC)
+    omega = get(phys_params,"angular velocity",0.0)
+    return get(phys_params,"rotational motion",
+                  RigidBodyTools.RigidBodyMotion(RigidBodyTools.Constant(0.0,omega)))
 end
 
 get_rotation_func(::Nothing) = get_rotation_func(Dict())
@@ -278,7 +287,7 @@ function velocity_rel_to_rotating_frame!(u_prime::Edges{Primal},t,base_cache,phy
 end
 
 function get_rotational_vel_primalnode(t,sys)
-    @unpack bc, forcing, phys_params, extra_cache, base_cache = sys
+    @unpack phys_params, extra_cache, base_cache = sys
 
     rot_func = get_rotation_func(phys_params)
     kindata = rot_func(t)
@@ -317,7 +326,7 @@ function viscousflow_vorticity_ode_rhs!(dw,w,sys::ILMSystem,t)
 end
 
 function viscousflow_velocity_ode_rhs!(dv,v,sys::ILMSystem,t)
-    @unpack bc, forcing, phys_params, extra_cache, base_cache = sys
+    @unpack bc, phys_params, extra_cache, base_cache = sys
     @unpack dvb, dv_tmp, cdcache, fcache, w_tmp = extra_cache
 
     Re = get_Reynolds_number(phys_params)
@@ -342,7 +351,7 @@ function viscousflow_velocity_ode_rhs!(dv,v,sys::ILMSystem,t)
 end
 
  convective_term!(dv,v,t,base_cache,extra_cache,phys_params,cdcache::ConvectiveDerivativeCache) =
-            convective_derivative!(dv_tmp,v_rot,base_cache,cdcache)
+            convective_derivative!(dv,v,base_cache,cdcache)
 
 function convective_term!(dv,v,t,base_cache,extra_cache,phys_params,cdcache::RotConvectiveDerivativeCache)
     @unpack v_rot, w_tmp = extra_cache
@@ -356,7 +365,7 @@ function convective_term!(dv,v,t,base_cache,extra_cache,phys_params,cdcache::Rot
 end
 
 function viscousflow_vorticity_bc_rhs!(vb,sys::ILMSystem,t)
-    @unpack bc, forcing,extra_cache, base_cache, phys_params = sys
+    @unpack bc, extra_cache, base_cache, phys_params = sys
     @unpack dvb, vb_tmp, v_tmp, velcache, divv_tmp = extra_cache
     @unpack dcache, ϕtemp = velcache
 
@@ -464,7 +473,7 @@ function velocity!(v::Edges{Primal},curl_vmasked::Nodes{Dual},masked_divv::Nodes
 end
 
 function velocity!(v::Edges{Primal},w::Nodes{Dual},sys::ILMSystem,t)
-    @unpack forcing, phys_params, extra_cache, base_cache = sys
+    @unpack phys_params, extra_cache, base_cache = sys
     @unpack dvb, velcache, divv_tmp, w_tmp = extra_cache
 
     prescribed_surface_jump!(dvb,t,sys)
@@ -496,7 +505,7 @@ function streamfunction!(ψ::Nodes{Dual},w::Nodes{Dual},vp::Tuple,base_cache::Ba
 end
 
 function streamfunction!(ψ::Nodes{Dual},w::Nodes{Dual},sys::ILMSystem,t)
-    @unpack phys_params, forcing, extra_cache, base_cache = sys
+    @unpack phys_params, extra_cache, base_cache = sys
     @unpack velcache = extra_cache
     @unpack wcache = velcache
 
