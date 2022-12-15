@@ -13,7 +13,7 @@ jobs:
           - Auxiliary
           - Notebooks
         version:
-          - '1.4'
+          - '1.6'
           #- '^1.8.0-0'
           - 'nightly'
         os:

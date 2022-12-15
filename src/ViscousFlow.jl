@@ -273,20 +273,44 @@ frame) to û (measured relative to the translating/rotating frame)
 """
 function velocity_rel_to_rotating_frame!(u_prime::Edges{Primal},t,base_cache,phys_params)
 
+    #=
+    rot_func = get_rotation_func(phys_params)
+    kindata = rot_func(t)
+    omega = angular_velocity(kindata)
+
+    xr, yr = get_center_of_rotation(phys_params)
+    =#
+    xg, yg = x_grid(base_cache), y_grid(base_cache)
+
+    _velocity_rel_to_rotating_frame!(u_prime.u,u_prime.v,xg.v,yg.u,t,phys_params)
+
+    # Calculate cross product of Ω × (x-xr).
+    # and *subtract* this from u_prime to get û
+    #u_prime.u .+= omega.*(yg.u .- yr)
+    #u_prime.v .-= omega.*(xg.v .- xr)
+
+    return u_prime
+
+end
+
+function velocity_rel_to_rotating_frame!(u_prime::VectorData,t,base_cache,phys_params)
+    pts = points(base_cache)
+    _velocity_rel_to_rotating_frame!(u_prime.u,u_prime.v,pts.u,pts.v,t,phys_params)
+    return u_prime
+end
+
+# Calculate cross product of Ω × (x-xr).
+# and subtract this from u and v to get û and v̂ (returned in place)
+function _velocity_rel_to_rotating_frame!(u,v,x,y,t,phys_params)
     rot_func = get_rotation_func(phys_params)
     kindata = rot_func(t)
     omega = angular_velocity(kindata)
 
     xr, yr = get_center_of_rotation(phys_params)
 
-    xg, yg = x_grid(base_cache), y_grid(base_cache)
-
-    # Calculate cross product of Ω × (x-xr).
-    # and *subtract* this from u_prime to get û
-    u_prime.u .+= omega.*(yg.u .- yr)
-    u_prime.v .-= omega.*(xg.v .- xr)
-
-    return u_prime
+    u .+= omega.*(y .- yr)
+    v .-= omega.*(x .- xr)
+    return u, v
 
 end
 
@@ -533,17 +557,21 @@ function pressure!(press::Nodes{Primal},w::Nodes{Dual},τ,sys::ILMSystem,t)
       viscousflow_velocity_constraint_force!(dv_tmp,τ,sys)
       dv .-= dv_tmp
 
-
-      #change to v_rot here?
       divergence!(divv_tmp,dv,base_cache)
       inverse_laplacian!(press,divv_tmp,base_cache)
 
-      velocity_rel_to_rotating_frame!(v_tmp,t,base_cache,phys_params)
+      # For rotating coordinate systems...
+      if in_rotational_frame(phys_params)
+        # Compute v̂ here
+        velocity_rel_to_rotating_frame!(v_tmp,t,base_cache,phys_params)
 
-      fill!(v_rot,0.0)
-      velocity_rel_to_rotating_frame!(v_rot,t,base_cache,phys_params)
+        # Compute Ω × x̂ here
+        fill!(v_rot,0.0)
+        velocity_rel_to_rotating_frame!(v_rot,t,base_cache,phys_params)
 
-      press .-= 0.5*magsq(v_tmp) - 0.5*magsq(v_rot)
+        press .-= 0.5*magsq(v_tmp) - 0.5*magsq(v_rot)
+      end
+
       return press
 end
 
@@ -559,16 +587,24 @@ function traction!(tract::VectorData{N},τ::VectorData{N},sys::ILMSystem,t) wher
     @unpack vb_tmp, dvb = extra_cache
     @unpack sscalar_cache = base_cache
 
+    # (v̅ - Ẋ)⋅n -> sscalar_cache
     prescribed_surface_average!(vb_tmp,t,sys)
     surface_velocity!(dvb,sys,t)
     vb_tmp .-= dvb
-
+    if in_rotational_frame(phys_params)
+        velocity_rel_to_rotating_frame!(vb_tmp,t,base_cache,phys_params)
+    end
     nrm = normals(sys)
     pointwise_dot!(sscalar_cache,nrm,vb_tmp)
+
+    # [v] -> dvb
     prescribed_surface_jump!(dvb,t,sys)
+
+    # [v](v̅ - Ẋ)⋅n
     product!(tract,dvb,sscalar_cache)
 
     tract .+= τ
+
     return tract
 
 end
