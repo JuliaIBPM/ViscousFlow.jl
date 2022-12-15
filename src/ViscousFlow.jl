@@ -40,7 +40,7 @@ function default_timestep(sys)
     Co = get(phys_params,"CFL",DEFAULT_CFL_NUMBER)
     Re = get_Reynolds_number(phys_params)
 
-    Uscale = !isnothing(motions) ? maxlistvelocity(sys) : 1.0
+    Uscale = !isnothing(motions) ? maxlistvelocity(sys) : 0.0
 
     freestream_func = get_freestream_func(phys_params)
     Uinf, Vinf = freestream_func(0.0,phys_params)
@@ -49,6 +49,8 @@ function default_timestep(sys)
     mot = get_rotation_func(phys_params)
     Umot,_,_,_ = maxlistvelocity(surfaces(sys),mot)
     Uscale = max(Uscale,Umot)
+
+    Uscale = Uscale == 0.0 ? 1.0 : Uscale
 
     Δt = min(Fo*Re*cellsize(g)^2,Co*cellsize(g)/Uscale)
     return Δt
@@ -87,7 +89,6 @@ const DEFAULT_FOURIER_NUMBER = 1.0
 const DEFAULT_CFL_NUMBER = 0.5
 const DEFAULT_DS_TO_DX_RATIO = 1.4
 const DEFAULT_FREESTREAM_FUNC = default_freestream
-#const DEFAULT_ROTATION_FUNC = default_rotation
 const DEFAULT_TIMESTEP_FUNC = default_timestep
 const DEFAULT_VSPLUS_FUNC = default_vsplus
 const DEFAULT_VSMINUS_FUNC = default_vsminus
