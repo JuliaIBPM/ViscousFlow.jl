@@ -14,8 +14,8 @@ jobs:
           - Notebooks
         version:
           - '1.4'
-          - '^1.8.0-0'
-          #- 'nightly'
+          #- '^1.8.0-0'
+          - 'nightly'
         os:
           - ubuntu-latest
     steps:
