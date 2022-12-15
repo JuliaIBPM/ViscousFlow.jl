@@ -522,8 +522,8 @@ streamfunction(w::Nodes{Dual},τ,sys::ILMSystem,t) = streamfunction!(zeros_gridc
 @snapshotoutput streamfunction
 
 function pressure!(press::Nodes{Primal},w::Nodes{Dual},τ,sys::ILMSystem,t)
-      @unpack extra_cache, base_cache = sys
-      @unpack velcache, v_tmp, dv_tmp, dv, divv_tmp = extra_cache
+      @unpack extra_cache, base_cache, phys_params = sys
+      @unpack velcache, v_tmp, dv_tmp, dv, divv_tmp, v_rot = extra_cache
 
       velocity!(v_tmp,w,sys,t)
       viscousflow_velocity_ode_rhs!(dv,v_tmp,sys,t)
@@ -534,8 +534,13 @@ function pressure!(press::Nodes{Primal},w::Nodes{Dual},τ,sys::ILMSystem,t)
       #change to v_rot here?
       divergence!(divv_tmp,dv,base_cache)
       inverse_laplacian!(press,divv_tmp,base_cache)
-      #whats the velocity that goes into magsq?
-      press.-=(0.5*magsq(get_rotational_vel!(dv,t,sys)) - (0.5*get_rotational_vel_primalnode(t,sys)))
+
+      velocity_rel_to_rotating_frame!(v_tmp,t,base_cache,phys_params)
+
+      fill!(v_rot,0.0)
+      velocity_rel_to_rotating_frame!(v_rot,t,base_cache,phys_params)
+
+      press .-= 0.5*magsq(v_tmp) - 0.5*magsq(v_rot)
       return press
 end
 
