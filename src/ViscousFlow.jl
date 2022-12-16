@@ -24,7 +24,8 @@ setup_problem(g,bl;bc=nothing,kwargs...) =
 
 function grid_spacing(phys_params)
     gridRe = get(phys_params,"grid Re",DEFAULT_GRID_RE)
-    Δx = gridRe/get_Reynolds_number(phys_params)
+    Re = get_Reynolds_number(phys_params)
+    Δx = gridRe/Re
 end
 
 
@@ -34,30 +35,40 @@ function get_Reynolds_number(phys_params)
 end
 
 function default_timestep(sys)
-    @unpack base_cache, phys_params, motions = sys
+    @unpack phys_params = sys
     g = get_grid(sys)
     Fo = get(phys_params,"Fourier",DEFAULT_FOURIER_NUMBER)
     Co = get(phys_params,"CFL",DEFAULT_CFL_NUMBER)
     Re = get_Reynolds_number(phys_params)
 
-    Uscale = 0.0
+    Umax = get_max_velocity(sys)
+
+    Δt = min(Fo*Re*cellsize(g)^2,Co*cellsize(g)/Umax)
+    return Δt
+end
+
+function get_max_velocity(sys)
+    @unpack base_cache, phys_params, motions = sys
+
+    Umax = 0.0
     if !isnothing(motions)
-      Uscale,i,tmax,bi = maxlistvelocity(sys)
+      Umax,i,tmax,bi = maxlistvelocity(sys)
     end
 
     freestream_func = get_freestream_func(phys_params)
     Uinf, Vinf = freestream_func(0.0,phys_params)
-    Uscale = max(Uscale,sqrt(Uinf^2+Vinf^2))
+    Umax = max(Umax,sqrt(Uinf^2+Vinf^2))
 
     mot = get_rotation_func(phys_params)
     Umot,i,tmax,bi = maxlistvelocity(surfaces(sys),mot)
-    Uscale = max(Uscale,Umot)
+    Umax = max(Umax,Umot)
 
-    Uscale = Uscale == 0.0 ? 1.0 : Uscale
+    Umax = Umax == 0.0 ? 1.0 : Umax
 
-    Δt = min(Fo*Re*cellsize(g)^2,Co*cellsize(g)/Uscale)
-    return Δt
+    return Umax
 end
+
+
 
 
 function default_freestream(t,phys_params)
@@ -262,8 +273,7 @@ function viscousflow_system(args...;kwargs...)
 end
 
 
-
-#= ODE functions =#
+#= Changes of reference frame =#
 
 """
     velocity_rel_to_rotating_frame!(u_prime,t,sys::ILMSystem)
@@ -272,25 +282,9 @@ Changes the input velocity `u_prime` (u', which is measured relative to the tran
 frame) to û (measured relative to the translating/rotating frame)
 """
 function velocity_rel_to_rotating_frame!(u_prime::Edges{Primal},t,base_cache,phys_params)
-
-    #=
-    rot_func = get_rotation_func(phys_params)
-    kindata = rot_func(t)
-    omega = angular_velocity(kindata)
-
-    xr, yr = get_center_of_rotation(phys_params)
-    =#
     xg, yg = x_grid(base_cache), y_grid(base_cache)
-
     _velocity_rel_to_rotating_frame!(u_prime.u,u_prime.v,xg.v,yg.u,t,phys_params)
-
-    # Calculate cross product of Ω × (x-xr).
-    # and *subtract* this from u_prime to get û
-    #u_prime.u .+= omega.*(yg.u .- yr)
-    #u_prime.v .-= omega.*(xg.v .- xr)
-
     return u_prime
-
 end
 
 function velocity_rel_to_rotating_frame!(u_prime::VectorData,t,base_cache,phys_params)
@@ -300,7 +294,8 @@ function velocity_rel_to_rotating_frame!(u_prime::VectorData,t,base_cache,phys_p
 end
 
 # Calculate cross product of Ω × (x-xr).
-# and subtract this from u and v to get û and v̂ (returned in place)
+# and subtract this from u and v (velocity relative to inertial frame) to get
+# û and v̂ (velocity relative to the rotating frame), returned in place
 function _velocity_rel_to_rotating_frame!(u,v,x,y,t,phys_params)
     rot_func = get_rotation_func(phys_params)
     kindata = rot_func(t)
@@ -314,33 +309,8 @@ function _velocity_rel_to_rotating_frame!(u,v,x,y,t,phys_params)
 
 end
 
-function get_rotational_vel_primalnode(t,sys)
-    @unpack phys_params, extra_cache, base_cache = sys
+#= ODE functions =#
 
-    rot_func = get_rotation_func(phys_params)
-    kindata = rot_func(t)
-    omega = angular_velocity(kindata)
-
-    xr, yr = get_center_of_rotation(phys_params)
-
-    xg, yg = x_grid(base_cache), y_grid(base_cache)
-
-    #Should i define surfacescalarcache and get xg yg of cell center and do w cross x and return that or should i do surfacevectorcache
-    #and then interpolate?
-
-    #grid_interpolate xg and yg to location of primal node? doesnt mag do the required interpolation for us?
-
-    #compute the vector (x-xc)
-    x=xg-xr;
-    y=yg-yr;
-
-    #calculate cross product of omega and (x-xc).
-    rot_vel= zeros_grid(base_cache)
-    rot_vel.u .= -omega*y.u;
-    rot_vel.v .=  omega*x.v;
-
-    return magsq(rot_vel)
-end
 
 function viscousflow_vorticity_ode_rhs!(dw,w,sys::ILMSystem,t)
   @unpack extra_cache, base_cache = sys
