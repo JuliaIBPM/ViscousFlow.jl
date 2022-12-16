@@ -55,8 +55,8 @@ function get_max_velocity(sys)
       Umax,i,tmax,bi = maxlistvelocity(sys)
     end
 
-    freestream_func = get_freestream_func(phys_params)
-    Uinf, Vinf = freestream_func(0.0,phys_params)
+    Uinf, Vinf = evaluate_freestream(0.0,phys_params)
+
     Umax = max(Umax,sqrt(Uinf^2+Vinf^2))
 
     mot = get_rotation_func(phys_params)
@@ -69,21 +69,27 @@ function get_max_velocity(sys)
 end
 
 
-
-
 function default_freestream(t,phys_params)
     Vinfmag = get(phys_params,"freestream speed",0.0)
     Vinf_angle = get(phys_params,"freestream angle",0.0)
 
-    # This computes R^T*Vinf to provide freestream
-    # velocity in the corotating coordinate system, if appropriate
-    mot = get_rotation_func(phys_params)
-    k = mot(t)
-    α = angular_position(k)
+    Uinf = Vinfmag*cos(Vinf_angle)
+    Vinf = Vinfmag*sin(Vinf_angle)
 
-    Uinf = Vinfmag*cos(Vinf_angle - α)
-    Vinf = Vinfmag*sin(Vinf_angle - α)
     return Uinf, Vinf
+end
+
+
+function velocity_in_rotating_coordinates(u,v,t,phys_params)
+  # This computes R^T*Vinf to provide freestream
+  # velocity in the corotating coordinate system, if appropriate
+  mot = get_rotation_func(phys_params)
+  k = mot(t)
+  α = angular_position(k)
+
+  up =  u*cos(α) + v*sin(α)
+  vp = -u*sin(α) + v*cos(α)
+  return up, vp
 end
 
 function default_vsplus(t,base_cache,phys_params,motions)
@@ -118,15 +124,25 @@ end
 
 get_freestream_func(::Nothing) = get_freestream_func(Dict())
 
+function evaluate_freestream(t,phys_params)
+  freestream_func = get_freestream_func(phys_params)
+  Vinf = freestream_func(t,phys_params)
+  if in_rotational_frame(phys_params)
+    Vinf_i = Vinf
+    Vinf = velocity_in_rotating_coordinates(Vinf_i...,t,phys_params)
+  end
+  return Vinf
+end
+
 function get_rotation_func(phys_params::Dict)
     omega = get(phys_params,"angular velocity",0.0)
-    return get(phys_params,"rotational motion",
+    return get(phys_params,"rotation",
                   RigidBodyTools.RigidBodyMotion(RigidBodyTools.Constant(0.0,omega)))
 end
 
 get_rotation_func(::Nothing) = get_rotation_func(Dict())
 
-in_rotational_frame(phys_params::Dict) = haskey(phys_params,"angular velocity") || haskey(phys_params,"rotational motion")
+in_rotational_frame(phys_params::Dict) = haskey(phys_params,"angular velocity") || haskey(phys_params,"rotation")
 
 function get_center_of_rotation(phys_params::Dict)
     return get(phys_params,"center of rotation",DEFAULT_CENTER_OF_ROTATION)
@@ -256,7 +272,7 @@ which are crucial for certain types of problems.
 - `dtype = ` to set the element type to `Float64` (default) or `ComplexF64`.
 - `phys_params = ` A dictionary to pass in physical parameters, or to pass in
                   alternative models for the freestream velocity (with the "freestream" key)
-                  or overall rotational motion (with the "rotational motion" key)
+                  or overall rotational motion (with the "rotation" key)
 - `bc = ` A dictionary to pass in boundary condition data or functions, using "external"
           and "internal" keys to pass in functions that provide the
           corresponding surface data outside and inside the surface(s).
@@ -378,8 +394,9 @@ function viscousflow_vorticity_bc_rhs!(vb,sys::ILMSystem,t)
     vb .-= vb_tmp
 
     # Subtract influence of free stream
-    freestream_func = get_freestream_func(phys_params)
-    Uinf, Vinf = freestream_func(t,phys_params)
+
+    Uinf, Vinf = evaluate_freestream(t,phys_params)
+
     vb.u .-= Uinf
     vb.v .-= Vinf
 
@@ -476,8 +493,7 @@ function velocity!(v::Edges{Primal},w::Nodes{Dual},sys::ILMSystem,t)
 
     prescribed_surface_jump!(dvb,t,sys)
 
-    freestream_func = get_freestream_func(phys_params)
-    Vinf = freestream_func(t,phys_params)
+    Vinf = evaluate_freestream(t,phys_params)
 
     fill!(divv_tmp,0.0)
     fill!(w_tmp,0.0)
@@ -507,8 +523,7 @@ function streamfunction!(ψ::Nodes{Dual},w::Nodes{Dual},sys::ILMSystem,t)
     @unpack velcache = extra_cache
     @unpack wcache = velcache
 
-    freestream_func = get_freestream_func(phys_params)
-    Vinf = freestream_func(t,phys_params)
+    Vinf = evaluate_freestream(t,phys_params)
 
     streamfunction!(ψ,w,Vinf,base_cache,wcache)
 
