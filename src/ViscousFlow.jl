@@ -8,7 +8,8 @@ using UnPack
 
 
 export ViscousIncompressibleFlowProblem
-export setup_grid, viscousflow_system, setup_problem, surface_point_spacing
+export setup_grid, viscousflow_system, setup_problem, surface_point_spacing,
+        surface_velocity_in_translating_frame!
 
 #= Supporting functions =#
 
@@ -56,13 +57,13 @@ function get_max_velocity(sys)
     end
 
     Uinf, Vinf = evaluate_freestream(0.0,phys_params)
-
     Umax = max(Umax,sqrt(Uinf^2+Vinf^2))
 
     mot = get_rotation_func(phys_params)
     Umot,i,tmax,bi = maxlistvelocity(surfaces(sys),mot)
     Umax = max(Umax,Umot)
 
+    # If no velocity has been set yet, just set it to unity
     Umax = Umax == 0.0 ? 1.0 : Umax
 
     return Umax
@@ -124,25 +125,17 @@ end
 
 get_freestream_func(::Nothing) = get_freestream_func(Dict())
 
-function evaluate_freestream(t,phys_params)
-  freestream_func = get_freestream_func(phys_params)
-  Vinf = freestream_func(t,phys_params)
-  if in_rotational_frame(phys_params)
-    Vinf_i = Vinf
-    Vinf = velocity_in_rotating_coordinates(Vinf_i...,t,phys_params)
-  end
-  return Vinf
-end
 
 function get_rotation_func(phys_params::Dict)
     omega = get(phys_params,"angular velocity",0.0)
-    return get(phys_params,"rotation",
-                  RigidBodyTools.RigidBodyMotion(RigidBodyTools.Constant(0.0,omega)))
+    Xp = get_center_of_rotation(phys_params)
+    return get(phys_params,"reference frame",
+                  RigidBodyTools.RigidBodyMotion((0.0,0.0),omega;pivot=Xp))
 end
 
 get_rotation_func(::Nothing) = get_rotation_func(Dict())
 
-in_rotational_frame(phys_params::Dict) = haskey(phys_params,"angular velocity") || haskey(phys_params,"rotation")
+in_rotational_frame(phys_params::Dict) = haskey(phys_params,"angular velocity") || haskey(phys_params,"reference frame")
 
 function get_center_of_rotation(phys_params::Dict)
     return get(phys_params,"center of rotation",DEFAULT_CENTER_OF_ROTATION)
@@ -289,6 +282,58 @@ function viscousflow_system(args...;kwargs...)
 end
 
 
+# Evaluating the free stream velocity
+
+"""
+    evaluate_freestream(t,phys_params)
+
+Provide the components of the free stream velocity at time `t`.
+If the problem is set up in the rotational frame of reference,
+then this transforms the specified velocity and also subtracts the
+translational motion of the center of rotation.
+"""
+function evaluate_freestream(t,phys_params)
+
+  # get the specified freestream, if any
+  freestream_func = get_freestream_func(phys_params)
+  Vinf = freestream_func(t,phys_params)
+
+  # if the problem is set in the rotational frame, then...
+  if in_rotational_frame(phys_params)
+
+    # transform the specified freestream to the co-rotating coordinates
+    Vinf_i = Vinf
+    Vinf = velocity_in_rotating_coordinates(Vinf_i...,t,phys_params)
+
+    # subtract the motion of the center of rotation
+    mot = get_rotation_func(phys_params)
+    Xp = get_center_of_rotation(phys_params)
+    Vp = translational_velocity(mot(t,Xp);inertial=false)
+    Vinf = Vinf .- Vp
+  end
+  return Vinf
+end
+
+"""
+    surface_velocity_in_translating_frame!(vel,t,base_cache,phys_params)
+
+Evaluates the surface velocity when the problem is set up in a moving
+frame of reference (specified with the `reference frame` keyword).
+It removes the translational velocity of the center of rotation, since
+this is applied as a free stream velocity (with change of sign).
+"""
+function surface_velocity_in_translating_frame!(vel,t,base_cache,phys_params)
+    mot = get_rotation_func(phys_params)
+
+    surface_velocity!(vel,base_cache,mot,t;inertial=false)
+    Xp = get_center_of_rotation(phys_params)
+    Ũp, Ṽp = translational_velocity(mot(t,Xp);inertial=false)
+    vel.u .-= Ũp
+    vel.v .-= Ṽp
+    return vel
+end
+
+
 #= Changes of reference frame =#
 
 """
@@ -394,7 +439,6 @@ function viscousflow_vorticity_bc_rhs!(vb,sys::ILMSystem,t)
     vb .-= vb_tmp
 
     # Subtract influence of free stream
-
     Uinf, Vinf = evaluate_freestream(t,phys_params)
 
     vb.u .-= Uinf
