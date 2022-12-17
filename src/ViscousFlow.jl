@@ -81,18 +81,6 @@ function default_freestream(t,phys_params)
 end
 
 
-function velocity_in_rotating_coordinates(u,v,t,phys_params)
-  # This computes R^T*Vinf to provide freestream
-  # velocity in the corotating coordinate system, if appropriate
-  mot = get_rotation_func(phys_params)
-  k = mot(t)
-  α = angular_position(k)
-
-  up =  u*cos(α) + v*sin(α)
-  vp = -u*sin(α) + v*cos(α)
-  return up, vp
-end
-
 function default_vsplus(t,base_cache,phys_params,motions)
   vsplus = zeros_surface(base_cache)
   return vsplus
@@ -303,7 +291,7 @@ function evaluate_freestream(t,phys_params)
 
     # transform the specified freestream to the co-rotating coordinates
     Vinf_i = Vinf
-    Vinf = velocity_in_rotating_coordinates(Vinf_i...,t,phys_params)
+    Vinf = transform_vector_to_rotating_coordinates(Vinf_i...,t,phys_params)
 
     # subtract the motion of the center of rotation
     mot = get_rotation_func(phys_params)
@@ -368,6 +356,42 @@ function _velocity_rel_to_rotating_frame!(u,v,x,y,t,phys_params)
     v .-= omega.*(x .- xr)
     return u, v
 
+end
+
+"""
+    transform_vector_to_rotating_coordinates(u,v,t,phys_params) -> Tuple
+
+Transform a vector expressed in inertial coordinates with components `u`
+and `v` to the rotating coordinate system at time `t`.
+"""
+function transform_vector_to_rotating_coordinates(u,v,t,phys_params)
+  # This computes R^T*V to provide vector components in the corotating
+  # coordinate system
+  mot = get_rotation_func(phys_params)
+  k = mot(t)
+  α = angular_position(k)
+
+  up =  u*cos(α) + v*sin(α)
+  vp = -u*sin(α) + v*cos(α)
+  return up, vp
+end
+
+"""
+    transform_vector_to_rotating_coordinates(u,v,t,phys_params) -> Tuple
+
+Transform a vector expressed in rotating coordinates with components `u`
+and `v` to the inertial coordinate system at time `t`.
+"""
+function transform_vector_to_inertial_coordinates(u,v,t,phys_params)
+  # This computes R^T*Vinf to provide freestream
+  # velocity in the corotating coordinate system, if appropriate
+  mot = get_rotation_func(phys_params)
+  k = mot(t)
+  α = angular_position(k)
+
+  up =  u*cos(α) - v*sin(α)
+  vp =  u*sin(α) + v*cos(α)
+  return up, vp
 end
 
 #= ODE functions =#
@@ -658,14 +682,19 @@ pressurejump(w::Nodes{Dual},τ::VectorData,sys::ILMSystem,t) = pressurejump!(zer
 
 #= Integrated metrics =#
 
-force(w::Nodes{Dual},τ::VectorData{0},sys::ILMSystem{S,P,0},t,bodyi::Int) where {S,P} = nothing, nothing #Vector{Float64}(), Vector{Float64}()
+force(w::Nodes{Dual},τ::VectorData{0},sys::ILMSystem{S,P,0},t,bodyi::Int;kwargs...) where {S,P} = nothing, nothing #Vector{Float64}(), Vector{Float64}()
 
-function force(w::Nodes{Dual},τ::VectorData{N},sys::ILMSystem{S,P,N},t,bodyi::Int) where {S,P,N}
-    @unpack base_cache = sys
+function force(w::Nodes{Dual},τ::VectorData{N},sys::ILMSystem{S,P,N},t,bodyi::Int;inertial=true) where {S,P,N}
+    @unpack base_cache, phys_params = sys
     @unpack sdata_cache = base_cache
     traction!(sdata_cache,τ,sys,t)
     fx = integrate(sdata_cache.u,sys,bodyi)
     fy = integrate(sdata_cache.v,sys,bodyi)
+
+    if (inertial && in_rotational_frame(phys_params))
+        fx_r, fy_r = fx, fy
+        fx, fy = transform_vector_to_inertial_coordinates(fx_r,fy_r,t,phys_params)
+    end
 
     return fx, fy
 end

@@ -1,5 +1,5 @@
 #=
-# 3. Applying pulse forcing to a flow
+# Applying pulse forcing to a flow
 Here, we will show how to apply a transient force to a flow.
 =#
 

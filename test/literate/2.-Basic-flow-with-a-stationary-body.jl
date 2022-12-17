@@ -1,5 +1,5 @@
 #=
-# 2. Basic flow with a stationary body
+# Basic flow with a stationary body
 In this notebook we will simulate the flow past a stationary body.
 =#
 

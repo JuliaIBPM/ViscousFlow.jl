@@ -1,5 +1,5 @@
 #=
-# 4. Multiple stationary bodies
+# Multiple stationary bodies
 Adding multiple bodies to a problem is easy, using the concepts of a `BodyList`
 and `RigidTransformList`.
 =#

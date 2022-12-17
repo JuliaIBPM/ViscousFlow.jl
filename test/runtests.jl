@@ -12,6 +12,7 @@ notebookdir = "../examples"
 docdir = "../docs/src/manual"
 litdir = "./literate"
 
+
 if GROUP == "All" || GROUP == "Literate"
   for (root, dirs, files) in walkdir(litdir)
     for file in files
@@ -22,9 +23,15 @@ end
 
 
 if GROUP == "Notebooks"
+
   for (root, dirs, files) in walkdir(litdir)
+    if splitpath(root)[end] == "assets"
+        for file in files
+            cp(joinpath(root, file),joinpath(notebookdir,file),force=true)
+        end
+    end
     for file in files
-      #endswith(file,".jl") && startswith(file,"7") && Literate.notebook(joinpath(root, file),notebookdir)
+      #endswith(file,".jl") && startswith(file,"8") && Literate.notebook(joinpath(root, file),notebookdir)
       endswith(file,".jl") && Literate.notebook(joinpath(root, file),notebookdir)
     end
   end
