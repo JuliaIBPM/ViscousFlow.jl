@@ -1,5 +1,5 @@
 #=
-# 6. Variable free stream
+# Variable free stream
 In this notebook we will simulate the flow with a time-varying free stream past a
 stationary body. To demonstrate this, we will solve for oscillatory flow past a
 rectangular object, in which the $x$ component of the free stream is
@@ -51,10 +51,10 @@ function my_freestream(t,phys_params)
 end
 
 #=
-The freestream function is generically considered a forcing function,
-so we pass it in via the "freestream" key in the forcing dictionary.
+The freestream function is passed in via the "freestream" key in the
+parameters Dict.
 =#
-forcing_dict = Dict("freestream" => my_freestream)
+my_params["freestream"] = my_freestream
 
 
 # Now let us carry on with the other usual steps:
@@ -79,9 +79,9 @@ plot(body,xlim=xlim,ylim=ylim)
 
 #=
 ### Construct the system structure
-This step is like the previous notebook, but now we also provide the body and the freestream:
+This step is like the previous notebooks:
 =#
-sys = viscousflow_system(g,body,phys_params=my_params,forcing=forcing_dict);
+sys = viscousflow_system(g,body,phys_params=my_params);
 #=
 ### Initialize
 Now, we initialize with zero vorticity

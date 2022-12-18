@@ -8,7 +8,8 @@ using UnPack
 
 
 export ViscousIncompressibleFlowProblem
-export setup_grid, viscousflow_system, setup_problem, surface_point_spacing
+export setup_grid, viscousflow_system, setup_problem, surface_point_spacing,
+        surface_velocity_in_translating_frame!
 
 #= Supporting functions =#
 
@@ -24,7 +25,8 @@ setup_problem(g,bl;bc=nothing,kwargs...) =
 
 function grid_spacing(phys_params)
     gridRe = get(phys_params,"grid Re",DEFAULT_GRID_RE)
-    Δx = gridRe/get_Reynolds_number(phys_params)
+    Re = get_Reynolds_number(phys_params)
+    Δx = gridRe/Re
 end
 
 grid_spacing(Δx::Float64) = Δx
@@ -36,29 +38,50 @@ function get_Reynolds_number(phys_params)
 end
 
 function default_timestep(sys)
-    @unpack phys_params, motions, forcing = sys
+    @unpack phys_params = sys
     g = get_grid(sys)
     Fo = get(phys_params,"Fourier",DEFAULT_FOURIER_NUMBER)
     Co = get(phys_params,"CFL",DEFAULT_CFL_NUMBER)
     Re = get_Reynolds_number(phys_params)
 
-    Uscale = 1.0
-    if !isnothing(motions)
-      Uscale, _ = maxlistvelocity(sys)
-    end
+    Umax = get_max_velocity(sys)
 
-
-    Δt = min(Fo*Re*cellsize(g)^2,Co*cellsize(g)/Uscale)
+    Δt = min(Fo*Re*cellsize(g)^2,Co*cellsize(g)/Umax)
     return Δt
 end
+
+function get_max_velocity(sys)
+    @unpack base_cache, phys_params, motions = sys
+
+    Umax = 0.0
+    if !isnothing(motions)
+      Umax,i,tmax,bi = maxlistvelocity(sys)
+    end
+
+    Uinf, Vinf = evaluate_freestream(0.0,phys_params)
+    Umax = max(Umax,sqrt(Uinf^2+Vinf^2))
+
+    mot = get_rotation_func(phys_params)
+    Umot,i,tmax,bi = maxlistvelocity(surfaces(sys),mot)
+    Umax = max(Umax,Umot)
+
+    # If no velocity has been set yet, just set it to unity
+    Umax = Umax == 0.0 ? 1.0 : Umax
+
+    return Umax
+end
+
 
 function default_freestream(t,phys_params)
     Vinfmag = get(phys_params,"freestream speed",0.0)
     Vinf_angle = get(phys_params,"freestream angle",0.0)
+
     Uinf = Vinfmag*cos(Vinf_angle)
     Vinf = Vinfmag*sin(Vinf_angle)
+
     return Uinf, Vinf
 end
+
 
 function default_vsplus(t,base_cache,phys_params,motions)
   vsplus = zeros_surface(base_cache)
@@ -80,17 +103,33 @@ const DEFAULT_FREESTREAM_FUNC = default_freestream
 const DEFAULT_TIMESTEP_FUNC = default_timestep
 const DEFAULT_VSPLUS_FUNC = default_vsplus
 const DEFAULT_VSMINUS_FUNC = default_vsminus
-
+const DEFAULT_CENTER_OF_ROTATION = (0.0,0.0)
 
 #=
 Process keywords
 =#
 
-function get_freestream_func(forcing::Dict)
-    return get(forcing,"freestream",DEFAULT_FREESTREAM_FUNC)
+function get_freestream_func(phys_params::Dict)
+    return get(phys_params,"freestream",DEFAULT_FREESTREAM_FUNC)
 end
 
 get_freestream_func(::Nothing) = get_freestream_func(Dict())
+
+
+function get_rotation_func(phys_params::Dict)
+    omega = get(phys_params,"angular velocity",0.0)
+    Xp = get_center_of_rotation(phys_params)
+    return get(phys_params,"reference frame",
+                  RigidBodyTools.RigidBodyMotion((0.0,0.0),omega;pivot=Xp))
+end
+
+get_rotation_func(::Nothing) = get_rotation_func(Dict())
+
+in_rotational_frame(phys_params::Dict) = haskey(phys_params,"angular velocity") || haskey(phys_params,"reference frame")
+
+function get_center_of_rotation(phys_params::Dict)
+    return get(phys_params,"center of rotation",DEFAULT_CENTER_OF_ROTATION)
+end
 
 function get_forcing_models(forcing::Dict)
     return get(forcing,"forcing models",nothing)
@@ -108,7 +147,6 @@ end
 get_bc_func(::Nothing) = get_bc_func(Dict())
 
 
-
 #=
 Defining the extra cache and extending prob_cache
 =#
@@ -122,6 +160,7 @@ struct ViscousIncompressibleFlowCache{CDT,FRT,DVT,VFT,VORT,DILT,VELT,FCT} <: Abs
    vb_tmp :: DVT
    v_tmp :: VFT
    dv :: VFT
+   v_rot ::VFT
    dv_tmp :: VFT
    w_tmp :: VORT
    divv_tmp :: DILT
@@ -139,6 +178,7 @@ function ImmersedLayers.prob_cache(prob::ViscousIncompressibleFlowProblem,
 
     v_tmp = zeros_grid(base_cache)
     dv = zeros_grid(base_cache)
+    v_rot = zeros_grid(base_cache)
     dv_tmp = zeros_grid(base_cache)
     w_tmp = zeros_gridcurl(base_cache)
     divv_tmp = zeros_griddiv(base_cache)
@@ -151,7 +191,7 @@ function ImmersedLayers.prob_cache(prob::ViscousIncompressibleFlowProblem,
     viscous_L = Laplacian(base_cache,gcurl_cache,over_Re)
 
     # Create cache for the convective derivative
-    cdcache = ConvectiveDerivativeCache(base_cache)
+    cdcache = in_rotational_frame(phys_params) ? RotConvectiveDerivativeCache(base_cache) : ConvectiveDerivativeCache(base_cache)
 
     fcache = nothing
 
@@ -162,7 +202,7 @@ function ImmersedLayers.prob_cache(prob::ViscousIncompressibleFlowProblem,
     # The state here is vorticity, the constraint is the surface traction
     f = _get_ode_function_list(viscous_L,base_cache)
 
-    ViscousIncompressibleFlowCache(cdcache,fcache,dvb,vb_tmp,v_tmp,dv,dv_tmp,w_tmp,divv_tmp,velcache,f)
+    ViscousIncompressibleFlowCache(cdcache,fcache,dvb,vb_tmp,v_tmp,dv,v_rot,dv_tmp,w_tmp,divv_tmp,velcache,f)
 end
 
 _get_ode_function_list(viscous_L,base_cache::BasicILMCache{N}) where {N} =
@@ -214,13 +254,13 @@ which are crucial for certain types of problems.
 - `ddftype = ` to set the DDF type. The default is `CartesianGrids.Yang3`.
 - `scaling = ` to set the scaling type, `GridScaling` (default) or `IndexScaling`.
 - `dtype = ` to set the element type to `Float64` (default) or `ComplexF64`.
-- `phys_params = ` A dictionary to pass in physical parameters
+- `phys_params = ` A dictionary to pass in physical parameters, or to pass in
+                  alternative models for the freestream velocity (with the "freestream" key)
+                  or overall rotational motion (with the "rotation" key)
 - `bc = ` A dictionary to pass in boundary condition data or functions, using "external"
           and "internal" keys to pass in functions that provide the
           corresponding surface data outside and inside the surface(s).
-- `forcing = ` A dictionary to pass in forcing models (via the "forcing models" key),
-                or to pass in an alternative model for
-               the freestream velocity (with the "freestream" key)
+- `forcing = ` A dictionary to pass in forcing models (via the "forcing models" key)
 - `motions = ` to provide function(s) that specify the velocity of the immersed surface(s). Note: if this keyword is used, it is assumed that surfaces will move.
 - `timestep_func =` to pass in a function for time-dependent problems that provides the time-step size.
                   It is expected that this function takes in two arguments,
@@ -232,7 +272,132 @@ function viscousflow_system(args...;phys_params=Dict(), kwargs...)
   return construct_system(prob)
 end
 
+# Evaluating the free stream velocity
+
+"""
+    evaluate_freestream(t,phys_params)
+
+Provide the components of the free stream velocity at time `t`.
+If the problem is set up in the rotational frame of reference,
+then this transforms the specified velocity and also subtracts the
+translational motion of the center of rotation.
+"""
+function evaluate_freestream(t,phys_params)
+
+  # get the specified freestream, if any
+  freestream_func = get_freestream_func(phys_params)
+  Vinf = freestream_func(t,phys_params)
+
+  # if the problem is set in the rotational frame, then...
+  if in_rotational_frame(phys_params)
+
+    # transform the specified freestream to the co-rotating coordinates
+    Vinf_i = Vinf
+    Vinf = transform_vector_to_rotating_coordinates(Vinf_i...,t,phys_params)
+
+    # subtract the motion of the center of rotation
+    mot = get_rotation_func(phys_params)
+    Xp = get_center_of_rotation(phys_params)
+    Vp = translational_velocity(mot(t,Xp);inertial=false)
+    Vinf = Vinf .- Vp
+  end
+  return Vinf
+end
+
+"""
+    surface_velocity_in_translating_frame!(vel,t,base_cache,phys_params)
+
+Evaluates the surface velocity when the problem is set up in a moving
+frame of reference (specified with the `reference frame` keyword).
+It removes the translational velocity of the center of rotation, since
+this is applied as a free stream velocity (with change of sign).
+"""
+function surface_velocity_in_translating_frame!(vel,t,base_cache,phys_params)
+    mot = get_rotation_func(phys_params)
+
+    surface_velocity!(vel,base_cache,mot,t;inertial=false)
+    Xp = get_center_of_rotation(phys_params)
+    Ũp, Ṽp = translational_velocity(mot(t,Xp);inertial=false)
+    vel.u .-= Ũp
+    vel.v .-= Ṽp
+    return vel
+end
+
+
+#= Changes of reference frame =#
+
+"""
+    velocity_rel_to_rotating_frame!(u_prime,t,sys::ILMSystem)
+
+Changes the input velocity `u_prime` (u', which is measured relative to the translating
+frame) to û (measured relative to the translating/rotating frame)
+"""
+function velocity_rel_to_rotating_frame!(u_prime::Edges{Primal},t,base_cache,phys_params)
+    xg, yg = x_grid(base_cache), y_grid(base_cache)
+    _velocity_rel_to_rotating_frame!(u_prime.u,u_prime.v,xg.v,yg.u,t,phys_params)
+    return u_prime
+end
+
+function velocity_rel_to_rotating_frame!(u_prime::VectorData,t,base_cache,phys_params)
+    pts = points(base_cache)
+    _velocity_rel_to_rotating_frame!(u_prime.u,u_prime.v,pts.u,pts.v,t,phys_params)
+    return u_prime
+end
+
+# Calculate cross product of Ω × (x-xr).
+# and subtract this from u and v (velocity relative to inertial frame) to get
+# û and v̂ (velocity relative to the rotating frame), returned in place
+function _velocity_rel_to_rotating_frame!(u,v,x,y,t,phys_params)
+    rot_func = get_rotation_func(phys_params)
+    kindata = rot_func(t)
+    omega = angular_velocity(kindata)
+
+    xr, yr = get_center_of_rotation(phys_params)
+
+    u .+= omega.*(y .- yr)
+    v .-= omega.*(x .- xr)
+    return u, v
+
+end
+
+"""
+    transform_vector_to_rotating_coordinates(u,v,t,phys_params) -> Tuple
+
+Transform a vector expressed in inertial coordinates with components `u`
+and `v` to the rotating coordinate system at time `t`.
+"""
+function transform_vector_to_rotating_coordinates(u,v,t,phys_params)
+  # This computes R^T*V to provide vector components in the corotating
+  # coordinate system
+  mot = get_rotation_func(phys_params)
+  k = mot(t)
+  α = angular_position(k)
+
+  up =  u*cos(α) + v*sin(α)
+  vp = -u*sin(α) + v*cos(α)
+  return up, vp
+end
+
+"""
+    transform_vector_to_rotating_coordinates(u,v,t,phys_params) -> Tuple
+
+Transform a vector expressed in rotating coordinates with components `u`
+and `v` to the inertial coordinate system at time `t`.
+"""
+function transform_vector_to_inertial_coordinates(u,v,t,phys_params)
+  # This computes R^T*Vinf to provide freestream
+  # velocity in the corotating coordinate system, if appropriate
+  mot = get_rotation_func(phys_params)
+  k = mot(t)
+  α = angular_position(k)
+
+  up =  u*cos(α) - v*sin(α)
+  vp =  u*sin(α) + v*cos(α)
+  return up, vp
+end
+
 #= ODE functions =#
+
 
 function viscousflow_vorticity_ode_rhs!(dw,w,sys::ILMSystem,t)
   @unpack extra_cache, base_cache = sys
@@ -246,8 +411,8 @@ function viscousflow_vorticity_ode_rhs!(dw,w,sys::ILMSystem,t)
 end
 
 function viscousflow_velocity_ode_rhs!(dv,v,sys::ILMSystem,t)
-    @unpack bc, forcing, phys_params, extra_cache, base_cache = sys
-    @unpack dvb, dv_tmp, cdcache, fcache = extra_cache
+    @unpack bc, phys_params, extra_cache, base_cache = sys
+    @unpack dvb, dv_tmp, cdcache, fcache, w_tmp = extra_cache
 
     Re = get_Reynolds_number(phys_params)
     over_Re = 1.0/Re
@@ -255,7 +420,7 @@ function viscousflow_velocity_ode_rhs!(dv,v,sys::ILMSystem,t)
     fill!(dv,0.0)
 
     # Calculate the convective derivative
-    convective_derivative!(dv_tmp,v,base_cache,cdcache)
+    convective_term!(dv_tmp,v,t,base_cache,extra_cache,phys_params,cdcache)
     dv .-= dv_tmp
 
     # Calculate the double-layer term
@@ -270,9 +435,22 @@ function viscousflow_velocity_ode_rhs!(dv,v,sys::ILMSystem,t)
     return dv
 end
 
+ convective_term!(dv,v,t,base_cache,extra_cache,phys_params,cdcache::ConvectiveDerivativeCache) =
+            convective_derivative!(dv,v,base_cache,cdcache)
+
+function convective_term!(dv,v,t,base_cache,extra_cache,phys_params,cdcache::RotConvectiveDerivativeCache)
+    @unpack v_rot, w_tmp = extra_cache
+
+    v_rot .= v
+
+    # to avoid having to deliver w as input here
+    curl!(w_tmp,v_rot,base_cache) # v_rot is v' (relative to inertial frame)
+    velocity_rel_to_rotating_frame!(v_rot,t,base_cache,phys_params)  # Now v_rot is v̂ (rel. to rotating frame)
+    w_cross_v!(dv,w_tmp,v_rot,base_cache,cdcache)
+end
 
 function viscousflow_vorticity_bc_rhs!(vb,sys::ILMSystem,t)
-    @unpack bc, forcing,extra_cache, base_cache, phys_params = sys
+    @unpack bc, extra_cache, base_cache, phys_params = sys
     @unpack dvb, vb_tmp, v_tmp, velcache, divv_tmp = extra_cache
     @unpack dcache, ϕtemp = velcache
 
@@ -287,13 +465,15 @@ function viscousflow_vorticity_bc_rhs!(vb,sys::ILMSystem,t)
     vb .-= vb_tmp
 
     # Subtract influence of free stream
-    freestream_func = get_freestream_func(forcing)
-    Uinf, Vinf = freestream_func(t,phys_params)
+    Uinf, Vinf = evaluate_freestream(t,phys_params)
+
     vb.u .-= Uinf
     vb.v .-= Vinf
 
     return vb
 end
+
+
 
 function viscousflow_velocity_bc_rhs!(vb,sys::ILMSystem,t)
     prescribed_surface_average!(vb,t,sys)
@@ -378,15 +558,15 @@ function velocity!(v::Edges{Primal},curl_vmasked::Nodes{Dual},masked_divv::Nodes
 end
 
 function velocity!(v::Edges{Primal},w::Nodes{Dual},sys::ILMSystem,t)
-    @unpack forcing, phys_params, extra_cache, base_cache = sys
+    @unpack phys_params, extra_cache, base_cache = sys
     @unpack dvb, velcache, divv_tmp, w_tmp = extra_cache
 
     prescribed_surface_jump!(dvb,t,sys)
 
-    freestream_func = get_freestream_func(forcing)
-    Vinf = freestream_func(t,phys_params)
+    Vinf = evaluate_freestream(t,phys_params)
 
     fill!(divv_tmp,0.0)
+    fill!(w_tmp,0.0)
     velocity!(v,w,divv_tmp,dvb,Vinf,base_cache,velcache,w_tmp)
 end
 
@@ -409,12 +589,11 @@ function streamfunction!(ψ::Nodes{Dual},w::Nodes{Dual},vp::Tuple,base_cache::Ba
 end
 
 function streamfunction!(ψ::Nodes{Dual},w::Nodes{Dual},sys::ILMSystem,t)
-    @unpack phys_params, forcing, extra_cache, base_cache = sys
+    @unpack phys_params, extra_cache, base_cache = sys
     @unpack velcache = extra_cache
     @unpack wcache = velcache
 
-    freestream_func = get_freestream_func(forcing)
-    Vinf = freestream_func(t,phys_params)
+    Vinf = evaluate_freestream(t,phys_params)
 
     streamfunction!(ψ,w,Vinf,base_cache,wcache)
 
@@ -425,8 +604,8 @@ streamfunction(w::Nodes{Dual},τ,sys::ILMSystem,t) = streamfunction!(zeros_gridc
 @snapshotoutput streamfunction
 
 function pressure!(press::Nodes{Primal},w::Nodes{Dual},τ,sys::ILMSystem,t)
-      @unpack extra_cache, base_cache = sys
-      @unpack velcache, v_tmp, dv_tmp, dv, divv_tmp = extra_cache
+      @unpack extra_cache, base_cache, phys_params = sys
+      @unpack velcache, v_tmp, dv_tmp, dv, divv_tmp, v_rot = extra_cache
 
       velocity!(v_tmp,w,sys,t)
       viscousflow_velocity_ode_rhs!(dv,v_tmp,sys,t)
@@ -435,6 +614,19 @@ function pressure!(press::Nodes{Primal},w::Nodes{Dual},τ,sys::ILMSystem,t)
 
       divergence!(divv_tmp,dv,base_cache)
       inverse_laplacian!(press,divv_tmp,base_cache)
+
+      # For rotating coordinate systems...
+      if in_rotational_frame(phys_params)
+        # Compute v̂ here
+        velocity_rel_to_rotating_frame!(v_tmp,t,base_cache,phys_params)
+
+        # Compute Ω × x̂ here
+        fill!(v_rot,0.0)
+        velocity_rel_to_rotating_frame!(v_rot,t,base_cache,phys_params)
+
+        press .-= 0.5*magsq(v_tmp) - 0.5*magsq(v_rot)
+      end
+
       return press
 end
 
@@ -462,16 +654,24 @@ function traction!(tract::VectorData{N},τ::VectorData{N},sys::ILMSystem,t) wher
     @unpack vb_tmp, dvb = extra_cache
     @unpack sscalar_cache = base_cache
 
+    # (v̅ - Ẋ)⋅n -> sscalar_cache
     prescribed_surface_average!(vb_tmp,t,sys)
     surface_velocity!(dvb,sys,t)
     vb_tmp .-= dvb
-
+    if in_rotational_frame(phys_params)
+        velocity_rel_to_rotating_frame!(vb_tmp,t,base_cache,phys_params)
+    end
     nrm = normals(sys)
     pointwise_dot!(sscalar_cache,nrm,vb_tmp)
+
+    # [v] -> dvb
     prescribed_surface_jump!(dvb,t,sys)
+
+    # [v](v̅ - Ẋ)⋅n
     product!(tract,dvb,sscalar_cache)
 
     tract .+= τ
+
     return tract
 
 end
@@ -496,14 +696,19 @@ pressurejump(w::Nodes{Dual},τ::VectorData,sys::ILMSystem,t) = pressurejump!(zer
 
 #= Integrated metrics =#
 
-force(w::Nodes{Dual},τ::VectorData{0},sys::ILMSystem{S,P,0},t,bodyi::Int) where {S,P} = nothing, nothing #Vector{Float64}(), Vector{Float64}()
+force(w::Nodes{Dual},τ::VectorData{0},sys::ILMSystem{S,P,0},t,bodyi::Int;kwargs...) where {S,P} = nothing, nothing #Vector{Float64}(), Vector{Float64}()
 
-function force(w::Nodes{Dual},τ::VectorData{N},sys::ILMSystem{S,P,N},t,bodyi::Int) where {S,P,N}
-    @unpack base_cache = sys
+function force(w::Nodes{Dual},τ::VectorData{N},sys::ILMSystem{S,P,N},t,bodyi::Int;inertial=true) where {S,P,N}
+    @unpack base_cache, phys_params = sys
     @unpack sdata_cache = base_cache
     traction!(sdata_cache,τ,sys,t)
     fx = integrate(sdata_cache.u,sys,bodyi)
     fy = integrate(sdata_cache.v,sys,bodyi)
+
+    if (inertial && in_rotational_frame(phys_params))
+        fx_r, fy_r = fx, fy
+        fx, fy = transform_vector_to_inertial_coordinates(fx_r,fy_r,t,phys_params)
+    end
 
     return fx, fy
 end

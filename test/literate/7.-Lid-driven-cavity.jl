@@ -1,5 +1,5 @@
 #=
-# 7. Lid-driven cavity flow
+# Lid-driven cavity flow
 In this notebook we will simulate the flow in a square cavity with a top moving wall.
 =#
 using ViscousFlow

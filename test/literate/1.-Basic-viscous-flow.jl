@@ -1,4 +1,4 @@
-# # 1. Basic viscous flow
+# # Basic viscous flow
 # In this example, we will simulate various examples of a basic *unbounded* viscous flow---a flow
 # without boundaries. Our initial condition will be a distribution of *vorticity*.
 
