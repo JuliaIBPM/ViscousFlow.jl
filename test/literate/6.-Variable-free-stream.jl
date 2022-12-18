@@ -79,9 +79,9 @@ plot(body,xlim=xlim,ylim=ylim)
 
 #=
 ### Construct the system structure
-This step is like the previous notebook, but now we also provide the body and the freestream:
+This step is like the previous notebooks:
 =#
-sys = viscousflow_system(g,body,phys_params=my_params,forcing=forcing_dict);
+sys = viscousflow_system(g,body,phys_params=my_params);
 #=
 ### Initialize
 Now, we initialize with zero vorticity
