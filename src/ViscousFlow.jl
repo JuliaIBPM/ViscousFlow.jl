@@ -29,10 +29,12 @@ function grid_spacing(phys_params)
     Δx = gridRe/Re
 end
 
+grid_spacing(Δx::Float64) = Δx
 
 function get_Reynolds_number(phys_params)
-  haskey(phys_params,"Re") || error("No Reynolds number set")
-  return phys_params["Re"]
+  #haskey(phys_params,"Re") || error("No Reynolds number set")
+  #return phys_params["Re"]
+  return get(phys_params,"Re",Inf)
 end
 
 function default_timestep(sys)
@@ -185,7 +187,8 @@ function ImmersedLayers.prob_cache(prob::ViscousIncompressibleFlowProblem,
 
     # Construct a Lapacian outfitted with the viscosity
     Re = get_Reynolds_number(phys_params)
-    viscous_L = Laplacian(base_cache,gcurl_cache,1.0/Re)
+    over_Re = isinf(Re) ? 0.0 : 1.0/Re
+    viscous_L = Laplacian(base_cache,gcurl_cache,over_Re)
 
     # Create cache for the convective derivative
     cdcache = in_rotational_frame(phys_params) ? RotConvectiveDerivativeCache(base_cache) : ConvectiveDerivativeCache(base_cache)
@@ -264,11 +267,10 @@ which are crucial for certain types of problems.
                   the `grid::PhysicalGrid` and `phys_params`, and returns the time step.
                   It defaults to the basic Fourier/CFL type function `default_timestep`
 """
-function viscousflow_system(args...;kwargs...)
-  prob = setup_problem(args...;kwargs...)
+function viscousflow_system(args...;phys_params=Dict(), kwargs...)
+  prob = setup_problem(args...;phys_params=phys_params,kwargs...)
   return construct_system(prob)
 end
-
 
 # Evaluating the free stream velocity
 
@@ -631,6 +633,18 @@ end
 pressure(w::Nodes{Dual},τ,sys::ILMSystem,t) = pressure!(zeros_griddiv(sys),w,τ,sys,t)
 
 @snapshotoutput pressure
+
+function convective_acceleration!(vdv::Edges{Primal},w::Nodes{Dual},sys::ILMSystem,t)
+    @unpack extra_cache, base_cache = sys
+    @unpack v_tmp, cdcache = extra_cache
+    velocity!(v_tmp,w,sys,t)
+    convective_derivative!(vdv,v_tmp,base_cache,cdcache)
+    return vdv
+end
+
+convective_acceleration(w::Nodes{Dual},τ,sys::ILMSystem,t) = convective_acceleration!(zeros_grid(sys),w,sys,t)
+
+@snapshotoutput convective_acceleration
 
 
 #= Surface fields =#
