@@ -70,7 +70,9 @@ my_params["Re"] = 100
 ### Set the kinematics
 Here, we will define the kinematics. The wing will pitch about
 an axis at its leading edge, as in the figure below
+
 ![flat-plate-diagram.svg](./assets/flat-plate-diagram.svg)
+
 Thus, $\hat{X}_p = (0,0.5c)$. We will scale the problem by $c$,
 so we will set this center at $(0,0.5)$ in the scaled coordinates
 =#

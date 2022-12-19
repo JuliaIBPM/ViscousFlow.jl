@@ -28,7 +28,6 @@ end
 if GROUP == "Notebooks"
 
   for (root, dirs, files) in walkdir(litdir)
-    println(root)
     if splitpath(root)[end] == "assets"
         for file in files
             cp(joinpath(root, file),joinpath(joinpath(notebookdir,"assets"),file),force=true)
