@@ -28,9 +28,10 @@ end
 if GROUP == "Notebooks"
 
   for (root, dirs, files) in walkdir(litdir)
+    println(root)
     if splitpath(root)[end] == "assets"
         for file in files
-            cp(joinpath(root, file),joinpath(notebookdir,file),force=true)
+            cp(joinpath(root, file),joinpath(joinpath(notebookdir,"assets"),file),force=true)
         end
     end
     for file in files
@@ -42,6 +43,11 @@ end
 
 if GROUP == "Documentation"
   for (root, dirs, files) in walkdir(litdir)
+    if splitpath(root)[end] == "assets"
+        for file in files
+            cp(joinpath(root, file),joinpath(joinpath(docdir,"assets"),file),force=true)
+        end
+    end
     for file in files
       endswith(file,".jl") && Literate.markdown(joinpath(root, file),docdir)
     end

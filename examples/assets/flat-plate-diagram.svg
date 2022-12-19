@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="204px" height="281px" viewBox="0 0 204 281" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>flat plate diagram</title>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="flat-plate-diagram" transform="translate(2.000000, 0.000000)">
+            <g id="Group-3" transform="translate(99.572860, 89.276290)" fill="#E2122D" fill-rule="nonzero">
+                <path id="Path" d="M0.05,-2.78972886 L0.921575537,-1.24026124 L7.67157554,10.7597388 L5.92842446,11.7402612 L1.05,3.068 L1.05,70 L-0.95,70 L-0.95,3.068 L-5.82842446,11.7402612 L-7.57157554,10.7597388 L-0.821575537,-1.24026124 L0.05,-2.78972886 Z"></path>
+                <path id="Path" d="M59.2902612,62.3784245 L71.2902612,69.1284245 L72.8397289,70 L71.2902612,70.8715755 L59.2902612,77.6215755 L58.3097388,75.8784245 L66.984,70.999 L0.05,71 L0.05,69 L66.981,68.999 L58.3097388,64.1215755 L59.2902612,62.3784245 Z"></path>
+            </g>
+            <line x1="100.5" y1="39.5" x2="100.5" y2="279.5" id="Path-7" stroke="#979797" stroke-width="3"></line>
+            <g id="xhat" transform="translate(171.000000, 159.000000)" fill="#1A1919" font-family="STIXGeneral-Italic, STIXGeneral" font-size="12" font-style="italic" font-weight="normal">
+                <text id="𝘹">
+                    <tspan x="0" y="16">𝘹</tspan>
+                </text>
+                <text id="^">
+                    <tspan x="1" y="13">^</tspan>
+                </text>
+            </g>
+            <g id="yhat" transform="translate(78.000000, 94.000000)" fill="#1A1919" font-family="STIXGeneral-Italic, STIXGeneral" font-size="12" font-style="italic" font-weight="normal">
+                <text id="y">
+                    <tspan x="0" y="16">y</tspan>
+                </text>
+                <text id="^">
+                    <tspan x="1" y="13">^</tspan>
+                </text>
+            </g>
+            <path id="Path-8" d="M60,39 L64.5,48 L60.5,48 L60.5,270.5 L64.5,270.5 L60,279.5 L55.5,270.5 L59.5,270.5 L59.5,48 L55.5,48 L60,39 Z" fill="#979797" fill-rule="nonzero"></path>
+            <g id="Group-2" transform="translate(96.000000, 0.000000)" fill="#1A1919" font-size="12" font-style="italic">
+                <text id="^" font-family="STIXGeneral-Italic, STIXGeneral" font-weight="normal">
+                    <tspan x="2" y="13">^</tspan>
+                </text>
+                <text id="Xp" font-family="STIXGeneral-BoldItalic, STIXGeneral" font-weight="bold">
+                    <tspan x="0" y="19">X</tspan>
+                    <tspan x="8.004" y="19" font-family="STIXGeneral-Italic, STIXGeneral" font-weight="normal">p</tspan>
+                </text>
+            </g>
+            <circle id="Oval" fill="#0A52E8" cx="101" cy="41.0747082" r="4"></circle>
+            <path id="Path" d="M100,28.5 C109.112698,28.5 116.5,35.8873016 116.5,45 C116.5,51.2646947 112.9773,56.9018823 107.497984,59.7017825 L107.387064,59.7427599 L101.487,61.157 L108.479337,63.146091 L108.205833,64.1079619 L99.3770323,61.5975298 L98.5220359,61.3544152 L99.1737907,60.7499823 L105.903894,54.5085309 L106.583881,55.241755 L101.253,60.185 L107.093,58.784 L107.349617,58.6502889 C112.220512,56.0233879 115.369538,50.9789407 115.496041,45.3524001 L115.5,45 C115.5,36.4395864 108.560414,29.5 100,29.5 C94.2322939,29.5 89.0313392,32.6780113 86.3497111,37.6503835 L86.189,37.955 L86.215,37.906 L84.814,43.746 L89.758245,38.4161194 L90.4914691,39.0961064 L84.2500177,45.8262093 L83.6455848,46.4779641 L83.4024702,45.6229677 L80.8920381,36.7941665 L81.853909,36.5206626 L83.842,43.512 L85.2572401,37.612936 L85.2982175,37.502016 C88.0981177,32.0227001 93.7353053,28.5 100,28.5 Z" transform="translate(100.000000, 45.000000) rotate(-45.000000) translate(-100.000000, -45.000000) " fill="#979797" fill-rule="nonzero"></path>
+            <text id="c" font-family="STIXGeneral-Italic, STIXGeneral" font-size="12" font-style="italic" font-weight="normal" fill="#1A1919">
+                <tspan x="46" y="163">c</tspan>
+            </text>
+            <path id="Path-9" d="M192.745131,35.5642122 L200.745131,40.0642122 L201.519864,40.5 L200.745131,40.9357878 L192.745131,45.4357878 L192.254869,44.5642122 L198.589,41 L1.41,41 L7.74513062,44.5642122 L7.25486938,45.4357878 L-0.74513062,40.9357878 L-1.51986443,40.5 L-0.74513062,40.0642122 L7.25486938,35.5642122 L7.74513062,36.4357878 L1.407,40 L198.593,40 L192.254869,36.4357878 L192.745131,35.5642122 Z" fill="#979797" fill-rule="nonzero"></path>
+        </g>
+    </g>
+</svg>
