@@ -188,7 +188,7 @@ function ImmersedLayers.prob_cache(prob::ViscousIncompressibleFlowProblem,
     # Construct a Lapacian outfitted with the viscosity
     Re = get_Reynolds_number(phys_params)
     over_Re = isinf(Re) ? 0.0 : 1.0/Re
-    viscous_L = Laplacian(base_cache,gcurl_cache,over_Re)
+    viscous_L = Laplacian(base_cache,over_Re)
 
     # Create cache for the convective derivative
     cdcache = in_rotational_frame(phys_params) ? RotConvectiveDerivativeCache(base_cache) : ConvectiveDerivativeCache(base_cache)
@@ -222,13 +222,15 @@ _get_ode_function_list(viscous_L,base_cache::BasicILMCache{0}) =
 #= setup API =#
 
 """
-    setup_grid(xlim::Tuple,ylim::Tuple,phys_params::Dict)
+    setup_grid(xlim::Tuple,ylim::Tuple,phys_params::Dict[;nthreads_max=length(Sys.cpu_info())])
 
 Construct a Cartesian grid with limits `xlim` and `ylim`
 and spacing determined by the Reynolds number in the `phys_params`.
+The maximum number of threads can be optionally set; it defaults
+to the number of processor cores.
 """
-function setup_grid(xlim::Tuple,ylim::Tuple,phys_params)
-    PhysicalGrid(xlim,ylim,grid_spacing(phys_params))
+function setup_grid(xlim::Tuple,ylim::Tuple,phys_params;kwargs...)
+    PhysicalGrid(xlim,ylim,grid_spacing(phys_params);kwargs...)
 end
 
 """
