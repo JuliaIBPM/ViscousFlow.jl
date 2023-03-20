@@ -707,7 +707,7 @@ Calculated the force exerted by the fluid on body `bodyi` from the computational
 It returns the force history as a tuple of arrays: one array for each component.
 If `inertial=true` (default), then the components are provided in the inertial
 coordinate system. Otherwise, they are in the body coordinate system.
-"""force(sol,sys,bodyi)
+""" force(sol,sys,bodyi)
 
 function force(w::Nodes{Dual},τ::VectorData{N},sys::ILMSystem{S,P,N},t,bodyi::Int;inertial=true) where {S,P,N}
     @unpack base_cache, phys_params = sys
@@ -734,7 +734,7 @@ moment(w::Nodes{Dual},τ::VectorData{0},sys::ILMSystem{S,P,0},t,bodyi::Int;kwarg
 Calculated the momemt exerted by the fluid on body `bodyi` from the computational solution `sol` of system `sys`.
 It returns the moment history as an array. The moment is calculated about center
 `center`, which defaults to `(0,0)` in whichever coordinate system the problem is solved.
-"""moment(sol,sys,bodyi)
+""" moment(sol,sys,bodyi)
 
 
 function moment(w::Nodes{Dual},τ::VectorData{N},sys::ILMSystem{S,P,N},t,bodyi::Int;center=(0.0,0.0)) where {S,P,N}
@@ -762,7 +762,7 @@ power(w::Nodes{Dual},τ::VectorData{0},sys::ILMSystem{S,P,0},t,bodyi::Int;kwargs
 
 Calculated the history of the total rate of work done by the flow on body `bodyi` (or on the flow by the body, if negative)
 from the computational solution `sol` of system `sys`.
-"""power(sol,sys,bodyi)
+""" power(sol,sys,bodyi)
 
 
 function power(w::Nodes{Dual},τ::VectorData{N},sys::ILMSystem{S,P,N},t,bodyi::Int;inertial=true) where {S,P,N}
@@ -793,7 +793,7 @@ Calculated the power extracted from the flow (or power input into the flow, if n
 by body `bodyi` from the computational solution `sol` of system `sys`. This computes the
 power from the force and velocity due to prescribed oscillations. It does not
 include the power due to steady body motion.
-"""extracted_power(sol,sys,bodyi)
+""" extracted_power(sol,sys,bodyi)
 
 
 function extracted_power(w::Nodes{Dual},τ::VectorData{N},sys::ILMSystem{S,P,N},t,bodyi::Int;inertial=true) where {S,P,N}
