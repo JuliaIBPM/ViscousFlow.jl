@@ -520,7 +520,23 @@ function viscousflow_velocity_bc_op!(vb,v,sys::ILMSystem)
     return vb
 end
 
+#= Stuff that should be put in ImmersedLayers =#
 
+"""
+    grad!(v::Edges{Primal/Dual},p::Nodes{Primal/Dual},cache::BasicILMCache)
+    grad!(v::Edges{Primal/Dual},p::Nodes{Primal/Dual},sys::ILMSystem)
+
+Compute the discrete gradient of `p` and return it in `v`, scaling it
+by the grid spacing if `cache` (or `sys`) is of `GridScaling` type, or leaving it
+as a simple differencing if `cache` (or `sys`) is of `IndexScaling` type.
+"""
+function ImmersedLayers.grad!(q::EdgeGradient{C,D,NX,NY},p::Edges{C,NX,NY},cache::BasicILMCache) where {C,D,NX,NY}
+    fill!(q,0.0)
+    if !iszero(p)
+      ImmersedLayers._unscaled_grad!(q,p,cache)
+      ImmersedLayers._scale_derivative!(q,cache)
+    end
+end
 
 #= Fields =#
 
@@ -648,6 +664,24 @@ convective_acceleration(w::Nodes{Dual},τ,sys::ILMSystem,t) = convective_acceler
 
 @snapshotoutput convective_acceleration
 
+
+function Qcrit!(Q::Nodes{Primal},w::Nodes{Dual},τ,sys::ILMSystem,t)
+    vel = zeros_grid(sys)
+    velocity!(vel,w,sys,t)
+
+    gradv = zeros_gridgrad(sys)
+    grad!(gradv,vel,sys)
+    tmp = zeros_griddiv(sys)
+    grid_interpolate!(tmp,2*gradv.dudy∘gradv.dvdx)
+
+    Q .= gradv.dudx∘gradv.dudx + gradv.dvdy∘gradv.dvdy + tmp
+    Q .*= -0.5
+    return Q
+end
+
+Qcrit(w::Nodes{Dual},τ,sys::ILMSystem,t) = Qcrit!(zeros_griddiv(sys),w,τ,sys,t)
+
+@snapshotoutput Qcrit
 
 #= Surface fields =#
 
