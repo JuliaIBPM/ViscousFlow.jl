@@ -25,6 +25,7 @@ using ImmersedLayers
   vdv = convective_acceleration(u,sys,t)
   p = pressure(u,sys,t)
   ψ = streamfunction(u,sys,t)
+  Q = Qcrit(u,sys,t)    
 
 end
 
@@ -42,6 +43,7 @@ end
   A = 1
   gauss = SpatialGaussian(σ,x0,y0,A)
   u = init_sol(gauss,sys)
+
 
 
 end
