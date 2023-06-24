@@ -451,7 +451,7 @@ function convective_term!(dv,v,t,base_cache,extra_cache,phys_params,cdcache::Rot
     w_cross_v!(dv,w_tmp,v_rot,base_cache,cdcache)
 end
 
-function viscousflow_vorticity_bc_rhs!(vb,sys::ILMSystem,t)
+function viscousflow_vorticity_bc_rhs!(vb,x,sys::ILMSystem,t)
     @unpack bc, extra_cache, base_cache, phys_params = sys
     @unpack dvb, vb_tmp, v_tmp, velcache, divv_tmp = extra_cache
     @unpack dcache, ϕtemp = velcache
@@ -477,12 +477,12 @@ end
 
 
 
-function viscousflow_velocity_bc_rhs!(vb,sys::ILMSystem,t)
+function viscousflow_velocity_bc_rhs!(vb,x,sys::ILMSystem,t)
     prescribed_surface_average!(vb,t,sys)
     return vb
 end
 
-function viscousflow_vorticity_constraint_force!(dw,τ,sys)
+function viscousflow_vorticity_constraint_force!(dw,τ,x,sys)
     @unpack extra_cache, base_cache = sys
     @unpack dv = extra_cache
 
@@ -492,17 +492,17 @@ function viscousflow_vorticity_constraint_force!(dw,τ,sys)
     return dw
 end
 
-function viscousflow_velocity_constraint_force!(dv,τ,sys::ILMSystem{S,P,N}) where {S,P,N}
+function viscousflow_velocity_constraint_force!(dv,τ,x,sys::ILMSystem{S,P,N}) where {S,P,N}
     @unpack base_cache = sys
     regularize!(dv,τ,base_cache)
     return dv
 end
 
-function viscousflow_velocity_constraint_force!(dv,τ,sys::ILMSystem{S,P,0}) where {S,P}
+function viscousflow_velocity_constraint_force!(dv,τ,x,sys::ILMSystem{S,P,0}) where {S,P}
     return dv
 end
 
-function viscousflow_vorticity_bc_op!(vb,w,sys::ILMSystem)
+function viscousflow_vorticity_bc_op!(vb,w,x,sys::ILMSystem)
     @unpack extra_cache, base_cache = sys
     @unpack velcache, v_tmp = extra_cache
     @unpack ψtemp = velcache
@@ -514,7 +514,7 @@ function viscousflow_vorticity_bc_op!(vb,w,sys::ILMSystem)
     return vb
 end
 
-function viscousflow_velocity_bc_op!(vb,v,sys::ILMSystem)
+function viscousflow_velocity_bc_op!(vb,v,x,sys::ILMSystem)
     @unpack base_cache = sys
     interpolate!(vb,v,base_cache)
     return vb
