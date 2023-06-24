@@ -520,24 +520,6 @@ function viscousflow_velocity_bc_op!(vb,v,sys::ILMSystem)
     return vb
 end
 
-#= Stuff that should be put in ImmersedLayers =#
-
-"""
-    grad!(v::Edges{Primal/Dual},p::Nodes{Primal/Dual},cache::BasicILMCache)
-    grad!(v::Edges{Primal/Dual},p::Nodes{Primal/Dual},sys::ILMSystem)
-
-Compute the discrete gradient of `p` and return it in `v`, scaling it
-by the grid spacing if `cache` (or `sys`) is of `GridScaling` type, or leaving it
-as a simple differencing if `cache` (or `sys`) is of `IndexScaling` type.
-"""
-function ImmersedLayers.grad!(q::EdgeGradient{C,D,NX,NY},p::Edges{C,NX,NY},cache::BasicILMCache) where {C,D,NX,NY}
-    fill!(q,0.0)
-    if !iszero(p)
-      ImmersedLayers._unscaled_grad!(q,p,cache)
-      ImmersedLayers._scale_derivative!(q,cache)
-    end
-end
-
 #= Fields =#
 
 vorticity!(masked_w::Nodes{Dual},w::Nodes{Dual},dv::VectorData,base_cache::BasicILMCache,wcache::VectorPotentialCache) =
