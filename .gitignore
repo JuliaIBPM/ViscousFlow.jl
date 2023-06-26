@@ -18,6 +18,8 @@ docs/build/
 # package logo
 !docs/src/assets/*.png
 # vim swap files
+*.jld
+*.sketch
 *.swp
 *.gif
 
