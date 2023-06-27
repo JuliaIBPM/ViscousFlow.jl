@@ -1,10 +1,14 @@
 #=
-# Viscous flow about a moving body
-In this notebook we will demonstrate the simulation of a moving body. It is straightforward
-to set up a moving body. The main caveat is that the simulation is slower,
+# Viscous flow about moving bodies
+In this notebook we will demonstrate the simulation of a system of moving bodies.
+As we will show, it is straightforward to set up a moving body, using the
+tools in [RigidBodyTools.jl](https://github.com/JuliaIBPM/RigidBodyTools.jl).
+The main caveat is that the simulation is slower,
 because the integrator must update the operators continuously throughout the simulation.
 
-We will demonstrate this on an oscillating flat plate.
+We will demonstrate this on a system of three linked plates undergoing a flapping
+motion, in which the middle plate heaves up and down, and the other two
+bodies pitch back and forth on hinges connecting their edges to the middle plate.
 =#
 
 using ViscousFlow
@@ -28,33 +32,109 @@ g = setup_grid(xlim,ylim,my_params)
 
 #=
 ### Set up body
-Set up the plate and place it at the origin. (We don't actually have
-to move it, since it defaults to the origin, but it's helpful to put
-this here in case we wish to initialize it differently.)
+Set up the plates.
 =#
-body = Plate(1.0,Δs)
-T = RigidTransform((0,0),0)
-T(body)
+body1 = Plate(0.5,Δs)
+body2 = Plate(0.5,Δs)
+body3 = Plate(0.5,Δs)
+bl = BodyList([body1,body2,body3])
 
 #=
-### Set the body motion
-Now we specify the body motion. We will use oscillatory pitch-heave kinematics for this:
+### Set the body motions
+Here, we make use of joints to prescribe the motion of every part of this system.
+We will attach body 1 to the inertial system, making it oscillate up and down.
+This is a special case of a joint with three degrees of freedom, called a `FreeJoint2d`.
+Bodies 2 and 3 will each be connected by hinges (i.e., with a `RevoluteJoint`)
+to body 1.
+
+First, specify joint 1, attaching body 1 to the inertial system (body 0). We need
+a more detailed form of the `Joint` function now. In this form, we need
+to specify how the joint is attached to each body, and how each of its
+degrees of freedom move. We will do this piece by piece to explain it.
+More details can be found in the documentation for [RigidBodyTools.jl](https://github.com/JuliaIBPM/RigidBodyTools.jl).
 =#
-a = 0.25 # location of pitch axis, a = 0.5 is leading edge
-ϕp = -π/2  # phase lag of pitch
-ϕh = 0.0  # phase lag of heave
+parent_body, child_body = 0, 1
+Xp = MotionTransform([0,0],0) # location of joint in inertial system
+xpiv = [0,0] # place center of motion at center of the plate
+Xc = MotionTransform(xpiv,0)
+
+#=
+Now the motion for joint 1, which we set up through the three degrees of freedom.
+The degrees of freedom are ordered `[rotation, x, y]`. The first and second
+are meant to be fixed, so we give them zero velocity, and the third
+we assign oscillatory kinematics
+=#
+adof = ConstantVelocityDOF(0.0)
+xdof = ConstantVelocityDOF(0.0)
+
+ω = 1
 A = 0.25  # amplitude/chord
-fstar = 1/π # fc/U
-α₀ = 0 # mean angle of attack
-Δα = 10π/180 # amplitude of pitching
-U₀ = 0.0 # translational motion (set to zero in place of free stream)
-K = π*fstar # reduced frequency, K = πfc/U
+ϕh = 0.0  # phase lag of heave
+ydof = OscillatoryDOF(A,ω,ϕh,0.0)
 
-oscil1 = RigidBodyTools.PitchHeave(U₀,a,K,ϕp,α₀,Δα,A,ϕh)
-motion = RigidBodyMotion(oscil1)
+dofs = [adof,xdof,ydof]
 
-# We can inspect the kinematics in this `motion` by plotting them:
-plot(motion)
+#=
+Now assemble the joint
+=#
+joint1 = Joint(FreeJoint2d,parent_body,Xp,child_body,Xc,dofs)
+
+#=
+Now the two hinges. Each of these is a `RevoluteJoint`. We place them
+at either end of body 1. Joint 2 between bodies 1 and 2
+=#
+parent_body, child_body = 1, 2
+Xp = MotionTransform([0.25,0],0) # right side of body 1
+Xc = MotionTransform([-0.25,0],0) # left side of body 2
+Δα = 20π/180 # amplitude of pitching
+ϕp = π/2 # phase lag of pitch
+θdof = OscillatoryDOF(Δα,ω,ϕp,0.0)
+joint2 = Joint(RevoluteJoint,parent_body,Xp,child_body,Xc,[θdof])
+
+
+#=
+and joint 3 between bodies 1 and 3
+=#
+parent_body, child_body = 1, 3
+Xp = MotionTransform([-0.25,0],0) # left side of body 1
+Xc = MotionTransform([0.25,0],0) # right side of body 3
+Δα = -20π/180 # amplitude of pitching
+ϕp = -π/2 # phase lag of pitch
+θdof = OscillatoryDOF(Δα,ω,ϕp,0.0)
+joint3 = Joint(RevoluteJoint,parent_body,Xp,child_body,Xc,[θdof])
+
+#=
+Assemble everything together
+=#
+m = RigidBodyMotion([joint1,joint2,joint3],bl)
+
+#=
+We generate the initial joint state vector with `init_and update the body system and plot it
+=#
+x = init_motion_state(bl,m)
+update_body!(bl,x,m)
+plot(bl,xlim=xlim,ylim=ylim)
+
+#=
+Here is a useful macro to visualize the motion as a movie:
+
+```macro animate_motion(b,m,dt,tmax,xlim,ylim)
+    return esc(quote
+            bc = deepcopy($b)
+            t0, x0 = 0.0, init_motion_state(bc,$m)
+            dxdt = zero(x0)
+            x = copy(x0)
+
+            @gif for t in t0:$dt:t0+$tmax
+                motion_rhs!(dxdt,x,($m,bc),t)
+                global x += dxdt*$dt
+                update_body!(bc,x,$m)
+                plot(bc,xlim=$xlim,ylim=$ylim)
+            end every 5
+        end)
+end
+```
+=#
 
 #=
 ### Define the boundary condition functions
@@ -69,15 +149,15 @@ one of the sides, and zero to the other side. We will see an example of this in 
 We pack these into a special dictionary and
 pass these to the system construction.
 =#
-function my_vsplus(t,base_cache,phys_params,motions)
+function my_vsplus(t,x,base_cache,phys_params,motions)
   vsplus = zeros_surface(base_cache)
-  surface_velocity!(vsplus,base_cache,motions,t)
+  surface_velocity!(vsplus,x,base_cache,motions,t)
   return vsplus
 end
 
-function my_vsminus(t,base_cache,phys_params,motions)
+function my_vsminus(t,x,base_cache,phys_params,motions)
   vsminus = zeros_surface(base_cache)
-  surface_velocity!(vsminus,base_cache,motions,t)
+  surface_velocity!(vsminus,x,base_cache,motions,t)
   return vsminus
 end
 
@@ -85,21 +165,26 @@ bcdict = Dict("exterior" => my_vsplus, "interior" => my_vsminus)
 
 #=
 ### Construct the system structure
-Here, we supply the motion and boundary condition functions as additional arguments.
+Here, we supply both the motion and boundary condition functions as additional arguments.
 =#
-sys = viscousflow_system(g,body,phys_params=my_params,motions=motion,bc=bcdict);
+sys = viscousflow_system(g,bl,phys_params=my_params,motions=m,bc=bcdict);
+
+#=
+and generate the initial condition
+=#
+u0 = init_sol(sys)
 
 #=
 Before we solve the problem, it is useful to note that the Reynolds number
 we specified earlier may not be the most physically-meaningful Reynolds number.
 More relevant in this problem is the Reynolds number based on the maximum
-body speed.
+body speed and the total length of the plates
 =#
-Umax, imax, tmax, bmax = maxlistvelocity(sys)
-Re_eff = my_params["Re"]*Umax
+Umax, imax, tmax, bmax = maxvelocity(u0,sys)
+L = 3*0.5
+Re_eff = my_params["Re"]*Umax*L
 
 #-
-u0 = init_sol(sys)
 tspan = (0.0,10.0)
 integrator = init(u0,tspan,sys)
 
@@ -129,7 +214,7 @@ sol = integrator.sol
 fx, fy = force(sol,sys,1);
 #-
 plot(
-plot(sol.t,2*fx,xlim=(0,Inf),ylim=(-3,3),xlabel="Convective time",ylabel="\$C_D\$",legend=:false),
-plot(sol.t,2*fy,xlim=(0,Inf),ylim=(-6,6),xlabel="Convective time",ylabel="\$C_L\$",legend=:false),
+plot(sol.t,2*fx,xlim=(0,Inf),ylim=(-2,2),xlabel="Convective time",ylabel="\$C_D\$",legend=:false),
+plot(sol.t,2*fy,xlim=(0,Inf),ylim=(-2,2),xlabel="Convective time",ylabel="\$C_L\$",legend=:false),
     size=(800,350)
 )

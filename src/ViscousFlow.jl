@@ -428,7 +428,7 @@ function viscousflow_velocity_ode_rhs!(dv,v,x,sys::ILMSystem,t)
     dv .-= dv_tmp
 
     # Calculate the double-layer term
-    prescribed_surface_jump!(dvb,t,sys)
+    prescribed_surface_jump!(dvb,x,t,sys)
     surface_divergence_symm!(dv_tmp,over_Re*dvb,base_cache)
     dv .-= dv_tmp
 
@@ -462,7 +462,7 @@ function viscousflow_vorticity_bc_rhs!(vb,x,sys::ILMSystem,t)
 
     # Subtract influence of scalar potential field
     fill!(divv_tmp,0.0)
-    prescribed_surface_jump!(dvb,t,sys)
+    prescribed_surface_jump!(dvb,x,t,sys)
     scalarpotential_from_masked_divv!(ϕtemp,divv_tmp,dvb,base_cache,dcache)
     vecfield_from_scalarpotential!(v_tmp,ϕtemp,base_cache)
     interpolate!(vb_tmp,v_tmp,base_cache)
@@ -480,7 +480,7 @@ end
 
 
 function viscousflow_velocity_bc_rhs!(vb,x,sys::ILMSystem,t)
-    prescribed_surface_average!(vb,t,sys)
+    prescribed_surface_average!(vb,x,t,sys)
     return vb
 end
 
@@ -539,7 +539,7 @@ for f in [:vorticity,:total_vorticity]
         @unpack dvb, velcache = extra_cache
         @unpack wcache = velcache
 
-        prescribed_surface_jump!(dvb,t,sys)
+        prescribed_surface_jump!(dvb,x,t,sys)
         $f!(masked_w,w,dvb,base_cache,wcache)
     end
 
@@ -563,7 +563,7 @@ function velocity!(v::Edges{Primal},w::Nodes{Dual},x,sys::ILMSystem,t)
     @unpack phys_params, extra_cache, base_cache = sys
     @unpack dvb, velcache, divv_tmp, w_tmp = extra_cache
 
-    prescribed_surface_jump!(dvb,t,sys)
+    prescribed_surface_jump!(dvb,x,t,sys)
 
     Vinf = evaluate_freestream(t,phys_params)
 
@@ -675,7 +675,7 @@ function traction!(tract::VectorData{N},τ::VectorData{N},x,sys::ILMSystem,t) wh
     @unpack sscalar_cache = base_cache
 
     # (v̅ - Ẋ)⋅n -> sscalar_cache
-    prescribed_surface_average!(vb_tmp,t,sys)
+    prescribed_surface_average!(vb_tmp,x,t,sys)
     surface_velocity!(dvb,x,sys,t)
     vb_tmp .-= dvb
     if in_rotational_frame(phys_params)
@@ -685,7 +685,7 @@ function traction!(tract::VectorData{N},τ::VectorData{N},x,sys::ILMSystem,t) wh
     pointwise_dot!(sscalar_cache,nrm,vb_tmp)
 
     # [v] -> dvb
-    prescribed_surface_jump!(dvb,t,sys)
+    prescribed_surface_jump!(dvb,x,t,sys)
 
     # [v](v̅ - Ẋ)⋅n
     product!(tract,dvb,sscalar_cache)

@@ -53,7 +53,7 @@ joint3 = Joint(MotionTransform([1,1],0),3);
  `update_body!` changes each body in the list *in-place*:
 =#
 m = RigidBodyMotion([joint1,joint2,joint3],bl)
-x = zero_motion_state(bl,m)
+x = init_motion_state(bl,m)
 update_body!(bl,x,m)
 
 # #### Plot the initial configuration of the bodies

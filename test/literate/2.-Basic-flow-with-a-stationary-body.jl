@@ -79,7 +79,7 @@ applied, `body` is transformed to the correct location/orientation.
 =#
 
 m = RigidBodyMotion(joint,body)
-x = zero_motion_state(body,m)
+x = init_motion_state(body,m)
 update_body!(body,x,m)
 
 # Let's plot it just to make sure
