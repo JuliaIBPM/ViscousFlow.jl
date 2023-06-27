@@ -60,8 +60,8 @@ coordinate system with a `MotionTransform`.
 =#
 cent = [0.0,0.0] # center of joint with respect to inertial system
 α = 45π/180 # angle of joint with respect to inertial system
-T = MotionTransform(cent,α)
-joint = Joint(T)
+X = MotionTransform(cent,α)
+joint = Joint(X)
 
 #=
 The next two steps will seem unnecessarily cumbersome, but they reveal

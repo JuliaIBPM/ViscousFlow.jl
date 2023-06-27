@@ -118,7 +118,8 @@ plot(bl,xlim=xlim,ylim=ylim)
 #=
 Here is a useful macro to visualize the motion as a movie:
 
-```macro animate_motion(b,m,dt,tmax,xlim,ylim)
+```
+macro animate_motion(b,m,dt,tmax,xlim,ylim)
     return esc(quote
             bc = deepcopy($b)
             t0, x0 = 0.0, init_motion_state(bc,$m)

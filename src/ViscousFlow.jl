@@ -85,12 +85,12 @@ function default_freestream(t,phys_params)
 end
 
 
-function default_vsplus(t,base_cache,phys_params,motions)
+function default_vsplus(t,x,base_cache,phys_params,motions)
   vsplus = zeros_surface(base_cache)
   return vsplus
 end
 
-function default_vsminus(t,base_cache,phys_params,motions)
+function default_vsminus(t,x,base_cache,phys_params,motions)
     vsminus = zeros_surface(base_cache)
     return vsminus
 end

@@ -9,6 +9,7 @@ $$U_\infty(t) = A \sin(\Omega t)$$
 using ViscousFlow
 #-
 using Plots
+using Statistics
 
 #=
 ### Problem specification
@@ -21,14 +22,14 @@ my_params["Re"] = 200
 In order to set a time-varying free stream, we have to define a function
 that provides the instantaneous free stream components and pass that
 function into the system definition. In this function, we will
-use the `Sinusoid` function (available via the `RigidBodyTools` module)
+use the `OscillatoryDOF` function (available via the [RigidBodyTools.jl](https://github.com/JuliaIBPM/RigidBodyTools.jl) package)
 to create the modulated free stream. To demonstrate its possibilities,
 we will pass in the parameters for the sinusoid via the `my_params` dictionary.
 The "freestream average" specifies a mean free stream, if desired.
 =#
 my_params["freestream average"] = 0.0
 my_params["freestream frequency"]  = 2.0
-my_params["freestream amplitude"] = 1.0
+my_params["freestream amplitude"] = 0.5
 my_params["freestream phase"] = 0.0
 
 #=
@@ -42,11 +43,13 @@ function my_freestream(t,phys_params)
     Ω = phys_params["freestream frequency"]
     Ax = phys_params["freestream amplitude"]
     ϕx = phys_params["freestream phase"]
-    Vinfmag = Ax*(RigidBodyTools.Sinusoid(Ω) >> (ϕx/Ω))
-    Vinf_angle = get(phys_params,"freestream angle",0.0)
+    kin = OscillatoryDOF(Ax,Ω,ϕx,U)
 
-    Uinf = (U + Vinfmag(t))*cos(Vinf_angle)
-    Vinf = (U + Vinfmag(t))*sin(Vinf_angle)
+    Vinf_angle = get(phys_params,"freestream angle",0.0)
+    Vinf_amp = dof_velocity(kin(t))
+
+    Uinf = Vinf_amp*cos(Vinf_angle)
+    Vinf = Vinf_amp*sin(Vinf_angle)
     return Uinf, Vinf
 end
 
@@ -72,8 +75,10 @@ Here, we will set up an ellipse in the center of the domain
 Δs = surface_point_spacing(g,my_params)
 body = Ellipse(0.25,0.5,Δs)
 
-T = RigidTransform((0.0,0.0),0.0)
-T(body)
+joint = Joint(RigidTransform([0.0,0.0],0.0))
+m = RigidBodyMotion(joint,body)
+x = init_motion_state(body,m)
+update_body!(body,x,m)
 #-
 plot(body,xlim=xlim,ylim=ylim)
 
@@ -81,7 +86,7 @@ plot(body,xlim=xlim,ylim=ylim)
 ### Construct the system structure
 This step is like the previous notebooks:
 =#
-sys = viscousflow_system(g,body,phys_params=my_params);
+sys = viscousflow_system(g,body,phys_params=my_params,motions=m);
 #=
 ### Initialize
 Now, we initialize with zero vorticity
@@ -123,6 +128,6 @@ plot(sol.t,2*fy,xlim=(0,Inf),ylim=(-6,6),xlabel="Convective time",ylabel="\$C_L\
 )
 
 # The mean drag and lift coefficients are
-meanCD = GridUtilities.mean(2*fx[3:end])
+meanCD = mean(2*fx[3:end])
 #-
-meanCL = GridUtilities.mean(2*fy[3:end])
+meanCL = mean(2*fy[3:end])
