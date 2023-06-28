@@ -53,12 +53,14 @@ end
 function get_max_velocity(u,sys)
     @unpack base_cache, phys_params, motions = sys
 
+    x = aux_state(u)
+
     Umax = 0.0
     if !isnothing(motions)
       Umax,i,tmax,bi = maxvelocity(u,sys)
     end
 
-    Uinf, Vinf = evaluate_freestream(0.0,phys_params)
+    Uinf, Vinf = evaluate_freestream(0.0,x,sys)
     Umax = max(Umax,sqrt(Uinf^2+Vinf^2))
 
     #=
@@ -172,8 +174,9 @@ end
 
 function ImmersedLayers.prob_cache(prob::ViscousIncompressibleFlowProblem,
                                    base_cache::BasicILMCache{N,scaling}) where {N,scaling}
-    @unpack phys_params, forcing, axes = prob
+    @unpack phys_params, forcing, motions = prob
     @unpack gdata_cache, gcurl_cache, g = base_cache
+    @unpack reference_body = motions
 
     dvb = zeros_surface(base_cache)
     vb_tmp = zeros_surface(base_cache)
@@ -193,7 +196,7 @@ function ImmersedLayers.prob_cache(prob::ViscousIncompressibleFlowProblem,
     viscous_L = Laplacian(base_cache,over_Re)
 
     # Create cache for the convective derivative
-    cdcache = axes == :body ? RotConvectiveDerivativeCache(base_cache) : ConvectiveDerivativeCache(base_cache)
+    cdcache = reference_body > 0 ? RotConvectiveDerivativeCache(base_cache) : ConvectiveDerivativeCache(base_cache)
 
     fcache = nothing
 
@@ -260,12 +263,13 @@ which are crucial for certain types of problems.
 - `dtype = ` to set the element type to `Float64` (default) or `ComplexF64`.
 - `phys_params = ` A dictionary to pass in physical parameters, or to pass in
                   alternative models for the freestream velocity (with the "freestream" key)
-                  or overall rotational motion (with the "rotation" key)
 - `bc = ` A dictionary to pass in boundary condition data or functions, using "external"
           and "internal" keys to pass in functions that provide the
           corresponding surface data outside and inside the surface(s).
 - `forcing = ` A dictionary to pass in forcing models (via the "forcing models" key)
-- `motions = ` to provide function(s) that specify the velocity of the immersed surface(s). Note: if this keyword is used, it is assumed that surfaces will move.
+- `motions = ` to provide function(s) that specify the velocity of the immersed surface(s).
+- `reference_body =` to solve the problem in a reference frame attached to a body rather than
+              the inertial frame (with is the default, with body number 0).
 - `timestep_func =` to pass in a function for time-dependent problems that provides the time-step size.
                   It is expected that this function takes in two arguments,
                   the `grid::PhysicalGrid` and `phys_params`, and returns the time step.
@@ -279,51 +283,64 @@ end
 # Evaluating the free stream velocity
 
 """
-    evaluate_freestream(t,phys_params)
+    evaluate_freestream(t,x,sys)
 
 Provide the components of the free stream velocity at time `t`.
 If the problem is set up in the rotational frame of reference,
 then this transforms the specified velocity and also subtracts the
 translational motion of the center of rotation.
 """
-function evaluate_freestream(t,phys_params)
+function evaluate_freestream(t, x, sys)
+  @unpack phys_params, motions = sys
+  @unpack reference_body, m, vl, Xl = motions
 
   # get the specified freestream, if any
   freestream_func = get_freestream_func(phys_params)
-  Vinf = freestream_func(t,phys_params)
+  Vinf = [freestream_func(t,phys_params)...]
 
   # if the problem is set in the rotational frame, then...
-  if in_rotational_frame(phys_params)
+  if reference_body != 0
+
+    # update the motions cache in sys
+    evaluate_motion!(motions,x,t)
 
     # transform the specified freestream to the co-rotating coordinates
-    Vinf_i = Vinf
-    Vinf = transform_vector_to_rotating_coordinates(Vinf_i...,t,phys_params)
+    XRref = rotation_transform(Xl[reference_body])
+    Vinf_plucker = XRref*PluckerMotion{2}(linear=Vinf)
+    Vinf .= Vinf_plucker.linear
 
-    # subtract the motion of the center of rotation
-    mot = get_rotation_func(phys_params)
-    Xp = get_center_of_rotation(phys_params)
-    Vp = translational_velocity(mot(t,Xp);inertial=false)
-    Vinf = Vinf .- Vp
+    vref = vl[reference_body]
+
+    Vinf .-= vref.linear
   end
-  return Vinf
+  return tuple(Vinf...)
 end
 
 """
-    surface_velocity_in_translating_frame!(vel,t,base_cache,phys_params)
+    surface_velocity_in_translating_frame!(vel,x,t,base_cache,phys_params,motions)
 
 Evaluates the surface velocity when the problem is set up in a moving
-frame of reference (specified with the `reference frame` keyword).
+frame of reference (specified with the `reference_body` keyword).
 It removes the translational velocity of the center of rotation, since
 this is applied as a free stream velocity (with change of sign).
 """
-function surface_velocity_in_translating_frame!(vel,t,base_cache,phys_params)
-    mot = get_rotation_func(phys_params)
+function surface_velocity_in_translating_frame!(vel,x,t,base_cache,phys_params,motions)
+    @unpack reference_body, m, vl, Xl = motions
 
-    surface_velocity!(vel,base_cache,mot,t;inertial=false)
-    Xp = get_center_of_rotation(phys_params)
-    Ũp, Ṽp = translational_velocity(mot(t,Xp);inertial=false)
-    vel.u .-= Ũp
-    vel.v .-= Ṽp
+    surface_velocity!(vel,x,base_cache,m,t;axes=:body,motion_part=:angular)
+
+    #=
+    evaluate_motion!(motions,x,t)
+
+    vref = vl[reference_body]
+    Uref, Vref = vref.linear
+
+    surface_velocity!(vel,x,base_cache,m,t;axes=:body)
+
+    vel.u .-= Uref
+    vel.v .-= Vref
+    =#
+
     return vel
 end
 
@@ -331,38 +348,46 @@ end
 #= Changes of reference frame =#
 
 """
-    velocity_rel_to_rotating_frame!(u_prime,x,t,sys::ILMSystem)
+    velocity_rel_to_rotating_frame!(u_prime,x,t,base_cache,phys_params,motions)
 
 Changes the input velocity `u_prime` (u', which is measured relative to the translating
 frame) to û (measured relative to the translating/rotating frame)
 """
-function velocity_rel_to_rotating_frame!(u_prime::Edges{Primal},x,t,base_cache,phys_params)
+function velocity_rel_to_rotating_frame!(u_prime::Edges{Primal},x,t,base_cache,phys_params,motions)
     xg, yg = x_grid(base_cache), y_grid(base_cache)
-    _velocity_rel_to_rotating_frame!(u_prime.u,u_prime.v,xg.v,yg.u,t,phys_params)
+    _velocity_rel_to_rotating_frame!(u_prime.u,u_prime.v,xg.v,yg.u,x,t,base_cache,motions)
     return u_prime
 end
 
-function velocity_rel_to_rotating_frame!(u_prime::VectorData,x,t,base_cache,phys_params)
+function velocity_rel_to_rotating_frame!(u_prime::VectorData,x,t,base_cache,phys_params,motions)
     pts = points(base_cache)
-    _velocity_rel_to_rotating_frame!(u_prime.u,u_prime.v,pts.u,pts.v,t,phys_params)
+    _velocity_rel_to_rotating_frame!(u_prime.u,u_prime.v,pts.u,pts.v,x,t,base_cache,motions)
     return u_prime
 end
 
-# Calculate cross product of Ω × (x-xr).
+# Calculate cross product of Ω × (x-xr), where xr is the center of the
+# reference body,
 # and subtract this from u and v (velocity relative to inertial frame) to get
 # û and v̂ (velocity relative to the rotating frame), returned in place
-function _velocity_rel_to_rotating_frame!(u,v,x,y,t,phys_params)
-    rot_func = get_rotation_func(phys_params)
-    kindata = rot_func(t)
-    omega = angular_velocity(kindata)
+function _velocity_rel_to_rotating_frame!(u,v,x,y,xvec,t,base_cache,motions)
+    @unpack reference_body, m, vl, Xl = motions
+    @unpack bl = base_cache
 
-    xr, yr = get_center_of_rotation(phys_params)
+    evaluate_motion!(motions,xvec,t)
 
-    u .+= omega.*(y .- yr)
-    v .-= omega.*(x .- xr)
+    bref = bl[reference_body]
+    xr, yr = bref.cent
+
+    vref = vl[reference_body]
+
+    Ω = vref.angular
+    u .+= Ω.*(y .- yr)
+    v .-= Ω.*(x .- xr)
+
     return u, v
 
 end
+
 
 """
     transform_vector_to_rotating_coordinates(u,v,t,phys_params) -> Tuple
@@ -415,7 +440,7 @@ function viscousflow_vorticity_ode_rhs!(dw,w,x,sys::ILMSystem,t)
 end
 
 function viscousflow_velocity_ode_rhs!(dv,v,x,sys::ILMSystem,t)
-    @unpack bc, phys_params, extra_cache, base_cache = sys
+    @unpack bc, phys_params, extra_cache, base_cache, motions = sys
     @unpack dvb, dv_tmp, cdcache, fcache, w_tmp = extra_cache
 
     Re = get_Reynolds_number(phys_params)
@@ -424,7 +449,7 @@ function viscousflow_velocity_ode_rhs!(dv,v,x,sys::ILMSystem,t)
     fill!(dv,0.0)
 
     # Calculate the convective derivative
-    convective_term!(dv_tmp,v,x,t,base_cache,extra_cache,phys_params,cdcache)
+    convective_term!(dv_tmp,v,x,t,base_cache,extra_cache,phys_params,motions,cdcache)
     dv .-= dv_tmp
 
     # Calculate the double-layer term
@@ -439,22 +464,22 @@ function viscousflow_velocity_ode_rhs!(dv,v,x,sys::ILMSystem,t)
     return dv
 end
 
- convective_term!(dv,v,x,t,base_cache,extra_cache,phys_params,cdcache::ConvectiveDerivativeCache) =
+ convective_term!(dv,v,x,t,base_cache,extra_cache,phys_params,motions,cdcache::ConvectiveDerivativeCache) =
             convective_derivative!(dv,v,base_cache,cdcache)
 
-function convective_term!(dv,v,x,t,base_cache,extra_cache,phys_params,cdcache::RotConvectiveDerivativeCache)
+function convective_term!(dv,v,x,t,base_cache,extra_cache,phys_params,motions,cdcache::RotConvectiveDerivativeCache)
     @unpack v_rot, w_tmp = extra_cache
 
     v_rot .= v
 
     # to avoid having to deliver w as input here
     curl!(w_tmp,v_rot,base_cache) # v_rot is v' (relative to inertial frame)
-    velocity_rel_to_rotating_frame!(v_rot,x,t,base_cache,phys_params)  # Now v_rot is v̂ (rel. to rotating frame)
+    velocity_rel_to_rotating_frame!(v_rot,x,t,base_cache,phys_params,motions)  # Now v_rot is v̂ (rel. to rotating frame)
     w_cross_v!(dv,w_tmp,v_rot,base_cache,cdcache)
 end
 
 function viscousflow_vorticity_bc_rhs!(vb,x,sys::ILMSystem,t)
-    @unpack bc, extra_cache, base_cache, phys_params = sys
+    @unpack bc, extra_cache, base_cache, phys_params, motions = sys
     @unpack dvb, vb_tmp, v_tmp, velcache, divv_tmp = extra_cache
     @unpack dcache, ϕtemp = velcache
 
@@ -469,7 +494,7 @@ function viscousflow_vorticity_bc_rhs!(vb,x,sys::ILMSystem,t)
     vb .-= vb_tmp
 
     # Subtract influence of free stream
-    Uinf, Vinf = evaluate_freestream(t,phys_params)
+    Uinf, Vinf = evaluate_freestream(t,x,sys)
 
     vb.u .-= Uinf
     vb.v .-= Vinf
@@ -565,7 +590,7 @@ function velocity!(v::Edges{Primal},w::Nodes{Dual},x,sys::ILMSystem,t)
 
     prescribed_surface_jump!(dvb,x,t,sys)
 
-    Vinf = evaluate_freestream(t,phys_params)
+    Vinf = evaluate_freestream(t,x,sys)
 
     fill!(divv_tmp,0.0)
     fill!(w_tmp,0.0)
@@ -595,7 +620,7 @@ function streamfunction!(ψ::Nodes{Dual},w::Nodes{Dual},x,sys::ILMSystem,t)
     @unpack velcache = extra_cache
     @unpack wcache = velcache
 
-    Vinf = evaluate_freestream(t,phys_params)
+    Vinf = evaluate_freestream(t,x,sys)
 
     streamfunction!(ψ,w,Vinf,base_cache,wcache)
 
@@ -606,8 +631,9 @@ streamfunction(w::Nodes{Dual},τ,x,sys::ILMSystem,t) = streamfunction!(zeros_gri
 @snapshotoutput streamfunction
 
 function pressure!(press::Nodes{Primal},w::Nodes{Dual},τ,x,sys::ILMSystem,t)
-      @unpack extra_cache, base_cache, phys_params = sys
+      @unpack extra_cache, base_cache, phys_params, motions = sys
       @unpack velcache, v_tmp, dv_tmp, dv, divv_tmp, v_rot = extra_cache
+      @unpack reference_body = motions
 
       velocity!(v_tmp,w,x,sys,t)
       viscousflow_velocity_ode_rhs!(dv,v_tmp,x,sys,t)
@@ -618,13 +644,13 @@ function pressure!(press::Nodes{Primal},w::Nodes{Dual},τ,x,sys::ILMSystem,t)
       inverse_laplacian!(press,divv_tmp,base_cache)
 
       # For rotating coordinate systems...
-      if in_rotational_frame(phys_params)
+      if reference_body != 0
         # Compute v̂ here
-        velocity_rel_to_rotating_frame!(v_tmp,x,t,base_cache,phys_params)
+        velocity_rel_to_rotating_frame!(v_tmp,x,t,base_cache,phys_params,motions)
 
         # Compute Ω × x̂ here
         fill!(v_rot,0.0)
-        velocity_rel_to_rotating_frame!(v_rot,x,t,base_cache,phys_params)
+        velocity_rel_to_rotating_frame!(v_rot,x,t,base_cache,phys_params,motions)
 
         press .-= 0.5*magsq(v_tmp) - 0.5*magsq(v_rot)
       end
@@ -670,16 +696,17 @@ Qcrit(w::Nodes{Dual},τ,x,sys::ILMSystem,t) = Qcrit!(zeros_griddiv(sys),w,τ,x,s
 #= Surface fields =#
 
 function traction!(tract::VectorData{N},τ::VectorData{N},x,sys::ILMSystem,t) where {N}
-    @unpack bc, extra_cache, base_cache, phys_params = sys
+    @unpack bc, extra_cache, base_cache, phys_params, motions = sys
     @unpack vb_tmp, dvb = extra_cache
     @unpack sscalar_cache = base_cache
+    @unpack reference_body = motions
 
     # (v̅ - Ẋ)⋅n -> sscalar_cache
     prescribed_surface_average!(vb_tmp,x,t,sys)
     surface_velocity!(dvb,x,sys,t)
     vb_tmp .-= dvb
-    if in_rotational_frame(phys_params)
-        velocity_rel_to_rotating_frame!(vb_tmp,x,t,base_cache,phys_params)
+    if reference_body != 0
+        velocity_rel_to_rotating_frame!(vb_tmp,x,t,base_cache,phys_params,motions)
     end
     nrm = normals(sys)
     pointwise_dot!(sscalar_cache,nrm,vb_tmp)
@@ -728,13 +755,15 @@ coordinate system. Otherwise, they are in the body coordinate system.
 """ force(sol,sys,bodyi)
 
 function force(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi::Int;inertial=true) where {S,P,N}
-    @unpack base_cache, phys_params = sys
+    @unpack base_cache, phys_params, motions = sys
     @unpack sdata_cache = base_cache
+    @unpack reference_body = motions
     traction!(sdata_cache,τ,x,sys,t)
     fx = integrate(sdata_cache.u,sys,bodyi)
     fy = integrate(sdata_cache.v,sys,bodyi)
 
-    if (inertial && in_rotational_frame(phys_params))
+    if (inertial && reference_body != 0)
+        evaluate_motion!(motions,x,t)
         fx_r, fy_r = fx, fy
         fx, fy = transform_vector_to_inertial_coordinates(fx_r,fy_r,t,phys_params)
     end
