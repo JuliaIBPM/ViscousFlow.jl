@@ -327,9 +327,8 @@ this is applied as a free stream velocity (with change of sign).
 function surface_velocity_in_translating_frame!(vel,x,t,base_cache,phys_params,motions)
     @unpack reference_body, m, vl, Xl = motions
 
-    surface_velocity!(vel,x,base_cache,m,t;axes=:body,motion_part=:angular)
+    #surface_velocity!(vel,x,base_cache,m,t;axes=:body,motion_part=:angular)
 
-    #=
     evaluate_motion!(motions,x,t)
 
     vref = vl[reference_body]
@@ -339,7 +338,6 @@ function surface_velocity_in_translating_frame!(vel,x,t,base_cache,phys_params,m
 
     vel.u .-= Uref
     vel.v .-= Vref
-    =#
 
     return vel
 end
@@ -746,29 +744,45 @@ pressurejump(w::Nodes{Dual},τ::VectorData,x,sys::ILMSystem,t) = pressurejump!(z
 force(w::Nodes{Dual},τ::VectorData{0},x,sys::ILMSystem{S,P,0},t,bodyi::Int;kwargs...) where {S,P} = nothing, nothing #Vector{Float64}(), Vector{Float64}()
 
 """
-    force(sol,sys,bodyi[;inertial=true]) -> Tuple{Vector}
+    force(sol,sys,bodyi[;reference_body=bodyi]) -> Tuple{Vector}
 
-Calculated the force exerted by the fluid on body `bodyi` from the computational solution `sol` of system `sys`.
+Calculated the moment and force exerted by the fluid on body `bodyi` from the computational solution `sol` of system `sys`.
 It returns the force history as a tuple of arrays: one array for each component.
 If `inertial=true` (default), then the components are provided in the inertial
 coordinate system. Otherwise, they are in the body coordinate system.
 """ force(sol,sys,bodyi)
 
-function force(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi::Int;inertial=true) where {S,P,N}
+function force(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi::Int;force_reference=bodyi) where {S,P,N}
     @unpack base_cache, phys_params, motions = sys
-    @unpack sdata_cache = base_cache
-    @unpack reference_body = motions
+    @unpack sdata_cache, sscalar_cache, bl = base_cache
+    @unpack reference_body, Xl = motions
+
     traction!(sdata_cache,τ,x,sys,t)
     fx = integrate(sdata_cache.u,sys,bodyi)
     fy = integrate(sdata_cache.v,sys,bodyi)
 
-    if (inertial && reference_body != 0)
+    pts = points(sys)
+    xc, yc = bl[bodyi].cent
+    pts.u .-= xc
+    pts.v .-= yc
+
+    pointwise_cross!(sscalar_cache,pts,sdata_cache)
+    mom = integrate(sscalar_cache,sys,bodyi)
+
+    if (force_reference != bodyi)
+
+        fb = PluckerForce{2}(angular=mom,linear=[fx,fy])
         evaluate_motion!(motions,x,t)
-        fx_r, fy_r = fx, fy
-        fx, fy = transform_vector_to_inertial_coordinates(fx_r,fy_r,t,phys_params)
+        Xfb_to_i = transpose(Xl[bodyi])
+        Xfb_to_bref = force_reference == 0 ? Xfb_to_i : inv(transpose(Xl[force_reference]))*Xfb_to_i
+
+        fbref = Xfb_to_bref*fb
+        #fx_r, fy_r = fx, fy
+        #fx, fy = transform_vector_to_inertial_coordinates(fx_r,fy_r,t,phys_params)
+        mom, fx, fy = fbref
     end
 
-    return fx, fy
+    return mom, fx, fy
 end
 
 @vectorsurfacemetric force
