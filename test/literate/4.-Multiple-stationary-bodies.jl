@@ -87,10 +87,13 @@ for (i, t) in enumerate(tsnap)
 end
 plt
 
-# Now we will examine the force on each body
-fx1, fy1 = force(sol,sys,1)
-fx2, fy2 = force(sol,sys,2)
-fx3, fy3 = force(sol,sys,3);
+#=
+Now we will examine the force on each body. Remember that, by default, the moment is
+computed about the center of each body's respective coordinate system.
+=#
+mom1, fx1, fy1 = force(sol,sys,1)
+mom2, fx2, fy2 = force(sol,sys,2)
+mom3, fx3, fy3 = force(sol,sys,3);
 #-
 plt = plot(layout = (2,1), size = (600, 400))
 plot!(plt[1],sol.t,2*fx1,xlim=(0,Inf),ylim=(0,4),xlabel="Convective time",ylabel="\$C_D\$",label="Lead body",title="Drag force")

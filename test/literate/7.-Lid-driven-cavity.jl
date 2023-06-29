@@ -36,8 +36,16 @@ g = setup_grid(xlim,ylim,my_params)
 #=
 ## Cavity Geometry
 A square cavity can be created using the `Rectangle()` function with the half length defined above.
+We place its center at the origin.
 =#
 body = Rectangle(halflength,halflength,Δs)
+X = MotionTransform([0.0,0.0],0.0)
+joint = Joint(X)
+m = RigidBodyMotion(joint,body)
+x = init_motion_state(body,m)
+update_body!(body,x,m)
+
+#-
 plot(body,fillrange=nothing)
 
 #=
@@ -55,7 +63,7 @@ to the part of the overall velocity vector associated with body 1. That's
 not particularly important in this example, since there is only one body,
 but it is useful in problems that have multiple bodies.
 =#
-function my_vsminus(t,base_cache,phys_params,motions)
+function my_vsminus(t,x,base_cache,phys_params,motions)
   vsminus = zeros_surface(base_cache)
   vsu = view(vsminus.u,base_cache,1)
 
@@ -70,7 +78,7 @@ bcdict = Dict("interior" => my_vsminus)
 ## Construct the system structure
 Now we provide our parameters and the boundary condition dictionary.
 =#
-sys = viscousflow_system(g,body,phys_params=my_params,bc=bcdict);
+sys = viscousflow_system(g,body,phys_params=my_params,bc=bcdict,motions=m);
 
 #=
 Initialize

@@ -34,9 +34,10 @@ g = setup_grid(xlim,ylim,my_params)
 ### Set up body
 Set up the plates.
 =#
-body1 = Plate(0.5,Δs)
-body2 = Plate(0.5,Δs)
-body3 = Plate(0.5,Δs)
+Lp = 0.5
+body1 = Plate(Lp,Δs)
+body2 = Plate(Lp,Δs)
+body3 = Plate(Lp,Δs)
 bl = BodyList([body1,body2,body3])
 
 #=
@@ -47,11 +48,6 @@ This is a special case of a joint with three degrees of freedom, called a `FreeJ
 Bodies 2 and 3 will each be connected by hinges (i.e., with a `RevoluteJoint`)
 to body 1.
 
-First, specify joint 1, attaching body 1 to the inertial system (body 0). We need
-a more detailed form of the `Joint` function now. In this form, we need
-to specify how the joint is attached to each body, and how each of its
-degrees of freedom move. We will do this piece by piece to explain it.
-More details can be found in the documentation for [RigidBodyTools.jl](https://github.com/JuliaIBPM/RigidBodyTools.jl).
 =#
 parent_body, child_body = 0, 1
 Xp = MotionTransform([0,0],0) # location of joint in inertial system
@@ -60,17 +56,17 @@ Xc = MotionTransform(xpiv,0)
 
 #=
 Now the motion for joint 1, which we set up through the three degrees of freedom.
-The degrees of freedom are ordered `[rotation, x, y]`. The first and second
+ The first and second
 are meant to be fixed, so we give them zero velocity, and the third
 we assign oscillatory kinematics
 =#
 adof = ConstantVelocityDOF(0.0)
 xdof = ConstantVelocityDOF(0.0)
 
-ω = 1
+Ω = 1
 A = 0.25  # amplitude/chord
 ϕh = 0.0  # phase lag of heave
-ydof = OscillatoryDOF(A,ω,ϕh,0.0)
+ydof = OscillatoryDOF(A,Ω,ϕh,0.0)
 
 dofs = [adof,xdof,ydof]
 
@@ -87,8 +83,8 @@ parent_body, child_body = 1, 2
 Xp = MotionTransform([0.25,0],0) # right side of body 1
 Xc = MotionTransform([-0.25,0],0) # left side of body 2
 Δα = 20π/180 # amplitude of pitching
-ϕp = π/2 # phase lag of pitch
-θdof = OscillatoryDOF(Δα,ω,ϕp,0.0)
+ϕp = π/2 # phase lead of pitch
+θdof = OscillatoryDOF(Δα,Ω,ϕp,0.0)
 joint2 = Joint(RevoluteJoint,parent_body,Xp,child_body,Xc,[θdof])
 
 
@@ -98,9 +94,8 @@ and joint 3 between bodies 1 and 3
 parent_body, child_body = 1, 3
 Xp = MotionTransform([-0.25,0],0) # left side of body 1
 Xc = MotionTransform([0.25,0],0) # right side of body 3
-Δα = -20π/180 # amplitude of pitching
-ϕp = -π/2 # phase lag of pitch
-θdof = OscillatoryDOF(Δα,ω,ϕp,0.0)
+ϕp = -π/2 # phase lead of pitch, but lagging rather than leading
+θdof = OscillatoryDOF(Δα,Ω,ϕp,0.0)
 joint3 = Joint(RevoluteJoint,parent_body,Xp,child_body,Xc,[θdof])
 
 #=
@@ -182,7 +177,7 @@ More relevant in this problem is the Reynolds number based on the maximum
 body speed and the total length of the plates
 =#
 Umax, imax, tmax, bmax = maxvelocity(u0,sys)
-L = 3*0.5
+L = 3*Lp
 Re_eff = my_params["Re"]*Umax*L
 
 #-
@@ -210,9 +205,9 @@ for (i, t) in enumerate(tsnap)
     plot!(plt[i],surfaces(sol,sys,t))
 end
 plt
-# and the forces
+# and the forces and moments
 sol = integrator.sol
-fx, fy = force(sol,sys,1);
+mom, fx, fy = force(sol,sys,1);
 #-
 plot(
 plot(sol.t,2*fx,xlim=(0,Inf),ylim=(-2,2),xlabel="Convective time",ylabel="\$C_D\$",legend=:false),

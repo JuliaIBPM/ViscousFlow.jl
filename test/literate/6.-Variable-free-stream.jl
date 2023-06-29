@@ -30,7 +30,7 @@ The "freestream average" specifies a mean free stream, if desired.
 my_params["freestream average"] = 0.0
 my_params["freestream frequency"]  = 2.0
 my_params["freestream amplitude"] = 0.5
-my_params["freestream phase"] = 0.0
+my_params["freestream phase"] = π/2
 
 #=
 Now we define the function. We can call it anything we want,
@@ -119,7 +119,7 @@ plt
 #### Compute the force history
 Just as we did for the stationary body in a constant free stream
 =#
-fx, fy = force(sol,sys,1);
+mom, fx, fy = force(sol,sys,1);
 # Plot them
 plot(
 plot(sol.t,2*fx,xlim=(0,Inf),ylim=(-6,6),xlabel="Convective time",ylabel="\$C_D\$",legend=:false),

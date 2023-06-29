@@ -52,22 +52,19 @@ end
 
 function get_max_velocity(u,sys)
     @unpack base_cache, phys_params, motions = sys
+    @unpack m = motions
 
     x = aux_state(u)
 
     Umax = 0.0
-    if !isnothing(motions)
+    if !isnothing(m)
       Umax,i,tmax,bi = maxvelocity(u,sys)
     end
 
-    Uinf, Vinf = evaluate_freestream(0.0,x,sys)
-    Umax = max(Umax,sqrt(Uinf^2+Vinf^2))
-
-    #=
-    mot = get_rotation_func(phys_params)
-    Umot,i,tmax,bi = maxvelocity(surfaces(sys),mot)
-    Umax = max(Umax,Umot)
-    =#
+    for t in 0:0.05:10
+      Uinf, Vinf = evaluate_freestream(t,x,sys)
+      Umax = max(Umax,sqrt(Uinf^2+Vinf^2))
+    end
 
     # If no velocity has been set yet, just set it to unity
     Umax = Umax == 0.0 ? 1.0 : Umax
@@ -316,31 +313,7 @@ function evaluate_freestream(t, x, sys)
   return tuple(Vinf...)
 end
 
-"""
-    surface_velocity_in_translating_frame!(vel,x,t,base_cache,phys_params,motions)
 
-Evaluates the surface velocity when the problem is set up in a moving
-frame of reference (specified with the `reference_body` keyword).
-It removes the translational velocity of the center of rotation, since
-this is applied as a free stream velocity (with change of sign).
-"""
-function surface_velocity_in_translating_frame!(vel,x,t,base_cache,phys_params,motions)
-    @unpack reference_body, m, vl, Xl = motions
-
-    #surface_velocity!(vel,x,base_cache,m,t;axes=:body,motion_part=:angular)
-
-    evaluate_motion!(motions,x,t)
-
-    vref = vl[reference_body]
-    Uref, Vref = vref.linear
-
-    surface_velocity!(vel,x,base_cache,m,t;axes=:body)
-
-    vel.u .-= Uref
-    vel.v .-= Vref
-
-    return vel
-end
 
 
 #= Changes of reference frame =#
@@ -701,10 +674,13 @@ function traction!(tract::VectorData{N},τ::VectorData{N},x,sys::ILMSystem,t) wh
 
     # (v̅ - Ẋ)⋅n -> sscalar_cache
     prescribed_surface_average!(vb_tmp,x,t,sys)
-    surface_velocity!(dvb,x,sys,t)
-    vb_tmp .-= dvb
     if reference_body != 0
+        surface_velocity_in_translating_frame!(dvb,x,base_cache,motions,t)
+        vb_tmp .-= dvb
         velocity_rel_to_rotating_frame!(vb_tmp,x,t,base_cache,phys_params,motions)
+    else
+        surface_velocity!(dvb,x,sys,t)
+        vb_tmp .-= dvb
     end
     nrm = normals(sys)
     pointwise_dot!(sscalar_cache,nrm,vb_tmp)
@@ -744,18 +720,21 @@ pressurejump(w::Nodes{Dual},τ::VectorData,x,sys::ILMSystem,t) = pressurejump!(z
 force(w::Nodes{Dual},τ::VectorData{0},x,sys::ILMSystem{S,P,0},t,bodyi::Int;kwargs...) where {S,P} = nothing, nothing #Vector{Float64}(), Vector{Float64}()
 
 """
-    force(sol,sys,bodyi[;reference_body=bodyi]) -> Tuple{Vector}
+    force(sol,sys,bodyi[;axes=0,reference_body=bodyi]) -> Tuple{Vector}
 
-Calculated the moment and force exerted by the fluid on body `bodyi` from the computational solution `sol` of system `sys`.
+Calculate the moment and force exerted by the fluid on body `bodyi` from the computational solution `sol` of system `sys`.
 It returns the force history as a tuple of arrays: one array for each component.
-If `inertial=true` (default), then the components are provided in the inertial
-coordinate system. Otherwise, they are in the body coordinate system.
+If `axes=0` (the default), then the components are provided in the inertial coordinate system. However,
+this can be changed to any body ID to provide the components in another system. The
+keyword `force_reference` determines which body's system the moment is taken about.
+By default, it is the body `bodyi` itself, but any other body can be specified,
+or the inertial system (by specifying 0).
 """ force(sol,sys,bodyi)
 
-function force(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi::Int;force_reference=bodyi) where {S,P,N}
+function force(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi::Int;axes=0,force_reference=bodyi) where {S,P,N}
     @unpack base_cache, phys_params, motions = sys
     @unpack sdata_cache, sscalar_cache, bl = base_cache
-    @unpack reference_body, Xl = motions
+    @unpack reference_body, m, Xl = motions
 
     traction!(sdata_cache,τ,x,sys,t)
     fx = integrate(sdata_cache.u,sys,bodyi)
@@ -769,21 +748,21 @@ function force(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi:
     pointwise_cross!(sscalar_cache,pts,sdata_cache)
     mom = integrate(sscalar_cache,sys,bodyi)
 
-    if (force_reference != bodyi)
+    if !(force_reference == bodyi && axes == reference_body)
 
         fb = PluckerForce{2}(angular=mom,linear=[fx,fy])
         evaluate_motion!(motions,x,t)
-        Xfb_to_i = transpose(Xl[bodyi])
-        Xfb_to_bref = force_reference == 0 ? Xfb_to_i : inv(transpose(Xl[force_reference]))*Xfb_to_i
+        Xfb_to_bref = force_transform_from_A_to_B(Xl,bodyi,force_reference)
 
-        fbref = Xfb_to_bref*fb
-        #fx_r, fy_r = fx, fy
-        #fx, fy = transform_vector_to_inertial_coordinates(fx_r,fy_r,t,phys_params)
+        Rfbref_to_axes = rotation_transform(force_transform_from_A_to_B(Xl,force_reference,axes))
+
+        fbref = Rfbref_to_axes*Xfb_to_bref*fb
         mom, fx, fy = fbref
     end
 
     return mom, fx, fy
 end
+
 
 @vectorsurfacemetric force
 

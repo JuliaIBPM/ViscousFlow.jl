@@ -21,7 +21,8 @@ However, it is problematic for the rotational part in external flows, because th
 with distance from the center of rotation. Instead, we solve for the
 velocity expressed relative to the translating frame, but *not the rotating frame*.
 However, the components of this velocity are still expressed in the rotating
-coordinate system, $\hat{x}$ and $\hat{y}$.
+coordinate system, $\hat{x}$ and $\hat{y}$, which is the key to allowing us
+to keep the body fixed in the computational domain.
 
 Mathematically, we write this velocity as $\mathbf{u}' = R^T (\mathbf{u} - \mathbf{U}_p)$.
 where $R$ is the rotation operator from the rotating to the inertial coordinate
@@ -29,10 +30,10 @@ system. The boundary conditions on $\mathbf{u}'$ are $-R^T \mathbf{U}_p$ at
 infinity (a freestream), and $\mathbf{u}' = \Omega \times (\mathbf{x}-\mathbf{X}_p)$
 on the surface of the body.
 
-To set the problem up, we simply need to supply the kinematics of the
-reference frame (through a "reference frame" key in the parameters Dict),
-and the center of rotation, expressed in the co-moving coordinates, $\hat{X}_p$
-(through the "center of rotation" key).
+To set the problem up, we simply need to supply the kinematics of the motion,
+and to provide an additional argument `reference_body = 1`, which signals
+that we wish to solve the problem in a coordinate system moving with body 1.
+The default value of this argument is 0, the inertial coordinate system.
 
 Here, we will demonstrate this on a problem involving the flapping of a
 flat plate. (This is a simple model for hovering insect flight, if you're
@@ -50,12 +51,14 @@ of the body from the perspective of the inertial reference frame.
 macro animate_motion(b,m,dt,tmax,xlim,ylim)
     return esc(quote
             bc = deepcopy($b)
-            t0, x0 = 0.0, motion_state(bc,$m)
+            t0, x0 = 0.0, init_motion_state(bc,$m)
+            dxdt = zero(x0)
             x = copy(x0)
             @gif for t in t0:$dt:t0+$tmax
-                global x += motion_velocity(bc,$m,t)*$dt
+                motion_rhs!(dxdt,x,($m,bc),t)
+                global x += dxdt*$dt
                 update_body!(bc,x,$m)
-                plot(bc,xlim=$xlim,ylim=$ylim)
+                plot(bc,xlims=$xlim,ylims=$ylim)
             end every 5
         end)
 end
@@ -67,86 +70,145 @@ my_params=Dict()
 my_params["Re"] = 100
 
 #=
-### Set the kinematics
-Here, we will define the kinematics. The wing will pitch about
-an axis at its leading edge, as in the figure below
-
-![flat-plate-diagram.svg](./assets/flat-plate-diagram.svg)
-
-Thus, $\hat{X}_p = (0,0.5c)$. We will scale the problem by $c$,
-so we will set this center at $(0,0.5)$ in the scaled coordinates
-=#
-Xp, Yp = 0.0, 0.5
-
-# Set the frequency and amplitude of flapping
-Ω = π/2 # Flapping frequency
-Tp = 2π/Ω # Period of flapping
-Δα = π/4 # Amplitude of pitching
-Ax, Ay = 1.0, 0.0  # Amplitude of heaving (only horizontal)
-
-
-# Set the phase lag of the heaving to pitching to 90 degrees
-ϕx, ϕy = -π/2, 0.0
-ϕα = 0.0
-
-# Constant translation/rotation, not important here
-α₀ = α̇ = Ux = Uy = 0.0
-
-# Create the motion, and set the center of rotation
-# and motion into the Dict
-kin = Oscillation(Ux,Uy,α̇,Xp,Yp,Ω,Ax,Ay,ϕx,ϕy,α₀,Δα,ϕα)
-mot = RigidBodyMotion(kin)
-my_params["center of rotation"]=(Xp,Yp)
-my_params["reference frame"] = mot
-
-#= Create a domain big enough to hold the vorticity.
-We will loosen the grid Re a bit.
+Create a domain big enough to hold the vorticity. We will loosen the grid Re a bit.
 =#
 xlim = (-4.0,4.0)
-ylim = (-2.5,3.0)
+ylim = (-3.5,2.0)
 my_params["grid Re"] = 3.0
 g = setup_grid(xlim,ylim,my_params)
 
-# Create the plate and rotate it so that it is vertical
+#=
+## Create the plate
+We create the body as usual. However, in order to facilitate the kinematics
+that follow, it is helpful to change the body's intrinsic coordinate system
+from its default system -- in which the plate lies along its own x axis
+-- to another system in which the plate lies along its y axis. This is
+not necessary, but it has some benefits for prescribing the motion and
+for visualizing the results.
+
+To make this change of body coordinate system, we use the [transform_body!](@ref)
+function. This is different from [update_body!](@ref), because the latter
+only changes the body's placement in the inertial system. To use the
+function, we specify a `MotionTransform` with where we want the plate
+to lie and at what angle.
+=#
 Δs = surface_point_spacing(g,my_params)
 body = Plate(1.0,Δs)
-T = RigidTransform((0.0,0.0),π/2)
-T(body)
-
-# Now animate the motion for a complete cycle (4 time units)
-@animate_motion body mot Tp/200 Tp xlim ylim
-
-# We can also plot the kinematics
-plot(mot;tmax=8)
+X = MotionTransform([0,0],π/2)
+transform_body!(body,X)
 
 #=
-### Set the boundary conditions
+Plot it, just to check.
+=#
+plot(body,xlim=xlim,ylim=ylim)
+
+#=
+## Set the kinematics
+Here, we will define the kinematics. The wing will pitch about
+an axis at its top edge, as in the figure below
+
+![flat-plate-diagram.svg](./assets/flat-plate-diagram.svg)
+
+Thus, $\hat{X}_p = (0,0.5c)$. Since the length of the plate is 1, we are
+implicitly scaling the problem by $c$, so we will set this joint at $(0,0.5)$ in
+these coordinates.
+
+### The joint placement
+We must specify the joint, attaching body 1 (the child) to the inertial system (body 0, the parent). We need
+a more detailed form of the `Joint` function now. In this form, we need
+to specify how the joint is attached to each body, and how each of its
+degrees of freedom move. We will do this piece by piece to explain it.
+More details can be found in the documentation for [RigidBodyTools.jl](https://github.com/JuliaIBPM/RigidBodyTools.jl).
+
+To place the joint, we need to specify its position in both the parent's
+and the child's coordinate systems. In the parent's system, we can just
+place it at the origin, with no rotation. For the child, we place
+the joint as desired, at $(0,0.5)$.
+=#
+parent_body, child_body = 0, 1
+Xp = MotionTransform([0,0],0) # transform from inertial system to joint
+xpiv = [0.0,0.5]
+Xc = MotionTransform(xpiv,0.0)
+
+#=
+### The kinematics
+We are creating a joint that has three potential degrees of freedom (angle, x, y),
+called a `FreeJoint2d`. However, only the angle and x coordinates of the
+joint will be allowed to move. Both of these are assigned oscillatory kinematics.
+=#
+Ω = π/2 # Flapping angular frequency
+Tp = 2π/Ω # Period of flapping
+Δα = π/4 # Amplitude of pitching
+ϕα = 0 # Pitching phase
+adof = OscillatoryDOF(Δα,Ω,ϕα,0.0)
+
+# The motion of the x coordinate
+A = 1 # Heaving amplitude
+ϕ = -π/2 # Phase lag
+xdof = OscillatoryDOF(A,Ω,ϕ,0.0)
+
+ydof = ConstantVelocityDOF(0) # Keep the y coordinate fixed
+
+#=
+We put the kinematics into a vector. The degrees of freedom are always ordered `[rotation, x, y]`.
+=#
+dofs = [adof,xdof,ydof]
+
+#=
+Finally, create the joint and the motion structure.
+=#
+joint = Joint(FreeJoint2d,parent_body,Xp,child_body,Xc,dofs)
+m = RigidBodyMotion(joint,body)
+
+
+# Now animate the motion for a complete cycle (4 time units)
+@animate_motion body m Tp/200 Tp xlim ylim
+
+#=
+### Boundary condition functions
+Instead of using the default boundary condition functions, we define
+special ones here that provide the instantaneous surface velocity (i.e. the velocity
+of every surface point) from the prescribed
+motion. Every surface has an "exterior" and "interior" side. For
+a flat plate, these two sides are the upper and lower sides, and both sides
+are next to the fluid, so both of them are assigned the prescribed velocity
+of the plate. (For closed bodies, we would assign this velocity to only
+one of the sides, and zero to the other side. We will see an example of this in a later case.)
+We pack these into a special dictionary and pass these to the system construction.
+
+
 We need to provide specialized boundary conditions for this problem,
 and we use the function [surface_velocity_in_translating_frame!](@ref)
 for that. Because we are simulating a flat plate, both the positive
 and negative sides of the surface must have their boundary velocities
 set the same way. If this were instead a closed body, we would set either
 the positive or negative side's value to zero.
+We pack these into a special dictionary and pass these to the system construction.
 =#
-function my_vsplus(t,base_cache,phys_params,motions)
+function my_vsplus(t,x,base_cache,phys_params,motions)
   vsplus = zeros_surface(base_cache)
-  surface_velocity_in_translating_frame!(vsplus,t,base_cache,phys_params)
+  surface_velocity_in_translating_frame!(vsplus,x,base_cache,motions,t)
   return vsplus
 end
 
-function my_vsminus(t,base_cache,phys_params,motions)
+function my_vsminus(t,x,base_cache,phys_params,motions)
   vsminus = zeros_surface(base_cache)
-  surface_velocity_in_translating_frame!(vsminus,t,base_cache,phys_params)
+  surface_velocity_in_translating_frame!(vsminus,x,base_cache,motions,t)
   return vsminus
 end
 
 bcdict = Dict("exterior" => my_vsplus, "interior" => my_vsminus)
 
 #=
-### Set up the system structure and initial conditions
+### Construct the system structure
+Here, we supply both the motion, the boundary condition functions, and the reference body as additional arguments.
+=#
+sys = viscousflow_system(g,body,phys_params=my_params,bc=bcdict,motions=m,reference_body=1);
+
+#=
+### Set up the initial conditions
 This is done the usual way
 =#
-sys = viscousflow_system(g,body,phys_params=my_params,bc=bcdict);
 u0 = init_sol(sys)
 tspan = (0.0,10.0)
 integrator = init(u0,tspan,sys)
@@ -155,25 +217,35 @@ integrator = init(u0,tspan,sys)
 # Here, we will advance it for one flapping period
 step!(integrator,Tp)
 
-# ### Plot it
-# Plot the vorticity field
+#=
+### Plot it
+Plot the vorticity field
+=#
 sol = integrator.sol
 plt = plot(layout = (4,3), size = (900, 900), legend=:false)
 tsnap = Tp/12:Tp/12:Tp
 for (i, t) in enumerate(tsnap)
-    plot!(plt[i],vorticity(sol,sys,t),sys,clim=(-20,20),levels=range(-20,20,length=16),ylim=(-2.5,2),title="$(round(t/Tp,digits=4))Tp")
+    plot!(plt[i],vorticity(sol,sys,t),sys,clim=(-20,20),levels=range(-20,20,length=16),ylim=(-3.5,1.5),title="$(round(t/Tp,digits=4))Tp")
 end
 plt
 
-# ### Plot the forces and moments
-# The solution is expressed in rotating coordinates, so we have
-# to convert the force components to inertial coordinates
-fx, fy = force(sol,sys,1;inertial=true);
-mom = moment(sol,sys,1);
+#=
+### Plot the forces and moments
+The solution is expressed in co-rotating coordinates. To get the force and
+moment in inertial coordinates, we
+make use of the `axes` keyword, setting it to 0. The moment is computed
+about the center of the body's coordinate system, but we can change that behavior
+by using the `force_reference` keyword, setting it to 0, for example,
+to compute the moment about the origin of the inertial system.
+=#
+mom, fx, fy = force(sol,sys,1,axes=0);
 
+#=
+Plot these
+=#
 plot(
 plot(sol.t/Tp,2*fx/Ω^2,xlim=(0,Inf),ylim=(-5,5),xlabel="\$t/T_p\$",ylabel="\$C_D\$",legend=:false),
 plot(sol.t/Tp,2*fy/Ω^2,xlim=(0,Inf),ylim=(-2,5),xlabel="\$t/T_p\$",ylabel="\$C_L\$",legend=:false),
-plot(sol.t/Tp,2*mom/Ω^2,xlim=(0,Inf),ylim=(-1,1),xlabel="\$t/T_p\$",ylabel="\$C_m\$",legend=:false),
+plot(sol.t/Tp,2*mom/Ω^2,xlim=(0,Inf),ylim=(-2,2),xlabel="\$t/T_p\$",ylabel="\$C_m\$",legend=:false),
     size=(800,350)
 )

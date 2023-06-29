@@ -127,17 +127,17 @@ plot(streamfunction(integrator),sys,title="Streamlines",ylim=ylim,color = :Black
 
 
 #=
-#### Compute the force history
+#### Compute the moment and force histories
 To do this, we supply the solution history `sol`, the system `sys`, and the index
 of the body (1).
 =#
 sol = integrator.sol;
-fx, fy = force(sol,sys,1);
+mom, fx, fy = force(sol,sys,1);
 
 #=
 Plot the histories. Note that we are actually plotting the drag and lift
 coefficient histories here:
-$$ C_D = \dfrac{F_x}{\frac{1}{2}\rho U_\infty^2 L}, \quad C_L = \dfrac{F_y}{\frac{1}{2}\rho U_\infty^2 L} $$
+$$ C_D = \dfrac{F_x}{\frac{1}{2}\rho U_\infty^2 L}, \quad C_L = \dfrac{F_y}{\frac{1}{2}\rho U_\infty^2 L}, \quad C_m = \dfrac{M}{\frac{1}{2}\rho U_\infty^2 L^2} $$
 Since the quantities in this simulation are already scaled by $\rho$, $U_\infty$, and $L$
 (because $\rho$ has been scaled out of the equations, and the free stream speed is
 set to 1 and the height of the shape to 1), then we obtain these coefficients by
@@ -146,6 +146,7 @@ simply dividing by 1/2, or equivalently, by multiplying by 2:
 plot(
 plot(sol.t,2*fx,xlim=(0,Inf),ylim=(0,4),xlabel="Convective time",ylabel="\$C_D\$",legend=:false),
 plot(sol.t,2*fy,xlim=(0,Inf),ylim=(-4,4),xlabel="Convective time",ylabel="\$C_L\$",legend=:false),
+plot(sol.t,2*mom,xlim=(0,Inf),ylim=(-4,4),xlabel="Convective time",ylabel="\$C_m\$",legend=:false),
     size=(800,350)
 )
 
