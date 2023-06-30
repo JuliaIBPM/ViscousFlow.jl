@@ -6,17 +6,19 @@ In this notebook we will simulate the flow past a stationary body.
 using ViscousFlow
 #-
 using Plots
+using Statistics
 
 #=
 ### The basic steps
 From the previous notebook, we add one additional step:
 * **Specify the problem**: Set the Reynolds number, the free stream, and any other problem parameters
 * **Discretize**: Set up a solution domain, choose the grid Reynolds number and the critical time step limits
-* **Set up bodies**: *Create the body or bodies and specify their motions, if any*
+* ***Set up bodies***: *Create the body or bodies and specify their motions, if any*
 * **Construct the system structure**: Create the operators that will be used to perform the simulation
 * **Initialize**: Set the initial flow field and initialize the integrator
 * **Solve**: Solve the flow field
 * **Examine**: Examine the results
+
 The rest of the steps are nearly the same as in the previous example.
 
 As before, we initialize the parameters dictionary:
@@ -51,14 +53,34 @@ the function [`surface_point_spacing`](@ref)
 body = Rectangle(0.5,0.25,Δs)
 
 #=
-We place the body at a desired location and orientation with the `RigidTransform`
-function. This function creates an operator `T` that acts in-place on the body:
-after the operation is applied, `body` is transformed to the correct location/orientation.
+We place the body at a desired location and orientation by creating a *joint*.
+This joint "joins" the body to the inertial coordinate system. In order
+to create this joint and apply it, we first need to place the joint in the inertial
+coordinate system with a `MotionTransform`.
 =#
-cent = (0.0,0.0) # center of body
-α = 45π/180 # angle
-T = RigidTransform(cent,α)
-T(body) # transform the body to the current configuration
+cent = [0.0,0.0] # center of joint with respect to inertial system
+α = 45π/180 # angle of joint with respect to inertial system
+X = MotionTransform(cent,α)
+joint = Joint(X)
+
+#=
+The next two steps will seem unnecessarily cumbersome, but they reveal
+an important aspect of how this package treats surface motion. Every
+problem with bodies has joints, and every joint has at least one degree
+of freedom, even if none of these degrees of freedom is meant to vary in time.
+
+For this reason, we must always create a `RigidBodyMotion` object and a
+*joint state vector*, `x`, even if there is no motion. In this example,
+`x` is just a vector of 3 zeros (describing the angle, x, and y
+coordinates of the joint).
+
+To set the body in place, we use `update_body!(body,x,m)`. After the operation is
+applied, `body` is transformed to the correct location/orientation.
+=#
+
+m = RigidBodyMotion(joint,body)
+x = init_motion_state(body,m)
+update_body!(body,x,m)
 
 # Let's plot it just to make sure
 plot(body,xlim=xlim,ylim=ylim)
@@ -68,9 +90,10 @@ plot(body,xlim=xlim,ylim=ylim)
 This step is like the previous notebook, but now we also provide the body as an argument. It is important
 to note that we have not provided any explicit information about the boundary conditions on our shape.
 It therefore assumes that we want to enforce zero velocity on the shape. We will show another
-example later in which we change this.
+example later in which we change this. Note that we have to supply the `RigidBodyMotion`
+object via the `motions` keyword.
 =#
-sys = viscousflow_system(g,body,phys_params=my_params);
+sys = viscousflow_system(g,body,phys_params=my_params,motions=m);
 
 #=
 ### Initialize
@@ -104,17 +127,17 @@ plot(streamfunction(integrator),sys,title="Streamlines",ylim=ylim,color = :Black
 
 
 #=
-#### Compute the force history
+#### Compute the moment and force histories
 To do this, we supply the solution history `sol`, the system `sys`, and the index
 of the body (1).
 =#
 sol = integrator.sol;
-fx, fy = force(sol,sys,1);
+mom, fx, fy = force(sol,sys,1);
 
 #=
 Plot the histories. Note that we are actually plotting the drag and lift
 coefficient histories here:
-$$ C_D = \dfrac{F_x}{\frac{1}{2}\rho U_\infty^2 L}, \quad C_L = \dfrac{F_y}{\frac{1}{2}\rho U_\infty^2 L} $$
+$$ C_D = \dfrac{F_x}{\frac{1}{2}\rho U_\infty^2 L}, \quad C_L = \dfrac{F_y}{\frac{1}{2}\rho U_\infty^2 L}, \quad C_m = \dfrac{M}{\frac{1}{2}\rho U_\infty^2 L^2} $$
 Since the quantities in this simulation are already scaled by $\rho$, $U_\infty$, and $L$
 (because $\rho$ has been scaled out of the equations, and the free stream speed is
 set to 1 and the height of the shape to 1), then we obtain these coefficients by
@@ -123,10 +146,11 @@ simply dividing by 1/2, or equivalently, by multiplying by 2:
 plot(
 plot(sol.t,2*fx,xlim=(0,Inf),ylim=(0,4),xlabel="Convective time",ylabel="\$C_D\$",legend=:false),
 plot(sol.t,2*fy,xlim=(0,Inf),ylim=(-4,4),xlabel="Convective time",ylabel="\$C_L\$",legend=:false),
+plot(sol.t,2*mom,xlim=(0,Inf),ylim=(-4,4),xlabel="Convective time",ylabel="\$C_m\$",legend=:false),
     size=(800,350)
 )
 
 # The mean drag and lift coefficients (omitting the first two steps) are
-meanCD = GridUtilities.mean(2*fx[3:end])
+meanCD = mean(2*fx[3:end])
 #-
-meanCL = GridUtilities.mean(2*fy[3:end])
+meanCL = mean(2*fy[3:end])
