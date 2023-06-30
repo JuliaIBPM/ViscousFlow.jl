@@ -16,6 +16,7 @@ makedocs(
                      "manual/6.-Viscous-flow-about-a-moving-body.md",
                      "manual/7.-Variable-free-stream.md",
                      "manual/8.-Lid-driven-cavity.md",
+                     "manual/9.-Exogenous-degrees-of-freedom.md",
                      "manual/functions.md"
                      ]
         #"Internals" => [ "internals/properties.md"]
