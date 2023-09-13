@@ -11,6 +11,10 @@ translational motion of the center of rotation.
 """
 function evaluate_freestream(t, x, sys)
   @unpack phys_params, motions = sys
+  evaluate_freestream(t,x,phys_params,motions)
+end
+
+function evaluate_freestream(t, x, phys_params, motions)
   @unpack reference_body, m, vl, Xl = motions
 
   # get the specified freestream, if any
@@ -81,42 +85,34 @@ function _velocity_rel_to_rotating_frame!(u,v,x,y,xvec,t,base_cache,motions)
 
 end
 
-
 """
-    transform_vector_to_rotating_coordinates(u,v,t,phys_params) -> Tuple
+    velocity_rel_to_inertial_frame!(u_prime,x,t,base_cache,phys_params,motions)
 
-Transform a vector expressed in inertial coordinates with components `u`
-and `v` to the rotating coordinate system at time `t`.
+Changes the input velocity `u_prime` (u', which is measured relative to the translating
+frame) to u (measured relative to the inertial frame, but expressed in rotating coordinates).
+Note that the inertial frame has zero velocity at infinity, so any free stream is
+also removed here.
 """
-function transform_vector_to_rotating_coordinates(u,v,t,phys_params)
-  # This computes R^T*V to provide vector components in the corotating
-  # coordinate system
-  mot = get_rotation_func(phys_params)
-  k = mot(t)
-  α = angular_position(k)
-
-  up =  u*cos(α) + v*sin(α)
-  vp = -u*sin(α) + v*cos(α)
-  return up, vp
+function velocity_rel_to_inertial_frame!(u_prime::Edges{Primal},x,t,base_cache,phys_params,motions)
+    Vinf = evaluate_freestream(t,x,phys_params,motions)
+    Uxinf, Uyinf = Vinf
+    u_prime.u .-= Uxinf
+    u_prime.v .-= Uyinf
+    return u_prime
 end
 
-"""
-    transform_vector_to_inertial_coordinates(u,v,t,phys_params) -> Tuple
-
-Transform a vector expressed in rotating coordinates with components `u`
-and `v` to the inertial coordinate system at time `t`.
-"""
-function transform_vector_to_inertial_coordinates(u,v,t,phys_params)
-  # This computes R^T*Vinf to provide freestream
-  # velocity in the corotating coordinate system, if appropriate
-  mot = get_rotation_func(phys_params)
-  k = mot(t)
-  α = angular_position(k)
-
-  up =  u*cos(α) - v*sin(α)
-  vp =  u*sin(α) + v*cos(α)
-  return up, vp
+function velocity_rel_to_inertial_frame!(u_prime::VectorData,x,t,base_cache,phys_params,motions)
+    Vinf = evaluate_freestream(t,x,phys_params,motions)
+    Uxinf, Uyinf = Vinf
+    u_prime.u .-= Uxinf
+    u_prime.v .-= Uyinf
+    return u_prime
 end
+
+
+
+
+
 
 function _reference_body_acceleration(x,t,motions::ImmersedLayers.ILMMotion)
     @unpack reference_body, m = motions

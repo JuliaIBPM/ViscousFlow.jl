@@ -98,12 +98,27 @@ function pressure!(press::Nodes{Primal},w::Nodes{Dual},τ,x,sys::ILMSystem,t)
 
       # For rotating coordinate systems...
       if reference_body != 0
-        # Compute v̂ here
-        velocity_rel_to_rotating_frame!(v_tmp,x,t,base_cache,phys_params,motions)
+        # compute R^T v = v' - R^T(Ur - Uinf) here (velocity field in inertial frame,
+        #    but in rotating coordinates)
+        velocity_rel_to_inertial_frame!(v_tmp,x,t,base_cache,phys_params,motions)
 
         # Compute Ω × x̂ here
         fill!(v_rot,0.0)
         velocity_rel_to_rotating_frame!(v_rot,x,t,base_cache,phys_params,motions)
+
+        # Now this holds rigid body field, V̂r = Ω × x̂ + R^T(Ur - Uinf)
+        velocity_rel_to_inertial_frame!(v_rot,x,t,base_cache,phys_params,motions)
+
+        # Now compute V̂r ⋅ R^T v
+        fill!(divv_tmp,0.0)
+        gridwise_dot!(divv_tmp,v_rot,v_tmp)
+
+        press .-= 0.5*magsq(v_tmp) - divv_tmp
+
+
+        #=
+        # Compute v̂ here
+        velocity_rel_to_rotating_frame!(v_tmp,x,t,base_cache,phys_params,motions)
 
         press .-= 0.5*magsq(v_tmp) - 0.5*magsq(v_rot)
 
@@ -115,6 +130,7 @@ function pressure!(press::Nodes{Primal},w::Nodes{Dual},τ,x,sys::ILMSystem,t)
         fill!(divv_tmp,0.0)
         grid_interpolate!(divv_tmp,v_rot)
         press .-= divv_tmp
+        =#
 
       end
 
@@ -142,7 +158,6 @@ function Qcrit!(Q::Nodes{Primal},w::Nodes{Dual},τ,x,sys::ILMSystem,t)
     @unpack motions = sys
     vel = zeros_grid(sys)
 
-    evaluate_motion!(motions,x,t)
     velocity!(vel,w,x,sys,t)
 
     gradv = zeros_gridgrad(sys)
