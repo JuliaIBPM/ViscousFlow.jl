@@ -9,9 +9,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group:
-          - Auxiliary
-          - Notebooks
         version:
           - '1.7'
           #- '^1.8.0-0'
@@ -48,7 +45,6 @@ jobs:
         with:
           version: '1.7'
       - run: julia --project=docs -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
-      - run: julia --project=docs -e 'ENV["PYTHON"]=""; using Pkg; Pkg.add("Conda"); using Conda; Conda.add("matplotlib"); Conda.add("pyqt"); Pkg.add("PyCall"); Pkg.build("PyCall"); Pkg.add("PyPlot")'
       - run: julia --project=docs docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

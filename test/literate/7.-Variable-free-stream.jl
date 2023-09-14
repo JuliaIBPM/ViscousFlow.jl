@@ -80,7 +80,7 @@ m = RigidBodyMotion(joint,body)
 x = init_motion_state(body,m)
 update_body!(body,x,m)
 #-
-plot(body,xlim=xlim,ylim=ylim)
+#!jl plot(body,xlim=xlim,ylim=ylim)
 
 #=
 ### Construct the system structure
@@ -107,13 +107,13 @@ Now we are ready to solve the problem. Let's advance the solution to $t = 2.5$.
 Let's look at the flow field at the end of this interval
 =#
 sol = integrator.sol
-plt = plot(layout = (2,2), size = (800, 600), legend=:false)
-tsnap = 1.0:0.5:2.5
-for (i, t) in enumerate(tsnap)
-    plot!(plt[i],vorticity(sol,sys,t),sys,layers=false,title="t = $(round(t,digits=2))",clim=(-10,10),levels=range(-10,10,length=30),color = :RdBu)
-    plot!(plt[i],surfaces(sol,sys,t))
-end
-plt
+#!jl plt = plot(layout = (2,2), size = (800, 600), legend=:false)
+#!jl tsnap = 1.0:0.5:2.5
+#!jl for (i, t) in enumerate(tsnap)
+#!jl     plot!(plt[i],vorticity(sol,sys,t),sys,layers=false,title="t = $(round(t,digits=2))",clim=(-10,10),levels=range(-10,10,length=30),color = :RdBu)
+#!jl     plot!(plt[i],surfaces(sol,sys,t))
+#!jl end
+#!jl plt
 
 #=
 #### Compute the force history
@@ -121,11 +121,11 @@ Just as we did for the stationary body in a constant free stream
 =#
 mom, fx, fy = force(sol,sys,1);
 # Plot them
-plot(
-plot(sol.t,2*fx,xlim=(0,Inf),ylim=(-6,6),xlabel="Convective time",ylabel="\$C_D\$",legend=:false),
-plot(sol.t,2*fy,xlim=(0,Inf),ylim=(-6,6),xlabel="Convective time",ylabel="\$C_L\$",legend=:false),
-    size=(800,350)
-)
+#!jl plot(
+#!jl plot(sol.t,2*fx,xlim=(0,Inf),ylim=(-6,6),xlabel="Convective time",ylabel="\$C_D\$",legend=:false),
+#!jl plot(sol.t,2*fy,xlim=(0,Inf),ylim=(-6,6),xlabel="Convective time",ylabel="\$C_L\$",legend=:false),
+#!jl     size=(800,350)
+#!jl )
 
 # The mean drag and lift coefficients are
 meanCD = mean(2*fx[3:end])

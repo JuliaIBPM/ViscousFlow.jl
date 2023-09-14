@@ -46,7 +46,7 @@ x = init_motion_state(body,m)
 update_body!(body,x,m)
 
 #-
-plot(body,fillrange=nothing)
+#!jl plot(body,fillrange=nothing)
 
 #=
 ## Boundary Condition at the moving wall
@@ -105,7 +105,7 @@ streamlines to show the small recirculation zones in the lower corners.
 =#
 mins, maxs = extrema(streamfunction(integrator))
 slevs = vcat(range(mins,maxs,length=11),maxs-0.00438,maxs-0.00353,maxs-0.00348)
-plot(
-plot(vorticity(integrator),sys,title="Vorticity",clim=(-10,10),color=:turbo,linewidth=1.5,ylim=ylim,levels=-6:0.5:5),
-plot(streamfunction(integrator),sys,title="Streamfunction",color=:black,ylim=ylim,levels=slevs)
-)
+#!jl plot(
+#!jl plot(vorticity(integrator),sys,title="Vorticity",clim=(-10,10),color=:turbo,linewidth=1.5,ylim=ylim,levels=-6:0.5:5),
+#!jl plot(streamfunction(integrator),sys,title="Streamfunction",color=:black,ylim=ylim,levels=slevs)
+#!jl )

@@ -100,7 +100,7 @@ transform_body!(body,X)
 #=
 Plot it, just to check.
 =#
-plot(body,xlim=xlim,ylim=ylim)
+#!jl plot(body,xlim=xlim,ylim=ylim)
 
 #=
 ## Set the kinematics
@@ -162,7 +162,7 @@ m = RigidBodyMotion(joint,body)
 
 
 # Now animate the motion for a complete cycle (4 time units)
-@animate_motion body m Tp/200 Tp xlim ylim
+#!jl @animate_motion body m Tp/200 Tp xlim ylim
 
 #=
 ### Boundary condition functions
@@ -222,12 +222,12 @@ step!(integrator,Tp)
 Plot the vorticity field
 =#
 sol = integrator.sol
-plt = plot(layout = (4,3), size = (900, 900), legend=:false)
-tsnap = Tp/12:Tp/12:Tp
-for (i, t) in enumerate(tsnap)
-    plot!(plt[i],vorticity(sol,sys,t),sys,clim=(-20,20),levels=range(-20,20,length=16),ylim=(-3.5,1.5),title="$(round(t/Tp,digits=4))Tp")
-end
-plt
+#!jl plt = plot(layout = (4,3), size = (900, 900), legend=:false)
+#!jl tsnap = Tp/12:Tp/12:Tp
+#!jl for (i, t) in enumerate(tsnap)
+#!jl     plot!(plt[i],vorticity(sol,sys,t),sys,clim=(-20,20),levels=range(-20,20,length=16),ylim=(-3.5,1.5),title="$(round(t/Tp,digits=4))Tp")
+#!jl end
+#!jl plt
 
 #=
 ### Plot the forces and moments
@@ -243,9 +243,9 @@ mom, fx, fy = force(sol,sys,1,axes=0);
 #=
 Plot these
 =#
-plot(
-plot(sol.t/Tp,2*fx/Ω^2,xlim=(0,Inf),ylim=(-5,5),xlabel="\$t/T_p\$",ylabel="\$C_D\$",legend=:false),
-plot(sol.t/Tp,2*fy/Ω^2,xlim=(0,Inf),ylim=(-2,5),xlabel="\$t/T_p\$",ylabel="\$C_L\$",legend=:false),
-plot(sol.t/Tp,2*mom/Ω^2,xlim=(0,Inf),ylim=(-2,2),xlabel="\$t/T_p\$",ylabel="\$C_m\$",legend=:false),
-    size=(800,350)
-)
+#!jl plot(
+#!jl plot(sol.t/Tp,2*fx/Ω^2,xlim=(0,Inf),ylim=(-5,5),xlabel="\$t/T_p\$",ylabel="\$C_D\$",legend=:false),
+#!jl plot(sol.t/Tp,2*fy/Ω^2,xlim=(0,Inf),ylim=(-2,5),xlabel="\$t/T_p\$",ylabel="\$C_L\$",legend=:false),
+#!jl plot(sol.t/Tp,2*mom/Ω^2,xlim=(0,Inf),ylim=(-2,2),xlabel="\$t/T_p\$",ylabel="\$C_m\$",legend=:false),
+#!jl     size=(800,350)
+#!jl )

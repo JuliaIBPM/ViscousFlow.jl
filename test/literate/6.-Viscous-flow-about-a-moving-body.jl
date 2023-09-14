@@ -108,7 +108,7 @@ We generate the initial joint state vector with `init_and update the body system
 =#
 x = init_motion_state(bl,m)
 update_body!(bl,x,m)
-plot(bl,xlim=xlim,ylim=ylim)
+#!jl plot(bl,xlim=xlim,ylim=ylim)
 
 #=
 Here is a useful macro to visualize the motion as a movie:
@@ -197,20 +197,20 @@ Let's look at a few snapshots of the vorticity field. Note that the
 plotting here requires us to explicitly call the [`surfaces`](@ref)
 function to generate the instantaneous configuration of the plate.
 =#
-sol = integrator.sol
-plt = plot(layout = (1,3), size = (800, 300), legend=:false)
-tsnap = 0.5:0.5:1.5
-for (i, t) in enumerate(tsnap)
-    plot!(plt[i],vorticity(sol,sys,t),sys,layers=false,title="t = $(round(t,digits=2))",clim=(-5,5),levels=range(-5,5,length=30),color = :RdBu)
-    plot!(plt[i],surfaces(sol,sys,t))
-end
-plt
+#!jl sol = integrator.sol
+#!jl plt = plot(layout = (1,3), size = (800, 300), legend=:false)
+#!jl tsnap = 0.5:0.5:1.5
+#!jl for (i, t) in enumerate(tsnap)
+#!jl     plot!(plt[i],vorticity(sol,sys,t),sys,layers=false,title="t = $(round(t,digits=2))",clim=(-5,5),levels=range(-5,5,length=30),color = :RdBu)
+#!jl     plot!(plt[i],surfaces(sol,sys,t))
+#!jl end
+#!jl plt
 # and the forces and moments
 sol = integrator.sol
 mom, fx, fy = force(sol,sys,1);
 #-
-plot(
-plot(sol.t,2*fx,xlim=(0,Inf),ylim=(-2,2),xlabel="Convective time",ylabel="\$C_D\$",legend=:false),
-plot(sol.t,2*fy,xlim=(0,Inf),ylim=(-2,2),xlabel="Convective time",ylabel="\$C_L\$",legend=:false),
-    size=(800,350)
-)
+#!jl plot(
+#!jl plot(sol.t,2*fx,xlim=(0,Inf),ylim=(-2,2),xlabel="Convective time",ylabel="\$C_D\$",legend=:false),
+#!jl plot(sol.t,2*fy,xlim=(0,Inf),ylim=(-2,2),xlabel="Convective time",ylabel="\$C_L\$",legend=:false),
+#!jl     size=(800,350)
+#!jl )
