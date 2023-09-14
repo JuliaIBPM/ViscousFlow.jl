@@ -87,17 +87,17 @@ Let's look at a sequence of snapshots of the forced flow. As we see, this
 short-lived force creates a dipole-like pair of counter-rotating vortices that propagates upward under its
 own influence.
 =#
-sol = integrator.sol
-plt = plot(layout = (1,4), size = (800, 300), legend=:false)
-tsnap = 0.1:1.0:3.1
-for (i, t) in enumerate(tsnap)
-    plot!(plt[i],vorticity(sol,sys,t),sys,title="t = $(round(t,digits=2))")
-end
-plt
+#!jl sol = integrator.sol
+#!jl plt = plot(layout = (1,4), size = (800, 300), legend=:false)
+#!jl tsnap = 0.1:1.0:3.1
+#!jl for (i, t) in enumerate(tsnap)
+#!jl     plot!(plt[i],vorticity(sol,sys,t),sys,title="t = $(round(t,digits=2))")
+#!jl end
+#!jl plt
 #=
 And here is another look a the flow, this time with streamlines:
 =#
-plot(streamfunction(integrator),sys,title="Streamfunction at t = $(round(integrator.t,digits=2))")
+#!jl plot(streamfunction(integrator),sys,title="Streamfunction at t = $(round(integrator.t,digits=2))")
 
 #=
 We can also supply more than one pulse. If we don't change the spatial
@@ -121,10 +121,10 @@ step!(integrator,4.0)
 ### Examine
 In this case, the pulses coalesce with one another
 =#
-sol = integrator.sol
-plt = plot(layout = (1,4), size = (800, 300), legend=:false)
-tsnap = 0.1:1.0:3.1
-for (i, t) in enumerate(tsnap)
-    plot!(plt[i],vorticity(sol,sys,t),sys,title="t = $(round(t,digits=2))")
-end
-plt
+#!jl sol = integrator.sol
+#!jl plt = plot(layout = (1,4), size = (800, 300), legend=:false)
+#!jl tsnap = 0.1:1.0:3.1
+#!jl for (i, t) in enumerate(tsnap)
+#!jl     plot!(plt[i],vorticity(sol,sys,t),sys,title="t = $(round(t,digits=2))")
+#!jl end
+#!jl plt

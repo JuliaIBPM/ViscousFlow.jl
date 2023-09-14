@@ -58,7 +58,7 @@ update_body!(bl,x,m)
 
 # #### Plot the initial configuration of the bodies
 # Just to check they are in the right places
-plot(bl,xlim=xlim,ylim=ylim)
+#!jl plot(bl,xlim=xlim,ylim=ylim)
 
 #=
 ### Construct the system structure
@@ -80,12 +80,12 @@ Here, we run it for a little while, just to demonstrate:
 Let's inspect the results
 =#
 sol = integrator.sol
-plt = plot(layout = (1,3), size = (800, 200), legend=:false)
-tsnap = 0.0:1.0:2.0
-for (i, t) in enumerate(tsnap)
-    plot!(plt[i],vorticity(sol,sys,t),sys,clim=(-10,10),levels=range(-10,10,length=30), color = :RdBu)
-end
-plt
+#!jl plt = plot(layout = (1,3), size = (800, 200), legend=:false)
+#!jl tsnap = 0.0:1.0:2.0
+#!jl for (i, t) in enumerate(tsnap)
+#!jl     plot!(plt[i],vorticity(sol,sys,t),sys,clim=(-10,10),levels=range(-10,10,length=30), color = :RdBu)
+#!jl end
+#!jl plt
 
 #=
 Now we will examine the force on each body. Remember that, by default, the moment is
@@ -95,11 +95,11 @@ mom1, fx1, fy1 = force(sol,sys,1)
 mom2, fx2, fy2 = force(sol,sys,2)
 mom3, fx3, fy3 = force(sol,sys,3);
 #-
-plt = plot(layout = (2,1), size = (600, 400))
-plot!(plt[1],sol.t,2*fx1,xlim=(0,Inf),ylim=(0,4),xlabel="Convective time",ylabel="\$C_D\$",label="Lead body",title="Drag force")
-plot!(plt[2],sol.t,2*fy1,xlim=(0,Inf),ylim=(-2,2),xlabel="Convective time",ylabel="\$C_L\$",label="Lead body",title="Side force")
-plot!(plt[1],sol.t,2*fx2,xlim=(0,Inf),ylim=(0,4),xlabel="Convective time",ylabel="\$C_D\$",label="Trailing body",title="Drag force")
-plot!(plt[2],sol.t,2*fy2,xlim=(0,Inf),ylim=(-2,2),xlabel="Convective time",ylabel="\$C_L\$",label="Trailing body",title="Side force")
+#!jl plt = plot(layout = (2,1), size = (600, 400))
+#!jl plot!(plt[1],sol.t,2*fx1,xlim=(0,Inf),ylim=(0,4),xlabel="Convective time",ylabel="\$C_D\$",label="Lead body",title="Drag force")
+#!jl plot!(plt[2],sol.t,2*fy1,xlim=(0,Inf),ylim=(-2,2),xlabel="Convective time",ylabel="\$C_L\$",label="Lead body",title="Side force")
+#!jl plot!(plt[1],sol.t,2*fx2,xlim=(0,Inf),ylim=(0,4),xlabel="Convective time",ylabel="\$C_D\$",label="Trailing body",title="Drag force")
+#!jl plot!(plt[2],sol.t,2*fy2,xlim=(0,Inf),ylim=(-2,2),xlabel="Convective time",ylabel="\$C_L\$",label="Trailing body",title="Side force")
 #-
 println("Mean drag coefficient on lead body = ", mean(2*fx1[3:end]))
 #-

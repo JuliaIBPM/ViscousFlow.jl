@@ -116,11 +116,11 @@ and `pressure`.
 =#
 
 # We will look at some of these at the current state:
-plot(
- plot(vorticity(integrator),sys,title="Vorticity"),
- plot(streamfunction(integrator),sys,title="Streamlines"),
- plot(pressure(integrator),sys,title="Pressure"),
- plot(velocity(integrator),sys))
+#!jl plot(
+#!jl plot(vorticity(integrator),sys,title="Vorticity"),
+#!jl plot(streamfunction(integrator),sys,title="Streamlines"),
+#!jl plot(pressure(integrator),sys,title="Pressure"),
+#!jl plot(velocity(integrator),sys))
 
 # For this problem, we can compare with the exact solution. The exact solution is also a Gaussian,
 # but with a radius $\sqrt{\sigma^2+4t/Re}$
@@ -128,9 +128,9 @@ oseen_exact(t) = SpatialGaussian(sqrt(σ^2+4*t/my_params["Re"]),x0,y0,A)
 exactsol(t) = init_sol(oseen_exact(t),sys)
 
 #-
-plot(vorticity(integrator)[:,104],label="Numerical")
-plot!(vorticity(exactsol(integrator.t),sys,integrator.t)[:,104],label="Exact")
-plot!(title=string("Vorticity at t = ",round(integrator.t,digits=2)))
+#!jl plot(vorticity(integrator)[:,104],label="Numerical")
+#!jl plot!(vorticity(exactsol(integrator.t),sys,integrator.t)[:,104],label="Exact")
+#!jl plot!(title=string("Vorticity at t = ",round(integrator.t,digits=2)))
 
 #=
 ## Second example: co-rotating vortices
@@ -151,7 +151,7 @@ Now, we create an instance of this vorticity distribution on the grid.
 u0 = init_sol(twogauss,sys)
 
 #-
-plot(vorticity(u0,sys,0.0),sys)
+#!jl plot(vorticity(u0,sys,0.0),sys)
 
 #-
 tspan = (0.0,8.0)
@@ -173,13 +173,13 @@ sol = integrator.sol;
 
 # The vortices orbit each other and then eventually merge together. If we wish to make a nice
 # figure, we can arrange snapshots on a grid:
-plt = plot(layout = (2,4), size = (800, 400), legend=:false)
-tsnap = 0.0:1.0:7.0
-for (i, t) in enumerate(tsnap)
-    plot!(plt[i],vorticity(sol,sys,t),sys,levels=range(0.1,5,length=31))
-end
-savefig(plt,"CoRotating.pdf")
-plt
+#!jl plt = plot(layout = (2,4), size = (800, 400), legend=:false)
+#!jl tsnap = 0.0:1.0:7.0
+#!jl for (i, t) in enumerate(tsnap)
+#!jl     plot!(plt[i],vorticity(sol,sys,t),sys,levels=range(0.1,5,length=31))
+#!jl end
+#!jl savefig(plt,"CoRotating.pdf")
+#!jl plt
 
 #=
 If you wish to animate the solution, e.g., plotting the vorticity every 5 steps

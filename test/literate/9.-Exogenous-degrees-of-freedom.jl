@@ -133,24 +133,24 @@ end
 Plot the vorticity field
 =#
 sol = integrator.sol
-plt = plot(layout = (4,3), size = (900, 900), legend=:false)
-tsnap = tfinal/12:tfinal/12:tfinal
-for (i, t) in enumerate(tsnap)
-    plot!(plt[i],vorticity(sol,sys,t),sys,clim=(-20,20),levels=range(-20,20,length=16),ylim=(-1.5,1.5),title="$(round(t,digits=4))")
-end
-plt
+#!jl plt = plot(layout = (4,3), size = (900, 900), legend=:false)
+#!jl tsnap = tfinal/12:tfinal/12:tfinal
+#!jl for (i, t) in enumerate(tsnap)
+#!jl     plot!(plt[i],vorticity(sol,sys,t),sys,clim=(-20,20),levels=range(-20,20,length=16),ylim=(-1.5,1.5),title="$(round(t,digits=4))")
+#!jl end
+#!jl plt
 
 #=
 and compute and plot the force and moment
 =#
 mom, fx, fy = force(sol,sys,1)
 
-plot(
-plot(sol.t,2*fx,xlim=(0,Inf),ylim=(-5,5),xlabel="\$t\$",ylabel="\$C_x\$",legend=:false),
-plot(sol.t,2*fy,xlim=(0,Inf),ylim=(-5,5),xlabel="\$t\$",ylabel="\$C_y\$",legend=:false),
-plot(sol.t,2*mom,xlim=(0,Inf),ylim=(-2,2),xlabel="\$t\$",ylabel="\$C_m\$",legend=:false),
-    size=(800,350)
-)
+#!jl plot(
+#!jl plot(sol.t,2*fx,xlim=(0,Inf),ylim=(-5,5),xlabel="\$t\$",ylabel="\$C_x\$",legend=:false),
+#!jl plot(sol.t,2*fy,xlim=(0,Inf),ylim=(-5,5),xlabel="\$t\$",ylabel="\$C_y\$",legend=:false),
+#!jl plot(sol.t,2*mom,xlim=(0,Inf),ylim=(-2,2),xlabel="\$t\$",ylabel="\$C_m\$",legend=:false),
+#!jl     size=(800,350)
+#!jl )
 
 #=
 We can also look at the y position and velocity. These are contained in
@@ -162,5 +162,5 @@ There is only one component that is exogenous in this example.
 jointid = 1
 y = map(u -> exogenous_position_vector(aux_state(u),m,jointid)[1],sol)
 v = map(u -> exogenous_velocity_vector(aux_state(u),m,jointid)[1],sol)
-plot(sol.t,y,label="\$y\$",xlabel="\$t\$")
-plot!(sol.t,v,label="\$v\$")
+#!jl plot(sol.t,y,label="\$y\$",xlabel="\$t\$")
+#!jl plot!(sol.t,v,label="\$v\$")
