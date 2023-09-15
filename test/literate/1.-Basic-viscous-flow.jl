@@ -2,13 +2,14 @@
 # In this example, we will simulate various examples of a basic *unbounded* viscous flow---a flow
 # without boundaries. Our initial condition will be a distribution of *vorticity*.
 
-#md # ```@setup compileplots
-#md # using Plots
+#md # ```@meta
+#md # CurrentModule = ViscousFlow
 #md # ```
+
 
 using ViscousFlow
 #-
-using Plots
+#!jl using Plots
 
 #=
 ### The basic steps
@@ -83,7 +84,7 @@ gauss = SpatialGaussian(σ,x0,y0,A)
 #=
 ### Initialize
 Now, we create an instance of this vorticity distribution on the grid by
-calling [`init_sol`](@ref) with this vortex.
+calling [`init_sol`](https://juliaibpm.github.io/ImmersedLayers.jl/stable/manual/heatconduction/#ImmersedLayers.init_sol) with this vortex.
 =#
 u0 = init_sol(gauss,sys)
 

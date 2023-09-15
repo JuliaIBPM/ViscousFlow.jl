@@ -36,10 +36,8 @@ You might want to install that, too, to follow the examples.
 
 ## References
 
-[^1]: Eldredge, J. D. (2021) "A method of immersed layers on Cartesian grids, with application to incompressible flows," arXiv:2103.04521.
+[^1]: Eldredge, J. D. (2022) "A method of immersed layers on Cartesian grids, with application to incompressible flows," Journal of Computational Physics 448: 110716.
 
 [^2]: Liska, S. and Colonius, T. (2017) "A fast immersed boundary method for external incompressible viscous flows using lattice Green's functions," *J. Comput. Phys.*, 331, 257--279.
 
 [^3]: Taira, K. and Colonius, T. (2007) "The immersed boundary method: a projection approach," *J. Comput. Phys.*, 225, 2118--2137.
-
-[^4]: Wang, C. and Eldredge, J. D. (2015) "Strongly coupled dynamics of fluids and rigid-body systems with the immersed boundary projection method," *J. Comput. Phys.*, 295, 87--113. [(DOI)](https://doi.org/10.1016/j.jcp.2015.04.005).

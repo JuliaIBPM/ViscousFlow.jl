@@ -1,5 +1,9 @@
 # # Exogenous degrees of freedom
 
+#md # ```@meta
+#md # CurrentModule = ViscousFlow
+#md # ```
+
 #=
 Thus far, the motion of bodies or of incident flows has been prescribed
 with time-varying functions known a priori. In other words, we knew
@@ -30,7 +34,7 @@ example how it *could*.
 =#
 using ViscousFlow
 #-
-using Plots
+#!jl using Plots
 
 #=
 Set the Reynolds number
