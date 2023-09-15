@@ -105,6 +105,7 @@ function pressure!(press::Nodes{Primal},w::Nodes{Dual},τ,x,sys::ILMSystem,t)
         # Compute Ω × x̂ here
         fill!(v_rot,0.0)
         velocity_rel_to_rotating_frame!(v_rot,x,t,base_cache,phys_params,motions)
+        v_rot .*= -1.0
 
         # Now this holds rigid body field, V̂r = Ω × x̂ + R^T(Ur - Uinf)
         velocity_rel_to_inertial_frame!(v_rot,x,t,base_cache,phys_params,motions)
