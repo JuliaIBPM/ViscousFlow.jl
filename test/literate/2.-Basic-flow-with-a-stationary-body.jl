@@ -3,9 +3,13 @@
 In this notebook we will simulate the flow past a stationary body.
 =#
 
+#md # ```@meta
+#md # CurrentModule = ViscousFlow
+#md # ```
+
 using ViscousFlow
 #-
-using Plots
+#!jl using Plots
 using Statistics
 
 #=

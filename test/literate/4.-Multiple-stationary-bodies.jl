@@ -3,9 +3,14 @@
 Adding multiple bodies to a problem is easy, using the concept of a `BodyList`.
 Here, we demonstrate this with a problem with multiple stationary bodies.
 =#
+
+#md # ```@meta
+#md # CurrentModule = ViscousFlow
+#md # ```
+
 using ViscousFlow
 #-
-using Plots
+#!jl using Plots
 using Statistics
 
 #=

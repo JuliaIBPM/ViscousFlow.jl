@@ -28,6 +28,7 @@ For examples, consult the documentation or see the example Jupyter notebooks in 
 
 Many of the core aspects of the fluid-body interaction are based on the Method of Immersed Layers [1], which is an extension of the immersed boundary projection method [2].
 
-[1]: Eldredge, J. D. (2021) "A method of immersed layers on Cartesian grids, with application to incompressible flows," [arXiv:2103.04521](https://arxiv.org/abs/2103.04521).
+[1]: Eldredge, J. D. (2022) "A method of immersed layers on Cartesian grids, with application to incompressible flows," *J. Comput. Phys.*, 448, [110716](https://arxiv.org/abs/2103.04521).
+
 
 [2]: Taira, K. and Colonius, T. (2007) "The immersed boundary method: a projection approach," *J. Comput. Phys.*, 225, 2118--2137.

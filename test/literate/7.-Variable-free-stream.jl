@@ -6,9 +6,14 @@ rectangular object, in which the $x$ component of the free stream is
 
 $$U_\infty(t) = A \sin(\Omega t)$$
 =#
+
+#md # ```@meta
+#md # CurrentModule = ViscousFlow
+#md # ```
+
 using ViscousFlow
 #-
-using Plots
+#!jl using Plots
 using Statistics
 
 #=

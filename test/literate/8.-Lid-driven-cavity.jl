@@ -2,9 +2,14 @@
 # Lid-driven cavity flow
 In this notebook we will simulate the flow in a square cavity with a top moving wall.
 =#
+
+#md # ```@meta
+#md # CurrentModule = ViscousFlow
+#md # ```
+
 using ViscousFlow
 #-
-using Plots
+#!jl using Plots
 
 #=
 ## Problem specification

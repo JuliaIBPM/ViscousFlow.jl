@@ -6,6 +6,7 @@ makedocs(
     sitename = "ViscousFlow.jl",
     doctest = true,
     clean = true,
+    modules = [ViscousFlow],
     pages = [
         "Home" => "index.md",
         "Manual" => ["manual/1.-Basic-viscous-flow.md",

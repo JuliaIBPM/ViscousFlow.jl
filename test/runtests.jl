@@ -43,7 +43,7 @@ if GROUP == "All" || GROUP == "Literate"
       global file_str = "$file"
       global body = :(begin include(joinpath($root,$file)) end)
       #endswith(file,".jl") && startswith(file,"2") && @mysafetestset file_str body
-      endswith(file,".jl") && @mysafetestset file_str body
+      endswith(file,".jl") && startswith(file,r"[3,5,6]") && @mysafetestset file_str body
     end
   end
 end

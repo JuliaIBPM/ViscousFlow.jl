@@ -11,9 +11,13 @@ motion, in which the middle plate heaves up and down, and the other two
 bodies pitch back and forth on hinges connecting their edges to the middle plate.
 =#
 
+#md # ```@meta
+#md # CurrentModule = ViscousFlow
+#md # ```
+
 using ViscousFlow
 #-
-using Plots
+#!jl using Plots
 
 #=
 ### Problem specification and discretization
@@ -194,7 +198,7 @@ run it for 1.5 time units just to demonstrate it.
 #=
 ### Examine the solution
 Let's look at a few snapshots of the vorticity field. Note that the
-plotting here requires us to explicitly call the [`surfaces`](@ref)
+plotting here requires us to explicitly call the [`surfaces`](https://juliaibpm.github.io/ImmersedLayers.jl/stable/manual/problems/#ImmersedLayers.surfaces)
 function to generate the instantaneous configuration of the plate.
 =#
 #!jl sol = integrator.sol

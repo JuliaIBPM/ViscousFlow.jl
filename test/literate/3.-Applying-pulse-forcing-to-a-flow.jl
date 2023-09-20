@@ -3,9 +3,13 @@
 Here, we will show how to apply a transient force to a flow.
 =#
 
+#md # ```@meta
+#md # CurrentModule = ViscousFlow
+#md # ```
+
 using ViscousFlow
 #-
-using Plots
+#!jl using Plots
 
 #=
 For this case, we first seek to introduce a pulse to an otherwise quiescent fluid,

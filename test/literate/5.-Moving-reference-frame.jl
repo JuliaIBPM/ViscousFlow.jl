@@ -1,7 +1,11 @@
 # # Moving reference frame
 
+#md # ```@meta
+#md # CurrentModule = ViscousFlow
+#md # ```
+
 #=
-As will be discussed in [Viscous flow about a moving body](@ref), it is slower
+As will be discussed in [Viscous flow about moving bodies](@ref), it is slower
 to solve the problem when the body moves in our frame of reference, because
 it requires re-generating the grid operations at each time step. However,
 when we only have a single rigid body, we can solve the problem in a
@@ -42,7 +46,7 @@ interested!)
 
 using ViscousFlow
 #-
-using Plots
+#!jl using Plots
 
 #=
 Let's define a macro that allows us to visualize the kinematics
@@ -86,8 +90,8 @@ from its default system -- in which the plate lies along its own x axis
 not necessary, but it has some benefits for prescribing the motion and
 for visualizing the results.
 
-To make this change of body coordinate system, we use the [transform_body!](@ref)
-function. This is different from [update_body!](@ref), because the latter
+To make this change of body coordinate system, we use the [`transform_body!`](https://juliaibpm.github.io/RigidBodyTools.jl/stable/manual/transforms/#RigidBodyTools.transform_body!)
+function. This is different from [`update_body!`](https://juliaibpm.github.io/RigidBodyTools.jl/stable/manual/transforms/#RigidBodyTools.update_body!), because the latter
 only changes the body's placement in the inertial system. To use the
 function, we specify a `MotionTransform` with where we want the plate
 to lie and at what angle.
@@ -178,7 +182,7 @@ We pack these into a special dictionary and pass these to the system constructio
 
 
 We need to provide specialized boundary conditions for this problem,
-and we use the function [surface_velocity_in_translating_frame!](@ref)
+and we use the function `surface_velocity_in_translating_frame!`
 for that. Because we are simulating a flat plate, both the positive
 and negative sides of the surface must have their boundary velocities
 set the same way. If this were instead a closed body, we would set either
