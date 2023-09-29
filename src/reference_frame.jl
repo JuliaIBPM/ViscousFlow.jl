@@ -51,13 +51,13 @@ Changes the input velocity `u_prime` (u', which is measured relative to the tran
 frame) to û (measured relative to the translating/rotating frame)
 """
 function velocity_rel_to_rotating_frame!(u_prime::Edges{Primal},x,t,base_cache,phys_params,motions)
-    xg, yg = x_grid(base_cache), y_grid(base_cache)
+    @unpack xg, yg = base_cache
     _velocity_rel_to_rotating_frame!(u_prime.u,u_prime.v,xg.v,yg.u,x,t,base_cache,motions)
     return u_prime
 end
 
 function velocity_rel_to_rotating_frame!(u_prime::VectorData,x,t,base_cache,phys_params,motions)
-    pts = points(base_cache)
+    @unpack pts = base_cache
     _velocity_rel_to_rotating_frame!(u_prime.u,u_prime.v,pts.u,pts.v,x,t,base_cache,motions)
     return u_prime
 end
