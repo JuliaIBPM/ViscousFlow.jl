@@ -4,7 +4,7 @@ module ViscousFlow
 using Reexport
 using UnPack
 @reexport using ImmersedLayers
-@reexport using GridUtilities
+#@reexport using GridUtilities
 
 
 export ViscousIncompressibleFlowProblem
