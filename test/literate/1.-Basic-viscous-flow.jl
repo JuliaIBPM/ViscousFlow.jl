@@ -79,7 +79,7 @@ The command below creates a Gaussian with radius σ at (0,0) with strength 1.
 x0 = 0.0
 y0 = 0.0
 A = 1
-gauss = SpatialGaussian(σ,x0,y0,A)
+gauss = SpatialGaussian(σ,σ,x0,y0,A)
 
 #=
 ### Initialize
@@ -125,7 +125,7 @@ and `pressure`.
 
 # For this problem, we can compare with the exact solution. The exact solution is also a Gaussian,
 # but with a radius $\sqrt{\sigma^2+4t/Re}$
-oseen_exact(t) = SpatialGaussian(sqrt(σ^2+4*t/my_params["Re"]),x0,y0,A)
+oseen_exact(t) = SpatialGaussian(sqrt(σ^2+4*t/my_params["Re"]),sqrt(σ^2+4*t/my_params["Re"]),x0,y0,A)
 exactsol(t) = init_sol(oseen_exact(t),sys)
 
 #-
@@ -143,7 +143,7 @@ other's motion:
 x01, y01 = 0.5, 0.0
 x02, y02 = -0.5, 0.0
 A = 1
-twogauss = SpatialGaussian(σ,x01,y01,A) + SpatialGaussian(σ,x02,y02,A)
+twogauss = SpatialGaussian(σ,σ,x01,y01,A) + SpatialGaussian(σ,σ,x02,y02,A)
 
 #=
 ### Initialize

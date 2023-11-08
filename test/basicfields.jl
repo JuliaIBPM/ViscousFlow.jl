@@ -15,7 +15,7 @@ using ImmersedLayers
   x0 = 0.0
   y0 = 0.0
   A = 1
-  gauss = SpatialGaussian(σ,x0,y0,A)
+  gauss = SpatialGaussian(σ,σ,x0,y0,A)
 
   u = init_sol(gauss,sys)
 
@@ -41,7 +41,7 @@ end
   x0 = 0.0
   y0 = 0.0
   A = 1
-  gauss = SpatialGaussian(σ,x0,y0,A)
+  gauss = SpatialGaussian(σ,σ,x0,y0,A)
   u = init_sol(gauss,sys)
 
 
