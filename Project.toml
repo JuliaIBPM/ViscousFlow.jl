@@ -2,7 +2,7 @@ name = "ViscousFlow"
 uuid = "103da179-b3e4-57c1-99a4-586354eb2c5a"
 authors = ["Jeff Eldredge <jdeldre@g.ucla.edu>"]
 repo = "https://github.com/JuliaIBPM/ViscousFlow.jl.git"
-version = "0.6.4"
+version = "0.6.5"
 
 [deps]
 ColorTypes = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
@@ -19,13 +19,15 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 [compat]
 ColorTypes = "<0.10.1, 0.10, 0.11"
 DocStringExtensions = "0.8.1, 0.9"
-ImmersedLayers = "0.4.3"
+ImmersedLayers = "0.5.0"
 Plots = "1.35, 1.36, 1.37, 1.38"
 RecipesBase = "1.0"
 Reexport = "0.2.0, 1.0"
 StatsFuns = "0.9.8, 1"
 UnPack = "1.0"
 julia = "1.6"
+LinearAlgebra = "1.6"
+Statistics = "1.6"
 
 [extras]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
