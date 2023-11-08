@@ -109,7 +109,7 @@ function viscousflow_velocity_ode_rhs!(dv,v,x,sys::ILMSystem,t)
     #dv .-= dv_tmp
 
     # Apply forcing
-    apply_forcing!(dv_tmp,v,t,fcache,phys_params)
+    apply_forcing!(dv_tmp,v,x,t,fcache,sys)
     dv .+= dv_tmp
 
     return dv
