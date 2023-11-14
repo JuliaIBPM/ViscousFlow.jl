@@ -10,6 +10,7 @@ using UnPack
 export ViscousIncompressibleFlowProblem
 export setup_grid, viscousflow_system, setup_problem, surface_point_spacing,
         surface_velocity_in_translating_frame!
+export pyplot_field!
 
 #= Supporting functions =#
 
@@ -19,6 +20,7 @@ include("reference_frame.jl")
 include("fields.jl")
 include("ode_operators.jl")
 include("api.jl")
+include("plotting.jl")
 
 
 
