@@ -243,20 +243,21 @@ or the inertial system (by specifying 0).
 """ force(sol,sys,bodyi)
 
 function force(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi::Int;axes=0,force_reference=bodyi) where {S,P,N}
-    @unpack base_cache, phys_params, motions = sys
+    @unpack base_cache, extra_cache, phys_params, motions = sys
     @unpack sdata_cache, sscalar_cache, bl = base_cache
+    @unpack vb_tmp = extra_cache
     @unpack reference_body, m, Xl = motions
 
     traction!(sdata_cache,τ,x,sys,t)
     fx = integrate(sdata_cache.u,sys,bodyi)
     fy = integrate(sdata_cache.v,sys,bodyi)
 
-    pts = points(sys)
+    vb_tmp .= deepcopy(points(sys))
     xc, yc = bl[bodyi].cent
-    pts.u .-= xc
-    pts.v .-= yc
+    vb_tmp.u .-= xc
+    vb_tmp.v .-= yc
 
-    pointwise_cross!(sscalar_cache,pts,sdata_cache)
+    pointwise_cross!(sscalar_cache,vb_tmp,sdata_cache)
     mom = integrate(sscalar_cache,sys,bodyi)
 
     if !(force_reference == bodyi && axes == reference_body)
@@ -289,15 +290,17 @@ It returns the moment history as an array. The moment is calculated about center
 
 
 function moment(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi::Int;center=(0.0,0.0)) where {S,P,N}
-    @unpack base_cache = sys
+    @unpack base_cache, extra_cache = sys
     @unpack sdata_cache, sscalar_cache = base_cache
+    @unpack vb_tmp = extra_cache
+
     xc, yc = center
-    pts = points(sys)
-    pts.u .-= xc
-    pts.v .-= yc
+    vb_tmp .= deepcopy(points(sys))
+    vb_tmp.u .-= xc
+    vb_tmp.v .-= yc
 
     traction!(sdata_cache,τ,x,sys,t)
-    pointwise_cross!(sscalar_cache,pts,sdata_cache)
+    pointwise_cross!(sscalar_cache,vb_tmp,sdata_cache)
     mom = integrate(sscalar_cache,sys,bodyi)
 
     return mom
