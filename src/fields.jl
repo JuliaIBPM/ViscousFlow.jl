@@ -180,8 +180,8 @@ Qcrit(w::Nodes{Dual},τ,x,sys::ILMSystem,t) = Qcrit!(zeros_griddiv(sys),w,τ,x,s
 function traction!(tract::VectorData{N},τ::VectorData{N},x,sys::ILMSystem,t) where {N}
     @unpack bc, extra_cache, base_cache, phys_params, motions = sys
     @unpack vb_tmp, dvb = extra_cache
-    @unpack sscalar_cache = base_cache
-    @unpack reference_body = motions
+    @unpack sscalar_cache, bl = base_cache
+    @unpack reference_body, m = motions
 
     # (v̅ - Ẋ)⋅n -> sscalar_cache
     prescribed_surface_average!(vb_tmp,x,t,sys)
@@ -193,7 +193,11 @@ function traction!(tract::VectorData{N},τ::VectorData{N},x,sys::ILMSystem,t) wh
         surface_velocity!(dvb,x,sys,t)
         vb_tmp .-= dvb
     end
-    nrm = normals(sys)
+
+    bl_tmp = deepcopy(bl)
+    update_body!(bl_tmp,x,m)
+
+    nrm = normals(bl_tmp)
     pointwise_dot!(sscalar_cache,nrm,vb_tmp)
 
     # [v] -> dvb
@@ -212,10 +216,14 @@ traction(w::Nodes{Dual},τ::VectorData,x,sys::ILMSystem,t) = traction!(zeros_sur
 @snapshotoutput traction
 
 function pressurejump!(dpb::ScalarData{N},τ::VectorData{N},x,sys::ILMSystem,t) where {N}
-    @unpack base_cache = sys
-    @unpack sdata_cache = base_cache
+    @unpack base_cache, motions = sys
+    @unpack sdata_cache, bl = base_cache
+    @unpack m = motions
 
-    nrm = normals(sys)
+    bl_tmp = deepcopy(bl)
+    update_body!(bl_tmp,x,m)
+
+    nrm = normals(bl_tmp)
     traction!(sdata_cache,τ,x,sys,t)
     pointwise_dot!(dpb,nrm,sdata_cache)
     dpb .*= -1.0
@@ -248,17 +256,21 @@ function force(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi:
     @unpack vb_tmp = extra_cache
     @unpack reference_body, m, Xl = motions
 
-    traction!(sdata_cache,τ,x,sys,t)
-    fx = integrate(sdata_cache.u,sys,bodyi)
-    fy = integrate(sdata_cache.v,sys,bodyi)
+    bl_tmp = deepcopy(bl)
+    update_body!(bl_tmp,x,m)
+    ds = areas(bl_tmp)
 
-    vb_tmp .= deepcopy(points(sys))
+    traction!(sdata_cache,τ,x,sys,t)
+    fx = integrate(sdata_cache.u,ds,bl_tmp,bodyi)
+    fy = integrate(sdata_cache.v,ds,bl_tmp,bodyi)
+
+    vb_tmp .= deepcopy(points(bl_tmp))
     xc, yc = bl[bodyi].cent
     vb_tmp.u .-= xc
     vb_tmp.v .-= yc
 
     pointwise_cross!(sscalar_cache,vb_tmp,sdata_cache)
-    mom = integrate(sscalar_cache,sys,bodyi)
+    mom = integrate(sscalar_cache,ds,bl_tmp,bodyi)
 
     if !(force_reference == bodyi && axes == reference_body)
 
@@ -291,8 +303,12 @@ It returns the moment history as an array. The moment is calculated about center
 
 function moment(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi::Int;center=(0.0,0.0)) where {S,P,N}
     @unpack base_cache, extra_cache = sys
-    @unpack sdata_cache, sscalar_cache = base_cache
+    @unpack sdata_cache, sscalar_cache, bl = base_cache
     @unpack vb_tmp = extra_cache
+
+    bl_tmp = deepcopy(bl)
+    update_body!(bl_tmp,x,m)
+    ds = areas(bl_tmp)
 
     xc, yc = center
     vb_tmp .= deepcopy(points(sys))
@@ -301,7 +317,7 @@ function moment(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi
 
     traction!(sdata_cache,τ,x,sys,t)
     pointwise_cross!(sscalar_cache,vb_tmp,sdata_cache)
-    mom = integrate(sscalar_cache,sys,bodyi)
+    mom = integrate(sscalar_cache,ds,bl_tmp,bodyi)
 
     return mom
 end
