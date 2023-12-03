@@ -19,6 +19,7 @@ docs/build/
 !docs/src/assets/*.png
 # vim swap files
 *.jld
+*.jld2
 *.sketch
 *.swp
 *.gif
