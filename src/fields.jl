@@ -335,17 +335,23 @@ from the computational solution `sol` of system `sys`.
 """ power(sol,sys,bodyi)
 
 
-function power(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi::Int;inertial=true) where {S,P,N}
-    @unpack phys_params = sys
-    mot = get_rotation_func(phys_params)
+function power(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi::Int;axes=0,force_reference=bodyi) where {S,P,N}
+    @unpack phys_params, motions = sys
+    @unpack m = motions
 
-    Ω = angular_velocity(mot(t))
-    U, V = translational_velocity(mot(t))
+    v = body_velocities(x,t,motions.m)[bodyi]
+    f = PluckerForce([force(w,τ,x,sys,t,bodyi;axes=axes,force_reference=force_reference)...])
 
-    mom = moment(w,τ,x,sys,t,bodyi)
-    fx, fy = force(w,τ,x,sys,t,bodyi;inertial=inertial)
+    #mot = get_rotation_func(phys_params)
 
-    pow = Ω*mom + fx*U + fy*V
+    #Ω = angular_velocity(mot(t))
+    #U, V = translational_velocity(mot(t))
+
+    #mom = moment(w,τ,x,sys,t,bodyi)
+    #fx, fy = force(w,τ,x,sys,t,bodyi;inertial=inertial)
+
+    #pow = Ω*mom + fx*U + fy*V
+    pow = dot(f,v)
 
     return pow
 
