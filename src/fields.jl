@@ -265,7 +265,7 @@ function force(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi:
     fy = integrate(sdata_cache.v,ds,bl_tmp,bodyi)
 
     vb_tmp .= deepcopy(points(bl_tmp))
-    xc, yc = bl[bodyi].cent
+    xc, yc = bl_tmp[bodyi].cent
     vb_tmp.u .-= xc
     vb_tmp.v .-= yc
 
@@ -339,8 +339,13 @@ function power(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi:
     @unpack phys_params, motions = sys
     @unpack m = motions
 
+    # Get velocities in the body's own coordinate system
     v = body_velocities(x,t,motions.m)[bodyi]
-    f = PluckerForce([force(w,τ,x,sys,t,bodyi;axes=axes,force_reference=force_reference)...])
+    Vinf_plucker = PluckerMotion{2}(linear = [evaluate_freestream(t,x,sys)...])
+
+    # Get the force and moment in the body's own coordinate system
+    f = PluckerForce([force(w,τ,x,sys,t,bodyi;axes=bodyi,force_reference=bodyi)...])
+
 
     #mot = get_rotation_func(phys_params)
 
@@ -351,7 +356,7 @@ function power(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi:
     #fx, fy = force(w,τ,x,sys,t,bodyi;inertial=inertial)
 
     #pow = Ω*mom + fx*U + fy*V
-    pow = dot(f,v)
+    pow = dot(f,v-Vinf_plucker)
 
     return pow
 
