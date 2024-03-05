@@ -335,7 +335,7 @@ from the computational solution `sol` of system `sys`.
 """ power(sol,sys,bodyi)
 
 
-function power(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi::Int;axes=0,force_reference=bodyi) where {S,P,N}
+function power(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi::Int) where {S,P,N}
     @unpack phys_params, motions = sys
     @unpack m = motions
 
