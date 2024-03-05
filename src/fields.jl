@@ -328,14 +328,17 @@ end
 power(w::Nodes{Dual},τ::VectorData{0},x,sys::ILMSystem{S,P,0},t,bodyi::Int;kwargs...) where {S,P} = nothing # Vector{Float64}()
 
 """
-    power(sol,sys,bodyi)
+    power(sol,sys,bodyi;include_freestream=false)
 
-Calculated the history of the total rate of work done by the flow on body `bodyi` (or on the flow by the body, if negative)
-from the computational solution `sol` of system `sys`.
+Calculate the history of the total rate of work done by the flow on body `bodyi` (or on the flow by the body, if negative)
+from the computational solution `sol` of system `sys`. If `freestream=false` (default), then
+the free stream is not subtracted from the translational velocity in the calculation. If
+it is `true`, then the translational part of power is based on translational velocity
+minus the free stream (i.e., a reference frame at rest at infinity).
 """ power(sol,sys,bodyi)
 
 
-function power(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi::Int) where {S,P,N}
+function power(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi::Int; include_freestream=false) where {S,P,N}
     @unpack phys_params, motions = sys
     @unpack m = motions
 
@@ -347,11 +350,14 @@ function power(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi:
     v = motions.vl[bodyi]
   
     # subtract freestream from the translational velocity
-    freestream_func = get_freestream_func(phys_params)
-    XRref = rotation_transform(motions.Xl[bodyi])
-    Vinf_plucker = XRref*PluckerMotion{2}(linear = [freestream_func(t,phys_params)...])
-
-    pow = dot(f,v-Vinf_plucker)
+    if include_freestream
+        freestream_func = get_freestream_func(phys_params)
+        XRref = rotation_transform(motions.Xl[bodyi])
+        Vinf_plucker = XRref*PluckerMotion{2}(linear = [freestream_func(t,phys_params)...])
+        pow = dot(f,v-Vinf_plucker)
+    else
+        pow = dot(f,v)
+    end
 
     return pow
 
