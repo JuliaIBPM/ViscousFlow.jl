@@ -339,23 +339,18 @@ function power(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi:
     @unpack phys_params, motions = sys
     @unpack m = motions
 
-    # Get velocities in the body's own coordinate system
-    v = body_velocities(x,t,motions.m)[bodyi]
-    Vinf_plucker = PluckerMotion{2}(linear = [evaluate_freestream(t,x,sys)...])
-
     # Get the force and moment in the body's own coordinate system
     f = PluckerForce([force(w,τ,x,sys,t,bodyi;axes=bodyi,force_reference=bodyi)...])
 
+    # Get velocities in the body's own coordinate system
+    evaluate_motion!(motions,x,t)
+    v = motions.vl[bodyi]
+  
+    # subtract freestream from the translational velocity
+    freestream_func = get_freestream_func(phys_params)
+    XRref = rotation_transform(motions.Xl[bodyi])
+    Vinf_plucker = XRref*PluckerMotion{2}(linear = [freestream_func(t,phys_params)...])
 
-    #mot = get_rotation_func(phys_params)
-
-    #Ω = angular_velocity(mot(t))
-    #U, V = translational_velocity(mot(t))
-
-    #mom = moment(w,τ,x,sys,t,bodyi)
-    #fx, fy = force(w,τ,x,sys,t,bodyi;inertial=inertial)
-
-    #pow = Ω*mom + fx*U + fy*V
     pow = dot(f,v-Vinf_plucker)
 
     return pow
