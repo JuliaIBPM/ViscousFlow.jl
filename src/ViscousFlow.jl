@@ -3,6 +3,7 @@ module ViscousFlow
 #using DocStringExtensions
 using Reexport
 using UnPack
+using LinearAlgebra
 @reexport using ImmersedLayers
 #@reexport using GridUtilities
 
