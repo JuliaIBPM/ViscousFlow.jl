@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Viscous flow about moving bodies · ViscousFlow.jl</title><meta name="title" content="Viscous flow about moving bodies · ViscousFlow.jl"/><meta property="og:title" content="Viscous flow about moving bodies · ViscousFlow.jl"/><meta property="twitter:title" content="Viscous flow about moving bodies · ViscousFlow.jl"/><meta name="description" content="Documentation for ViscousFlow.jl."/><meta property="og:description" content="Documentation for ViscousFlow.jl."/><meta property="twitter:description" content="Documentation for ViscousFlow.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">ViscousFlow.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Manual</span><ul><li><a class="tocitem" href="../1.-Basic-viscous-flow/">Basic viscous flow</a></li><li><a class="tocitem" href="../2.-Basic-flow-with-a-stationary-body/">Basic flow with a stationary body</a></li><li><a class="tocitem" href="../3.-Applying-pulse-forcing-to-a-flow/">Applying pulse forcing to a flow</a></li><li><a class="tocitem" href="../4.-Multiple-stationary-bodies/">Multiple stationary bodies</a></li><li><a class="tocitem" href="../5.-Moving-reference-frame/">Moving reference frame</a></li><li class="is-active"><a class="tocitem" href>Viscous flow about moving bodies</a></li><li><a class="tocitem" href="../7.-Variable-free-stream/">Variable free stream</a></li><li><a class="tocitem" href="../8.-Lid-driven-cavity/">Lid-driven cavity flow</a></li><li><a class="tocitem" href="../9.-Exogenous-degrees-of-freedom/">Exogenous degrees of freedom</a></li><li><a class="tocitem" href="../functions/">Functions and types</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Manual</a></li><li class="is-active"><a href>Viscous flow about moving bodies</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Viscous flow about moving bodies</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/JuliaIBPM/ViscousFlow.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/JuliaIBPM/ViscousFlow.jl/blob/master/test/literate/6.-Viscous-flow-about-a-moving-body.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Viscous-flow-about-moving-bodies"><a class="docs-heading-anchor" href="#Viscous-flow-about-moving-bodies">Viscous flow about moving bodies</a><a id="Viscous-flow-about-moving-bodies-1"></a><a class="docs-heading-anchor-permalink" href="#Viscous-flow-about-moving-bodies" title="Permalink"></a></h1><p>In this notebook we will demonstrate the simulation of a system of moving bodies. As we will show, it is straightforward to set up a moving body, using the tools in <a href="https://github.com/JuliaIBPM/RigidBodyTools.jl">RigidBodyTools.jl</a>. The main caveat is that the simulation is slower, because the integrator must update the operators continuously throughout the simulation.</p><p>We will demonstrate this on a system of three linked plates undergoing a flapping motion, in which the middle plate heaves up and down, and the other two bodies pitch back and forth on hinges connecting their edges to the middle plate.</p><pre><code class="language-julia hljs">using ViscousFlow</code></pre><pre><code class="language-julia hljs">using Plots</code></pre><h3 id="Problem-specification-and-discretization"><a class="docs-heading-anchor" href="#Problem-specification-and-discretization">Problem specification and discretization</a><a id="Problem-specification-and-discretization-1"></a><a class="docs-heading-anchor-permalink" href="#Problem-specification-and-discretization" title="Permalink"></a></h3><p>For simplicity, we will not create a free stream in this problem. Everything here is the usual.</p><pre><code class="language-julia hljs">my_params = Dict()
+my_params[&quot;Re&quot;] = 200</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">200</code></pre><pre><code class="language-julia hljs">xlim = (-1.0,1.0)
+ylim = (-1.0,1.0)
+my_params[&quot;grid Re&quot;] = 4.0
+g = setup_grid(xlim,ylim,my_params)
+
+Δs = surface_point_spacing(g,my_params)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">0.027999999999999997</code></pre><h3 id="Set-up-body"><a class="docs-heading-anchor" href="#Set-up-body">Set up body</a><a id="Set-up-body-1"></a><a class="docs-heading-anchor-permalink" href="#Set-up-body" title="Permalink"></a></h3><p>Set up the plates.</p><pre><code class="language-julia hljs">Lp = 0.5
+body1 = Plate(Lp,Δs)
+body2 = Plate(Lp,Δs)
+body3 = Plate(Lp,Δs)
+bl = BodyList([body1,body2,body3])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">BodyList(Body[Open polygon with 2 vertices and 18 points
+   Current position: (0.0,0.0)
+   Current angle (rad): 0.0
+, Open polygon with 2 vertices and 18 points
+   Current position: (0.0,0.0)
+   Current angle (rad): 0.0
+, Open polygon with 2 vertices and 18 points
+   Current position: (0.0,0.0)
+   Current angle (rad): 0.0
+])</code></pre><h3 id="Set-the-body-motions"><a class="docs-heading-anchor" href="#Set-the-body-motions">Set the body motions</a><a id="Set-the-body-motions-1"></a><a class="docs-heading-anchor-permalink" href="#Set-the-body-motions" title="Permalink"></a></h3><p>Here, we make use of joints to prescribe the motion of every part of this system. We will attach body 1 to the inertial system, making it oscillate up and down. This is a special case of a joint with three degrees of freedom, called a <code>FreeJoint2d</code>. Bodies 2 and 3 will each be connected by hinges (i.e., with a <code>RevoluteJoint</code>) to body 1.</p><pre><code class="language-julia hljs">parent_body, child_body = 0, 1
+Xp = MotionTransform([0,0],0) # location of joint in inertial system
+xpiv = [0,0] # place center of motion at center of the plate
+Xc = MotionTransform(xpiv,0)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2d motion transform, x = [0.0, 0.0], R = [1.0 -0.0; 0.0 1.0]</code></pre><p>Now the motion for joint 1, which we set up through the three degrees of freedom.  The first and second are meant to be fixed, so we give them zero velocity, and the third we assign oscillatory kinematics</p><pre><code class="language-julia hljs">adof = ConstantVelocityDOF(0.0)
+xdof = ConstantVelocityDOF(0.0)
+
+Ω = 1
+A = 0.25  # amplitude/chord
+ϕh = 0.0  # phase lag of heave
+ydof = OscillatoryDOF(A,Ω,ϕh,0.0)
+
+dofs = [adof,xdof,ydof]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">3-element Vector{AbstractPrescribedDOFKinematics}:
+ Constant velocity kinematics (velocity = 0.0)
+ Constant velocity kinematics (velocity = 0.0)
+ Oscillatory kinematics (amplitude = 0.25, ang freq = 1.0, phase = 0.0, mean velocity = 0.0)</code></pre><p>Now assemble the joint</p><pre><code class="language-julia hljs">joint1 = Joint(FreeJoint2d,parent_body,Xp,child_body,Xc,dofs)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Joint of dimension 2 and type FreeJoint2d
+   Constrained dofs = [1, 2, 3]
+   Exogenous dofs = Int64[]
+   Unconstrained dofs = Int64[]
+</code></pre><p>Now the two hinges. Each of these is a <code>RevoluteJoint</code>. We place them at either end of body 1. Joint 2 between bodies 1 and 2</p><pre><code class="language-julia hljs">parent_body, child_body = 1, 2
+Xp = MotionTransform([0.25,0],0) # right side of body 1
+Xc = MotionTransform([-0.25,0],0) # left side of body 2
+Δα = 20π/180 # amplitude of pitching
+ϕp = π/2 # phase lead of pitch
+θdof = OscillatoryDOF(Δα,Ω,ϕp,0.0)
+joint2 = Joint(RevoluteJoint,parent_body,Xp,child_body,Xc,[θdof])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Joint of dimension 2 and type RevoluteJoint
+   Constrained dofs = [1]
+   Exogenous dofs = Int64[]
+   Unconstrained dofs = Int64[]
+</code></pre><p>and joint 3 between bodies 1 and 3</p><pre><code class="language-julia hljs">parent_body, child_body = 1, 3
+Xp = MotionTransform([-0.25,0],0) # left side of body 1
+Xc = MotionTransform([0.25,0],0) # right side of body 3
+ϕp = -π/2 # phase lead of pitch, but lagging rather than leading
+θdof = OscillatoryDOF(Δα,Ω,ϕp,0.0)
+joint3 = Joint(RevoluteJoint,parent_body,Xp,child_body,Xc,[θdof])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Joint of dimension 2 and type RevoluteJoint
+   Constrained dofs = [1]
+   Exogenous dofs = Int64[]
+   Unconstrained dofs = Int64[]
+</code></pre><p>Assemble everything together</p><pre><code class="language-julia hljs">m = RigidBodyMotion([joint1,joint2,joint3],bl)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1 linked system(s) of bodies
+   3 bodies
+   3 joints
+</code></pre><p>We generate the initial joint state vector with `init_and update the body system and plot it</p><pre><code class="language-julia hljs">x = init_motion_state(bl,m)
+update_body!(bl,x,m)
+plot(bl,xlim=xlim,ylim=ylim)</code></pre><img src="44d00190.svg" alt="Example block output"/><p>Here is a useful macro to visualize the motion as a movie:</p><pre><code class="nohighlight hljs">macro animate_motion(b,m,dt,tmax,xlim,ylim)
+    return esc(quote
+            bc = deepcopy($b)
+            t0, x0 = 0.0, init_motion_state(bc,$m)
+            dxdt = zero(x0)
+            x = copy(x0)
+
+            @gif for t in t0:$dt:t0+$tmax
+                motion_rhs!(dxdt,x,($m,bc),t)
+                global x += dxdt*$dt
+                update_body!(bc,x,$m)
+                plot(bc,xlim=$xlim,ylim=$ylim)
+            end every 5
+        end)
+end</code></pre><h3 id="Define-the-boundary-condition-functions"><a class="docs-heading-anchor" href="#Define-the-boundary-condition-functions">Define the boundary condition functions</a><a id="Define-the-boundary-condition-functions-1"></a><a class="docs-heading-anchor-permalink" href="#Define-the-boundary-condition-functions" title="Permalink"></a></h3><p>Instead of using the default boundary condition functions, we define special ones here that provide the instantaneous surface velocity (i.e. the velocity of every surface point) from the prescribed motion. Every surface has an &quot;exterior&quot; and &quot;interior&quot; side. For a flat plate, these two sides are the upper and lower sides, and both sides are next to the fluid, so both of them are assigned the prescribed velocity of the plate. (For closed bodies, we would assign this velocity to only one of the sides, and zero to the other side. We will see an example of this in a later case.) We pack these into a special dictionary and pass these to the system construction.</p><pre><code class="language-julia hljs">function my_vsplus(t,x,base_cache,phys_params,motions)
+  vsplus = zeros_surface(base_cache)
+  surface_velocity!(vsplus,x,base_cache,motions,t)
+  return vsplus
+end
+
+function my_vsminus(t,x,base_cache,phys_params,motions)
+  vsminus = zeros_surface(base_cache)
+  surface_velocity!(vsminus,x,base_cache,motions,t)
+  return vsminus
+end
+
+bcdict = Dict(&quot;exterior&quot; =&gt; my_vsplus, &quot;interior&quot; =&gt; my_vsminus)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Dict{String, Function} with 2 entries:
+  &quot;interior&quot; =&gt; my_vsminus
+  &quot;exterior&quot; =&gt; my_vsplus</code></pre><h3 id="Construct-the-system-structure"><a class="docs-heading-anchor" href="#Construct-the-system-structure">Construct the system structure</a><a id="Construct-the-system-structure-1"></a><a class="docs-heading-anchor-permalink" href="#Construct-the-system-structure" title="Permalink"></a></h3><p>Here, we supply both the motion and boundary condition functions as additional arguments.</p><pre><code class="language-julia hljs">sys = viscousflow_system(g,bl,phys_params=my_params,motions=m,bc=bcdict);</code></pre><p>and generate the initial condition</p><pre><code class="language-julia hljs">u0 = init_sol(sys)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(Dual nodes in a (nx = 104, ny = 104) cell grid of type Float64 data
+  Number of Dual nodes: (nx = 104, ny = 104), [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, -0.3490658503988659, 0.3490658503988659])</code></pre><p>Before we solve the problem, it is useful to note that the Reynolds number we specified earlier may not be the most physically-meaningful Reynolds number. More relevant in this problem is the Reynolds number based on the maximum body speed and the total length of the plates</p><pre><code class="language-julia hljs">Umax, imax, tmax, bmax = maxvelocity(u0,sys)
+L = 3*Lp
+Re_eff = my_params[&quot;Re&quot;]*Umax*L</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">89.45672121102322</code></pre><pre><code class="language-julia hljs">tspan = (0.0,10.0)
+integrator = init(u0,tspan,sys)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">t: 0.0
+u: (Dual nodes in a (nx = 104, ny = 104) cell grid of type Float64 data
+  Number of Dual nodes: (nx = 104, ny = 104), [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, -0.3490658503988659, 0.3490658503988659])</code></pre><h3 id="Solve"><a class="docs-heading-anchor" href="#Solve">Solve</a><a id="Solve-1"></a><a class="docs-heading-anchor-permalink" href="#Solve" title="Permalink"></a></h3><p>This takes longer per time step than it does for stationary bodies. Here, we only run it for 1.5 time units just to demonstrate it.</p><pre><code class="language-julia hljs">@time step!(integrator,1.5)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"> 27.651704 seconds (22.62 M allocations: 7.564 GiB, 2.08% gc time, 15.97% compilation time)</code></pre><h3 id="Examine-the-solution"><a class="docs-heading-anchor" href="#Examine-the-solution">Examine the solution</a><a id="Examine-the-solution-1"></a><a class="docs-heading-anchor-permalink" href="#Examine-the-solution" title="Permalink"></a></h3><p>Let&#39;s look at a few snapshots of the vorticity field. Note that the plotting here requires us to explicitly call the <a href="https://juliaibpm.github.io/ImmersedLayers.jl/stable/manual/problems/#ImmersedLayers.surfaces"><code>surfaces</code></a> function to generate the instantaneous configuration of the plate.</p><pre><code class="language-julia hljs">sol = integrator.sol
+plt = plot(layout = (1,3), size = (800, 300), legend=:false)
+tsnap = 0.5:0.5:1.5
+for (i, t) in enumerate(tsnap)
+    plot!(plt[i],vorticity(sol,sys,t),sys,layers=false,title=&quot;t = $(round(t,digits=2))&quot;,clim=(-5,5),levels=range(-5,5,length=30),color = :RdBu)
+    plot!(plt[i],surfaces(sol,sys,t))
+end
+plt</code></pre><img src="252f40ae.svg" alt="Example block output"/><p>and the forces and moments</p><pre><code class="language-julia hljs">sol = integrator.sol
+mom, fx, fy = force(sol,sys,1);</code></pre><pre><code class="language-julia hljs">plot(
+plot(sol.t,2*fx,xlim=(0,Inf),ylim=(-2,2),xlabel=&quot;Convective time&quot;,ylabel=&quot;\$C_D\$&quot;,legend=:false),
+plot(sol.t,2*fy,xlim=(0,Inf),ylim=(-2,2),xlabel=&quot;Convective time&quot;,ylabel=&quot;\$C_L\$&quot;,legend=:false),
+    size=(800,350)
+)</code></pre><img src="6a485bce.svg" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../5.-Moving-reference-frame/">« Moving reference frame</a><a class="docs-footer-nextpage" href="../7.-Variable-free-stream/">Variable free stream »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.3.0 on <span class="colophon-date" title="Tuesday 12 March 2024 22:20">Tuesday 12 March 2024</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
