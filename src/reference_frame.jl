@@ -2,19 +2,26 @@
 
 
 """
-    evaluate_freestream(t,x,sys)
+    evaluate_freestream(t,x,sys; [subtract_translation = true])
 
 Provide the components of the free stream velocity at time `t`.
 If the problem is set up in the rotational frame of reference,
 then this transforms the specified velocity and also subtracts the
-translational motion of the center of rotation.
+translational velocity of the center of rotation. (If `subtract_translation = false`,
+then it does not subtract this translation velocity.)
 """
-function evaluate_freestream(t, x, sys)
+function evaluate_freestream(t, x, sys; subtract_translation = true)
   @unpack phys_params, motions = sys
-  evaluate_freestream(t,x,phys_params,motions)
+  evaluate_freestream(t,x,phys_params,motions; subtract_translation = subtract_translation)
 end
 
-function evaluate_freestream(t, x, phys_params, motions)
+evaluate_freestream(integ::ImmersedLayers.ConstrainedSystems.OrdinaryDiffEq.ODEIntegrator;kwargs...) =
+    evaluate_freestream(integ.t,aux_state(integ.u),integ.p;kwargs...)
+
+evaluate_freestream(sol::ImmersedLayers.ConstrainedSystems.OrdinaryDiffEq.ODESolution,sys::ILMSystem,t;kwargs...) =
+    evaluate_freestream(t,aux_state(sol(t)),sys;kwargs...)
+
+function evaluate_freestream(t, x, phys_params, motions; subtract_translation = true)
   @unpack reference_body, m, vl, Xl = motions
 
   # get the specified freestream, if any
@@ -34,7 +41,9 @@ function evaluate_freestream(t, x, phys_params, motions)
 
     vref = motions.vl[reference_body]
 
-    Vinf .-= vref.linear
+    if subtract_translation
+        Vinf .-= vref.linear
+    end
   end
   return tuple(Vinf...)
 end
