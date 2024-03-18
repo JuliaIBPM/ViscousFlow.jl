@@ -40,7 +40,7 @@ function ImmersedLayers.prob_cache(prob::ViscousIncompressibleFlowProblem,
     # Construct a Lapacian outfitted with the viscosity
     Re = get_Reynolds_number(phys_params)
     over_Re = isinf(Re) ? 0.0 : 1.0/Re
-    viscous_L = Laplacian(base_cache,over_Re)
+    viscous_L = over_Re * base_cache.L
 
     # Create cache for the convective derivative
     cdcache = reference_body > 0 ? RotConvectiveDerivativeCache(base_cache) : ConvectiveDerivativeCache(base_cache)
