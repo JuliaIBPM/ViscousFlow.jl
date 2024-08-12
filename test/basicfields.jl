@@ -1,4 +1,5 @@
 using ImmersedLayers
+using LinearAlgebra
 
 @testset "Basic fields" begin
 
@@ -25,7 +26,16 @@ using ImmersedLayers
   vdv = convective_acceleration(u,sys,t)
   p = pressure(u,sys,t)
   ψ = streamfunction(u,sys,t)
-  Q = Qcrit(u,sys,t)    
+  Q = Qcrit(u,sys,t)
+  
+  tspan = (0.0,10.0)
+  integrator = init(u,tspan,sys)
+  step!(integrator,1.0)
+
+  oseen_exact(t) = SpatialGaussian(sqrt(σ^2+2*t/my_params["Re"]),sqrt(σ^2+2*t/my_params["Re"]),x0,y0,A)
+  exactsol(t) = init_sol(oseen_exact(t),sys)
+
+  @test norm(vorticity(exactsol(integrator.t),sys,integrator.t)-vorticity(integrator),sys) < 0.005
 
 end
 
