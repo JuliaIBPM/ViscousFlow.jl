@@ -19,7 +19,7 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 [compat]
 ColorTypes = "<0.10.1, 0.10, 0.11"
 DocStringExtensions = "0.8.1, 0.9"
-ImmersedLayers = "0.5.0"
+ImmersedLayers = "0.5.1"
 LinearAlgebra = "1.6"
 Plots = "1.35, 1.36, 1.37, 1.38"
 RecipesBase = "1.0"
