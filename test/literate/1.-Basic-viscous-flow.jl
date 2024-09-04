@@ -124,8 +124,8 @@ and `pressure`.
 #!jl plot(velocity(integrator),sys))
 
 # For this problem, we can compare with the exact solution. The exact solution is also a Gaussian,
-# but with a radius $\sqrt{\sigma^2+4t/Re}$
-oseen_exact(t) = SpatialGaussian(sqrt(σ^2+4*t/my_params["Re"]),sqrt(σ^2+4*t/my_params["Re"]),x0,y0,A)
+# but with a radius $\sqrt{\sigma^2+2t/Re}$
+oseen_exact(t) = SpatialGaussian(sqrt(σ^2+2*t/my_params["Re"]),sqrt(σ^2+2*t/my_params["Re"]),x0,y0,A)
 exactsol(t) = init_sol(oseen_exact(t),sys)
 
 #-
