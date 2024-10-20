@@ -184,15 +184,21 @@ Umax, imax, tmax, bmax = maxvelocity(u0,sys)
 L = 3*Lp
 Re_eff = my_params["Re"]*Umax*L
 
-#-
+#=
+In other problems, we have stored the inverse of the matrix system that we
+have to solve at each time stage. But since that matrix system changes
+as the body moves, it is faster here to use an iterative solver (congjugate gradient)
+=#
 tspan = (0.0,10.0)
-integrator = init(u0,tspan,sys)
+integrator = init(u0,tspan,sys,alg=LiskaIFHERK(saddlesolver=CG))
 
 #=
 ### Solve
-This takes longer per time step than it does for stationary bodies. Here, we only
-run it for 1.5 time units just to demonstrate it.
+This takes a bit longer per time step than it does for stationary bodies. Here, we will
+  advance it one time step (which also compiles the code), then only run it for 1.5 time
+  units just to demonstrate it.
 =#
+step!(integrator)
 @time step!(integrator,1.5)
 
 #=
