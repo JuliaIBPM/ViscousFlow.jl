@@ -194,9 +194,11 @@ integrator = init(u0,tspan,sys,alg=LiskaIFHERK(saddlesolver=CG))
 
 #=
 ### Solve
-This takes a bit longer per time step than it does for stationary bodies. Here, we only
-run it for 1.5 time units just to demonstrate it.
+This takes a bit longer per time step than it does for stationary bodies. Here, we will
+  advance it one time step (which also compiles the code), then only run it for 1.5 time
+  units just to demonstrate it.
 =#
+step!(integrator)
 @time step!(integrator,1.5)
 
 #=
