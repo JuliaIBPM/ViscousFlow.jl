@@ -233,6 +233,24 @@ pressurejump!(out::VectorData{0},τ::VectorData{0},x,sys::ILMSystem,t) = out
 pressurejump(w::Nodes{Dual},τ::VectorData,x,sys::ILMSystem,t) = pressurejump!(zeros_surfacescalar(sys),τ,x,sys,t)
 @snapshotoutput pressurejump
 
+function pressplus(w::Nodes{Dual},τ::VectorData,x,sys::ILMSystem,t)
+    @unpack base_cache = sys
+    @unpack Ediv = base_cache
+    pbarb = Ediv*pressure(w,τ,x,sys,t)
+    dpb = pressurejump(w,τ,x,sys,t)
+    return pbarb + 0.5*dpb
+end
+@snapshotoutput pressplus
+
+function pressminus(w::Nodes{Dual},τ::VectorData,x,sys::ILMSystem,t)
+    @unpack base_cache = sys
+    @unpack Ediv = base_cache
+    pbarb = Ediv*pressure(w,τ,x,sys,t)
+    dpb = pressurejump(w,τ,x,sys,t)
+    return pbarb - 0.5*dpb
+end
+@snapshotoutput pressminus
+
 
 #= Integrated metrics =#
 
