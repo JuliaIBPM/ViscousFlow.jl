@@ -88,6 +88,7 @@ function pressure!(press::Nodes{Primal},w::Nodes{Dual},τ,x,sys::ILMSystem,t)
 
       velocity!(v_tmp,w,x,sys,t)
       viscousflow_velocity_ode_rhs!(dv,v_tmp,x,sys,t)
+      fill!(dv_tmp,0.0)
       viscousflow_velocity_constraint_force!(dv_tmp,τ,x,sys)
       dv .-= dv_tmp
       viscousflow_velocity_ode_implicit_rhs!(dv_tmp,x,sys,t)
@@ -96,11 +97,14 @@ function pressure!(press::Nodes{Primal},w::Nodes{Dual},τ,x,sys::ILMSystem,t)
       divergence!(divv_tmp,dv,base_cache)
       inverse_laplacian!(press,divv_tmp,base_cache)
 
+      # compute R^T v = v' - R^T(Ur - Uinf) here (velocity field in inertial frame,
+      #    but in rotating coordinates)
+      velocity_rel_to_inertial_frame!(v_tmp,x,t,base_cache,phys_params,motions)
+      press .-= 0.5*magsq(v_tmp)
+
       # For rotating coordinate systems...
       if reference_body != 0
-        # compute R^T v = v' - R^T(Ur - Uinf) here (velocity field in inertial frame,
-        #    but in rotating coordinates)
-        velocity_rel_to_inertial_frame!(v_tmp,x,t,base_cache,phys_params,motions)
+        #velocity_rel_to_inertial_frame!(v_tmp,x,t,base_cache,phys_params,motions)        
 
         # Compute Ω × x̂ here
         fill!(v_rot,0.0)
@@ -114,7 +118,9 @@ function pressure!(press::Nodes{Primal},w::Nodes{Dual},τ,x,sys::ILMSystem,t)
         fill!(divv_tmp,0.0)
         gridwise_dot!(divv_tmp,v_rot,v_tmp)
 
-        press .-= 0.5*magsq(v_tmp) - divv_tmp
+        #press .-= 0.5*magsq(v_tmp) - divv_tmp
+        press .+= divv_tmp
+
 
 
         #=
@@ -146,7 +152,7 @@ function convective_acceleration!(vdv::Edges{Primal},w::Nodes{Dual},x,sys::ILMSy
     @unpack extra_cache, base_cache = sys
     @unpack v_tmp, cdcache = extra_cache
     velocity!(v_tmp,w,x,sys,t)
-    convective_derivative!(vdv,v_tmp,base_cache,cdcache)
+    vdv .= convective_derivative(v_tmp,base_cache)
     return vdv
 end
 
@@ -220,6 +226,8 @@ function pressurejump!(dpb::ScalarData{N},τ::VectorData{N},x,sys::ILMSystem,t) 
     @unpack sdata_cache, bl = base_cache
     @unpack m = motions
 
+    fill!(dpb,0.0)
+    fill!(sdata_cache,0.0)
     bl_tmp = deepcopy(bl)
     update_body!(bl_tmp,x,m)
 
@@ -233,6 +241,41 @@ pressurejump!(out::VectorData{0},τ::VectorData{0},x,sys::ILMSystem,t) = out
 pressurejump(w::Nodes{Dual},τ::VectorData,x,sys::ILMSystem,t) = pressurejump!(zeros_surfacescalar(sys),τ,x,sys,t)
 @snapshotoutput pressurejump
 
+function pressureplus(w::Nodes{Dual},τ::VectorData,x,sys::ILMSystem,t)
+    @unpack base_cache = sys
+    @unpack Ediv = base_cache
+    pbarb = Ediv*pressure(w,τ,x,sys,t)
+    dpb = pressurejump(w,τ,x,sys,t)
+    return pbarb + 0.5*dpb
+end
+@snapshotoutput pressureplus
+
+function pressureminus(w::Nodes{Dual},τ::VectorData,x,sys::ILMSystem,t)
+    @unpack base_cache = sys
+    @unpack Ediv = base_cache
+    pbarb = Ediv*pressure(w,τ,x,sys,t)
+    dpb = pressurejump(w,τ,x,sys,t)
+    return pbarb - 0.5*dpb
+end
+@snapshotoutput pressureminus
+
+
+function shearstressjump!(dtaub::ScalarData{N},τ::VectorData{N},x,sys::ILMSystem,t) where {N}
+    @unpack base_cache, motions = sys
+    @unpack sdata_cache, bl = base_cache
+    @unpack m = motions
+
+    bl_tmp = deepcopy(bl)
+    update_body!(bl_tmp,x,m)
+
+    nrm = normals(bl_tmp)
+    traction!(sdata_cache,τ,x,sys,t)
+    pointwise_cross!(dtaub,nrm,sdata_cache)
+    return dtaub
+end
+shearstressjump!(out::VectorData{0},τ::VectorData{0},x,sys::ILMSystem,t) = out
+shearstressjump(w::Nodes{Dual},τ::VectorData,x,sys::ILMSystem,t) = shearstressjump!(zeros_surfacescalar(sys),τ,x,sys,t)
+@snapshotoutput shearstressjump
 
 #= Integrated metrics =#
 
@@ -250,7 +293,7 @@ By default, it is the body `bodyi` itself, but any other body can be specified,
 or the inertial system (by specifying 0).
 """ force(sol,sys,bodyi)
 
-function force(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi::Int;axes=0,force_reference=bodyi) where {S,P,N}
+function force(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi::Int;axes=0,force_reference=bodyi,force_type=:all) where {S,P,N}
     @unpack base_cache, extra_cache, phys_params, motions = sys
     @unpack sdata_cache, sscalar_cache, bl = base_cache
     @unpack vb_tmp = extra_cache
@@ -260,7 +303,7 @@ function force(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi:
     update_body!(bl_tmp,x,m)
     ds = areas(bl_tmp)
 
-    traction!(sdata_cache,τ,x,sys,t)
+    _force_integrand!(sdata_cache,w,τ,x,sys,t,sscalar_cache,Val(force_type))
     fx = integrate(sdata_cache.u,ds,bl_tmp,bodyi)
     fy = integrate(sdata_cache.v,ds,bl_tmp,bodyi)
 
@@ -287,6 +330,22 @@ function force(w::Nodes{Dual},τ::VectorData{N},x,sys::ILMSystem{S,P,N},t,bodyi:
     return mom, fx, fy
 end
 
+_force_integrand!(data,w,τ,x,sys,t,scalardata,::Val{:all}) = traction!(data,τ,x,sys,t)
+
+function _force_integrand!(data,w,τ,x,sys,t,scalardata,::Val{:pressure})
+    nrm = normals(sys)
+    #scalardata .= pressureplus(w,τ,x,sys,t)
+    pressurejump!(scalardata,τ,x,sys,t)
+    product!(data,-nrm,scalardata)
+    return nothing
+end
+
+function _force_integrand!(data,w,τ,x,sys,t,scalardata,::Val{:viscous})
+    nrm = normals(sys)
+    shearstressjump!(scalardata,τ,x,sys,t)
+    pointwise_cross!(data,-nrm,scalardata)
+    return nothing
+end
 
 @vectorsurfacemetric force
 
