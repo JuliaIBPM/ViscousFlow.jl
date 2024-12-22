@@ -152,7 +152,7 @@ function convective_acceleration!(vdv::Edges{Primal},w::Nodes{Dual},x,sys::ILMSy
     @unpack extra_cache, base_cache = sys
     @unpack v_tmp, cdcache = extra_cache
     velocity!(v_tmp,w,x,sys,t)
-    convective_derivative!(vdv,v_tmp,base_cache,cdcache)
+    vdv .= convective_derivative(v_tmp,base_cache)
     return vdv
 end
 
