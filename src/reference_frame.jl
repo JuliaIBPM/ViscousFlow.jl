@@ -61,13 +61,15 @@ frame) to û (measured relative to the translating/rotating frame)
 """
 function velocity_rel_to_rotating_frame!(u_prime::Edges{Primal},x,t,base_cache,phys_params,motions)
     @unpack xg, yg = base_cache
-    _velocity_rel_to_rotating_frame!(u_prime.u,u_prime.v,xg.v,yg.u,x,t,base_cache,motions)
+    @unpack reference_body = motions
+    _velocity_rel_to_rotating_frame!(u_prime.u,u_prime.v,xg.v,yg.u,x,t,base_cache,motions,Val(reference_body))
     return u_prime
 end
 
 function velocity_rel_to_rotating_frame!(u_prime::VectorData,x,t,base_cache,phys_params,motions)
     @unpack pts = base_cache
-    _velocity_rel_to_rotating_frame!(u_prime.u,u_prime.v,pts.u,pts.v,x,t,base_cache,motions)
+    @unpack reference_body = motions
+    _velocity_rel_to_rotating_frame!(u_prime.u,u_prime.v,pts.u,pts.v,x,t,base_cache,motions,Val(reference_body))
     return u_prime
 end
 
@@ -75,16 +77,16 @@ end
 # reference body,
 # and subtract this from u and v (velocity relative to inertial frame) to get
 # û and v̂ (velocity relative to the rotating frame), returned in place
-function _velocity_rel_to_rotating_frame!(u,v,x,y,xvec,t,base_cache,motions)
-    @unpack reference_body, m, vl, Xl = motions
+function _velocity_rel_to_rotating_frame!(u,v,x,y,xvec,t,base_cache,motions,::Val{ref_body}) where ref_body
+    @unpack m, vl, Xl = motions
     @unpack bl = base_cache
 
     evaluate_motion!(motions,xvec,t)
 
-    bref = bl[reference_body]
+    bref = bl[ref_body]
     xr, yr = bref.cent
 
-    vref = vl[reference_body]
+    vref = vl[ref_body]
 
     Ω = vref.angular
     u .+= Ω.*(y .- yr)
@@ -93,6 +95,8 @@ function _velocity_rel_to_rotating_frame!(u,v,x,y,xvec,t,base_cache,motions)
     return u, v
 
 end
+
+_velocity_rel_to_rotating_frame!(u,v,x,y,xvec,t,base_cache,motions,::Val{0}) = u, v
 
 """
     velocity_rel_to_inertial_frame!(u_prime,x,t,base_cache,phys_params,motions)

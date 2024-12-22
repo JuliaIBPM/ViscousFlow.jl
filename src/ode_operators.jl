@@ -43,7 +43,8 @@ function ImmersedLayers.prob_cache(prob::ViscousIncompressibleFlowProblem,
     viscous_L = over_Re * base_cache.L
 
     # Create cache for the convective derivative
-    cdcache = reference_body > 0 ? RotConvectiveDerivativeCache(base_cache) : ConvectiveDerivativeCache(base_cache)
+    #cdcache = reference_body > 0 ? RotConvectiveDerivativeCache(base_cache) : ConvectiveDerivativeCache(base_cache)
+    cdcache = RotConvectiveDerivativeCache(base_cache)
 
     fcache = nothing
 
@@ -100,6 +101,7 @@ function viscousflow_velocity_ode_rhs!(dv,v,x,sys::ILMSystem,t)
     fill!(dv,0.0)
 
     # Calculate the convective derivative
+    fill!(dv_tmp,0.0)
     convective_term!(dv_tmp,v,x,t,base_cache,extra_cache,phys_params,motions,cdcache)
     dv .-= dv_tmp
 
@@ -109,6 +111,7 @@ function viscousflow_velocity_ode_rhs!(dv,v,x,sys::ILMSystem,t)
     #dv .-= dv_tmp
 
     # Apply forcing
+    fill!(dv_tmp,0.0)
     apply_forcing!(dv_tmp,v,x,t,fcache,sys)
     dv .+= dv_tmp
 
