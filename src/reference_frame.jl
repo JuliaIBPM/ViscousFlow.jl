@@ -15,10 +15,10 @@ function evaluate_freestream(t, x, sys; subtract_translation = true)
   evaluate_freestream(t,x,phys_params,motions; subtract_translation = subtract_translation)
 end
 
-evaluate_freestream(integ::ImmersedLayers.ConstrainedSystems.OrdinaryDiffEq.ODEIntegrator;kwargs...) =
+evaluate_freestream(integ::ODEIntegrator;kwargs...) =
     evaluate_freestream(integ.t,aux_state(integ.u),integ.p;kwargs...)
 
-evaluate_freestream(sol::ImmersedLayers.ConstrainedSystems.OrdinaryDiffEq.ODESolution,sys::ILMSystem,t;kwargs...) =
+evaluate_freestream(sol::ODESolution,sys::ILMSystem,t;kwargs...) =
     evaluate_freestream(t,aux_state(sol(t)),sys;kwargs...)
 
 function evaluate_freestream(t, x, phys_params, motions; subtract_translation = true)
