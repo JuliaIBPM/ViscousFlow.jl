@@ -99,12 +99,12 @@ function pressure!(press::Nodes{Primal},w::Nodes{Dual},τ,x,sys::ILMSystem,t)
 
       # compute R^T v = v' - R^T(Ur - Uinf) here (velocity field in inertial frame,
       #    but in rotating coordinates)
-      velocity_rel_to_inertial_frame!(v_tmp,x,t,base_cache,phys_params,motions)
+      #velocity_rel_to_inertial_frame!(v_tmp,x,t,base_cache,phys_params,motions)
       press .-= 0.5*magsq(v_tmp)
 
       # For rotating coordinate systems...
       if reference_body != 0
-        #velocity_rel_to_inertial_frame!(v_tmp,x,t,base_cache,phys_params,motions)        
+        velocity_rel_to_inertial_frame!(v_tmp,x,t,base_cache,phys_params,motions)        
 
         # Compute Ω × x̂ here
         fill!(v_rot,0.0)
