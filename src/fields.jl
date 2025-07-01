@@ -86,6 +86,8 @@ function pressure!(press::Nodes{Primal},w::Nodes{Dual},τ,x,sys::ILMSystem,t)
       @unpack velcache, v_tmp, dv_tmp, dv, divv_tmp, v_rot = extra_cache
       @unpack reference_body, vl, Xl, m = motions
 
+      # `v_tmp` is the velocity v' (the velocity relative to translating frame, expressed in co-rotating coordinates)
+      # As such, it is equal to -R^T(Ur - Uinf) at infinity. 
       velocity!(v_tmp,w,x,sys,t)
       viscousflow_velocity_ode_rhs!(dv,v_tmp,x,sys,t)
       fill!(dv_tmp,0.0)
@@ -96,30 +98,34 @@ function pressure!(press::Nodes{Primal},w::Nodes{Dual},τ,x,sys::ILMSystem,t)
 
       divergence!(divv_tmp,dv,base_cache)
       inverse_laplacian!(press,divv_tmp,base_cache)
+      # At this point, `press` comprises `p + 1/2*|v̂|^2  - 1/2*|Ω × x̂|^2`
 
-      # compute R^T v = v' - R^T(Ur - Uinf) here (velocity field in inertial frame,
+      # compute R^T v = v' + R^T(Ur - Uinf) here (velocity field in inertial frame,
       #    but in rotating coordinates)
       velocity_rel_to_inertial_frame!(v_tmp,x,t,base_cache,phys_params,motions)
       press .-= 0.5*magsq(v_tmp)
 
       # For rotating coordinate systems...
+      fill!(v_rot,0.0)
       if reference_body != 0
+        # compute R^T v = v' + R^T(Ur - Uinf) here (velocity field in inertial frame,
+        #    but in rotating coordinates)
         #velocity_rel_to_inertial_frame!(v_tmp,x,t,base_cache,phys_params,motions)        
 
         # Compute Ω × x̂ here
-        fill!(v_rot,0.0)
         velocity_rel_to_rotating_frame!(v_rot,x,t,base_cache,phys_params,motions)
         v_rot .*= -1.0
+      end
 
-        # Now this holds rigid body field, V̂r = Ω × x̂ + R^T(Ur - Uinf)
-        velocity_rel_to_inertial_frame!(v_rot,x,t,base_cache,phys_params,motions)
+      # Now this holds rigid body field, V̂r = Ω × x̂ + R^T(Ur - Uinf)
+      velocity_rel_to_inertial_frame!(v_rot,x,t,base_cache,phys_params,motions)
 
-        # Now compute V̂r ⋅ R^T v
-        fill!(divv_tmp,0.0)
-        gridwise_dot!(divv_tmp,v_rot,v_tmp)
-
-        #press .-= 0.5*magsq(v_tmp) - divv_tmp
-        press .+= divv_tmp
+      # Now compute V̂r ⋅ R^T v
+      fill!(divv_tmp,0.0)
+      gridwise_dot!(divv_tmp,v_rot,v_tmp)
+      
+      #press .-= 0.5*magsq(v_tmp) - divv_tmp
+      press .+= divv_tmp
 
 
 
@@ -139,7 +145,7 @@ function pressure!(press::Nodes{Primal},w::Nodes{Dual},τ,x,sys::ILMSystem,t)
         press .-= divv_tmp
         =#
 
-      end
+      #end
 
       return press
 end
