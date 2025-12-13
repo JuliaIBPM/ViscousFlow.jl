@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="521px" height="321px" viewBox="0 0 521 321" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>comoving-diagram</title>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="comoving-diagram" transform="translate(0.000000, 1.520720)">
+            <g id="comoving-fixed" transform="translate(217.000000, 144.479280)">
+                <ellipse id="Oval" stroke="#979797" fill="#D8D8D8" cx="202.62286" cy="90.2762903" rx="100" ry="16"></ellipse>
+                <ellipse id="Oval" stroke="#979797" fill="#D8D8D8" cx="202.62286" cy="90.2762903" rx="100" ry="16"></ellipse>
+                <g id="reference" transform="translate(72.572860, 80.276290)" fill="#E2122D" fill-rule="nonzero">
+                    <path id="Path" d="M0.05,-2.78972886 L0.921575537,-1.24026124 L7.67157554,10.7597388 L5.92842446,11.7402612 L1.05,3.068 L1.05,70 L-0.95,70 L-0.95,3.068 L-5.82842446,11.7402612 L-7.57157554,10.7597388 L-0.821575537,-1.24026124 L0.05,-2.78972886 Z"></path>
+                    <path id="Path" d="M59.2902612,62.3784245 L71.2902612,69.1284245 L72.8397289,70 L71.2902612,70.8715755 L59.2902612,77.6215755 L58.3097388,75.8784245 L66.984,70.999 L0.05,71 L0.05,69 L66.981,68.999 L58.3097388,64.1215755 L59.2902612,62.3784245 Z"></path>
+                </g>
+                <circle id="Oval" fill="#000000" cx="206.630034" cy="89.5928225" r="4"></circle>
+                <circle id="Oval" fill="#0A52E8" cx="106.994184" cy="90.4278942" r="4"></circle>
+                <g id="Group-2" transform="translate(78.000000, 89.000000)" fill="#1A1919" font-size="12" font-style="italic">
+                    <text id="^" font-family="STIXGeneral-Italic, STIXGeneral" font-weight="normal">
+                        <tspan x="2" y="13">^</tspan>
+                    </text>
+                    <text id="Xp" font-family="STIXGeneral-BoldItalic, STIXGeneral" font-weight="bold">
+                        <tspan x="0" y="19">X</tspan>
+                        <tspan x="8.004" y="19" font-family="STIXGeneral-Italic, STIXGeneral" font-weight="normal">p</tspan>
+                    </text>
+                </g>
+                <g id="Group-2" transform="translate(158.000000, 110.000000)" fill="#1A1919" font-size="12" font-style="italic">
+                    <text id="^" font-family="STIXGeneral-Italic, STIXGeneral" font-weight="normal">
+                        <tspan x="2" y="13">^</tspan>
+                    </text>
+                    <text id="Xc" font-family="STIXGeneral-BoldItalic, STIXGeneral" font-weight="bold">
+                        <tspan x="0" y="19">X</tspan>
+                        <tspan x="8.004" y="19" font-family="STIXGeneral-Italic, STIXGeneral" font-weight="normal">c</tspan>
+                    </text>
+                </g>
+                <path id="Path-3" d="M103.235017,93.9897168 L102.843616,104.044408 L99.337,102.117 L73.4381774,149.240833 L72.5618226,148.759167 L98.462,101.636 L94.956424,99.7094109 L103.235017,93.9897168 Z" fill="#0A52E8" fill-rule="nonzero"></path>
+                <g id="xhat" fill="#1A1919" font-family="STIXGeneral-Italic, STIXGeneral" font-size="12" font-style="italic" font-weight="normal">
+                    <text id="𝘹">
+                        <tspan x="0" y="16">𝘹</tspan>
+                    </text>
+                    <text id="^">
+                        <tspan x="1" y="13">^</tspan>
+                    </text>
+                </g>
+                <g id="yhat" transform="translate(61.000000, 60.000000)" fill="#1A1919" font-family="STIXGeneral-Italic, STIXGeneral" font-size="12" font-style="italic" font-weight="normal">
+                    <text id="y">
+                        <tspan x="0" y="16">y</tspan>
+                    </text>
+                    <text id="^">
+                        <tspan x="1" y="13">^</tspan>
+                    </text>
+                </g>
+            </g>
+            <g id="comoving" transform="translate(221.597860, 100.780570) rotate(-38.000000) translate(-221.597860, -100.780570) translate(106.572860, 62.755570)">
+                <ellipse id="Oval" stroke="#979797" fill="#D8D8D8" cx="130.05" cy="16" rx="100" ry="16"></ellipse>
+                <ellipse id="Oval" stroke="#979797" fill="#D8D8D8" cx="130.05" cy="16" rx="100" ry="16"></ellipse>
+                <g id="reference" transform="translate(-0.000000, 6.000000)" fill="#E2122D" fill-rule="nonzero">
+                    <path id="Path" d="M0.05,-2.78972886 L0.921575537,-1.24026124 L7.67157554,10.7597388 L5.92842446,11.7402612 L1.05,3.068 L1.05,70 L-0.95,70 L-0.949,3.066 L-5.82842446,11.7402612 L-7.57157554,10.7597388 L-0.821575537,-1.24026124 L0.05,-2.78972886 Z"></path>
+                    <path id="Path" d="M59.2902612,62.3784245 L71.2902612,69.1284245 L72.8397289,70 L71.2902612,70.8715755 L59.2902612,77.6215755 L58.3097388,75.8784245 L66.984,70.999 L0.05,71 L0.05,69 L66.981,68.999 L58.3097388,64.1215755 L59.2902612,62.3784245 Z"></path>
+                </g>
+                <circle id="Oval" fill="#000000" cx="134.057174" cy="15.3165322" r="4"></circle>
+                <circle id="Oval" fill="#0A52E8" cx="34.4213239" cy="16.1516038" r="4"></circle>
+            </g>
+            <g id="inertial" transform="translate(29.000000, 214.479280)" fill="#979797" fill-rule="nonzero">
+                <path id="Path" d="M0.5,-2.78972886 L1.37157554,-1.24026124 L8.12157554,10.7597388 L6.37842446,11.7402612 L1.5,3.068 L1.5,80 L-0.5,80 L-0.5,3.068 L-5.37842446,11.7402612 L-7.12157554,10.7597388 L-0.371575537,-1.24026124 L0.5,-2.78972886 Z"></path>
+                <path id="Path" d="M70.2402612,72.8784245 L82.2402612,79.6284245 L83.7897289,80.5 L82.2402612,81.3715755 L70.2402612,88.1215755 L69.2597388,86.3784245 L77.932,81.5 L1,81.5 L1,79.5 L77.932,79.5 L69.2597388,74.6215755 L70.2402612,72.8784245 Z"></path>
+            </g>
+            <path id="Path-2" d="M150.896618,201.674822 L146.497617,210.724618 L144.061,207.551 L30.3044576,294.875897 L29.6955424,294.082662 L143.453,206.758 L141.017381,203.585499 L150.896618,201.674822 Z" fill="#E2122D" fill-rule="nonzero"></path>
+            <text id="Inertial-frame" font-family="STIXGeneral-Regular, STIXGeneral" font-size="12" font-weight="normal" fill="#1A1919">
+                <tspan x="0" y="314.47928">Inertial frame</tspan>
+            </text>
+            <text id="Co-moving-frame" font-family="STIXGeneral-Regular, STIXGeneral" font-size="12" font-weight="normal" fill="#1A1919">
+                <tspan x="264" y="314.47928">Co-moving frame</tspan>
+            </text>
+            <path id="Path-2" d="M220.827727,74.6016624 L218.327195,84.3483201 L215.306,81.726 L30.3776174,294.807007 L29.6223826,294.151553 L214.551,81.071 L211.530081,78.449231 L220.827727,74.6016624 Z" fill="#000000" fill-rule="nonzero"></path>
+            <path id="Path-2" d="M142.788191,134.570689 L141.278071,144.519033 L138.009,142.213 L30.4085904,294.76747 L29.5914096,294.191089 L137.192,141.637 L133.923444,139.3316 L142.788191,134.570689 Z" fill="#0A52E8" fill-rule="nonzero"></path>
+            <text id="x" font-family="STIXGeneral-Italic, STIXGeneral" font-size="12" font-style="italic" font-weight="normal" fill="#1A1919">
+                <tspan x="116" y="304.47928">x</tspan>
+            </text>
+            <text id="y" font-family="STIXGeneral-Italic, STIXGeneral" font-size="12" font-style="italic" font-weight="normal" fill="#1A1919">
+                <tspan x="13" y="211.47928">y</tspan>
+            </text>
+            <g id="xhat" transform="translate(367.000000, 284.479280)" fill="#1A1919" font-family="STIXGeneral-Italic, STIXGeneral" font-size="12" font-style="italic" font-weight="normal">
+                <text id="𝘹">
+                    <tspan x="0" y="16">𝘹</tspan>
+                </text>
+                <text id="^">
+                    <tspan x="1" y="13">^</tspan>
+                </text>
+            </g>
+            <g id="yhat" transform="translate(100.000000, 129.479280)" fill="#1A1919" font-family="STIXGeneral-Italic, STIXGeneral" font-size="12" font-style="italic" font-weight="normal">
+                <text id="y">
+                    <tspan x="0" y="16">y</tspan>
+                </text>
+                <text id="^">
+                    <tspan x="1" y="13">^</tspan>
+                </text>
+            </g>
+            <text id="Xr" font-family="STIXGeneral-BoldItalic, STIXGeneral" font-size="12" font-style="italic" font-weight="bold" fill="#1A1919">
+                <tspan x="119" y="242.47928">X</tspan>
+                <tspan x="127.004" y="242.47928" font-family="STIXGeneral-Italic, STIXGeneral" font-weight="normal">r</tspan>
+            </text>
+            <text id="Xp" font-family="STIXGeneral-BoldItalic, STIXGeneral" font-size="12" font-style="italic" font-weight="bold" fill="#1A1919">
+                <tspan x="80" y="188.47928">X</tspan>
+                <tspan x="88.004" y="188.47928" font-family="STIXGeneral-Italic, STIXGeneral" font-weight="normal">p</tspan>
+            </text>
+            <text id="Xc" font-family="STIXGeneral-BoldItalic, STIXGeneral" font-size="12" font-style="italic" font-weight="bold" fill="#1A1919">
+                <tspan x="158" y="157.47928">X</tspan>
+                <tspan x="166.004" y="157.47928" font-family="STIXGeneral-Italic, STIXGeneral" font-weight="normal">c</tspan>
+            </text>
+            <text id="Up" font-family="STIXGeneral-BoldItalic, STIXGeneral" font-size="12" font-style="italic" font-weight="bold" fill="#1A1919">
+                <tspan x="129" y="69.4792798">U</tspan>
+                <tspan x="137.664" y="69.4792798" font-family="STIXGeneral-Italic, STIXGeneral" font-weight="normal">p</tspan>
+            </text>
+            <text id="-R-Up" font-family="STIXGeneral-BoldItalic, STIXGeneral" font-size="12" font-style="italic" font-weight="bold" fill="#1A1919">
+                <tspan x="425" y="128.47928">-R U</tspan>
+                <tspan x="448.664" y="128.47928" font-family="STIXGeneral-Italic, STIXGeneral" font-weight="normal">p</tspan>
+            </text>
+            <text id="T" font-family="STIXGeneral-Italic, STIXGeneral" font-size="10" font-style="italic" font-weight="normal" fill="#1A1919">
+                <tspan x="437" y="122.47928">T</tspan>
+            </text>
+            <text id="Ω" font-family="STIXGeneral-BoldItalic, STIXGeneral" font-size="12" font-style="italic" font-weight="bold" fill="#1A1919">
+                <tspan x="120" y="117.47928">Ω</tspan>
+            </text>
+            <path id="Path" d="M129.814,133.225 L134.758245,127.895399 L135.491469,128.575386 L129.250018,135.305489 L128.645585,135.957244 L128.40247,135.102247 L125.892038,126.273446 L126.853909,125.999942 L128.842,132.991 L130.25724,127.092216 L130.298218,126.981296 C133.098118,121.50198 138.735305,117.97928 145,117.97928 C154.112698,117.97928 161.5,125.366581 161.5,134.47928 C161.5,143.591978 154.112698,150.97928 145,150.97928 L145,149.97928 C153.560414,149.97928 160.5,143.039693 160.5,134.47928 C160.5,125.918866 153.560414,118.97928 145,118.97928 C139.232294,118.97928 134.031339,122.157291 131.349711,127.129663 L131.215,127.385 L129.814,133.225 Z" fill="#979797" fill-rule="nonzero"></path>
+            <path id="Path-4" d="M111.51176,36.8934183 L112.173325,37.4870976 L119.00473,43.6175054 L118.336841,44.3617662 L112.925,39.505 L114.86734,45.2290372 L145.088188,134.31866 L144.14119,134.639899 L113.920342,45.5502765 L111.978,39.826 L110.639239,46.9729352 L109.656367,46.788643 L111.347945,37.7670818 L111.51176,36.8934183 Z" fill="#979797" fill-rule="nonzero"></path>
+            <path id="Path-4" d="M434.581836,68.3189957 L435.525856,68.648886 L404.489785,157.462214 L402.497,163.162 L407.952581,158.357257 L408.613632,159.107597 L401.726424,165.175246 L401.059455,165.762847 L400.90364,164.887721 L399.294675,155.851061 L400.279191,155.675769 L401.553,162.832 L403.545765,157.132324 L434.581836,68.3189957 Z" fill="#979797" fill-rule="nonzero"></path>
+            <path id="Path-5" d="M264.041523,137.981007 C275.781157,138.95931 286.905752,141.42638 296.745394,146.168307 C309.996712,152.55439 319.160443,162.380507 322.937238,176.282105 L326.917851,175.566738 L324.082726,185.221378 L318.06009,177.160493 L321.949,176.46 C318.238834,162.903129 309.289235,153.323509 296.311257,147.069153 C286.599443,142.38883 275.586747,139.946575 263.958477,138.977553 L264.041523,137.981007 Z" fill="#979797" fill-rule="nonzero"></path>
+            <path id="Path-5" d="M254.041523,157.981007 C265.781157,158.95931 276.905752,161.42638 286.745394,166.168307 C299.996712,172.55439 309.160443,182.380507 312.937238,196.282105 L316.917851,195.566738 L314.082726,205.221378 L308.06009,197.160493 L311.949,196.46 C308.238834,182.903129 299.289235,173.323509 286.311257,167.069153 C276.599443,162.38883 265.586747,159.946575 253.958477,158.977553 L254.041523,157.981007 Z" transform="translate(283.997092, 181.604280) scale(-1, -1) translate(-283.997092, -181.604280) " fill="#979797" fill-rule="nonzero"></path>
+            <g id="Group" transform="translate(307.000000, 121.479280)" fill="#1A1919" font-style="italic">
+                <text id="R" font-family="STIXGeneral-BoldItalic, STIXGeneral" font-size="12" font-weight="bold">
+                    <tspan x="0" y="18">R</tspan>
+                </text>
+                <text id="T" font-family="STIXGeneral-Italic, STIXGeneral" font-size="10" font-weight="normal">
+                    <tspan x="8" y="11">T</tspan>
+                </text>
+            </g>
+            <text id="R" font-family="STIXGeneral-BoldItalic, STIXGeneral" font-size="12" font-style="italic" font-weight="bold" fill="#1A1919">
+                <tspan x="277" y="188.47928">R</tspan>
+            </text>
+            <path id="Path-6" d="M408.713663,237.392933 L418.764656,237.869948 L412.352448,245.624533 L410.735,241.966 L289.775015,295.436591 L289.370705,294.521969 L410.33,241.051 L408.713663,237.392933 Z" fill="#000000" fill-rule="nonzero"></path>
+        </g>
+    </g>
+</svg>
