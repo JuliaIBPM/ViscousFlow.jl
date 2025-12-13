@@ -204,15 +204,18 @@ step!(integrator)
 #=
 ### Examine the solution
 Let's look at a few snapshots of the vorticity field. Note that the
-plotting here requires us to explicitly call the [`surfaces`](https://juliaibpm.github.io/ImmersedLayers.jl/stable/manual/problems/#ImmersedLayers.surfaces)
-function to generate the instantaneous configuration of the plate.
+plotting here requires us to create an instantaneous system `sys_t` to properly plot
+the body at each instant, and to call the [`surfaces`](https://juliaibpm.github.io/ImmersedLayers.jl/stable/manual/problems/#ImmersedLayers.surfaces)
+function to generate the instantaneous configuration of the plate. 
 =#
 #!jl sol = integrator.sol
+#!jl sys_t = deepcopy(sys)
 #!jl plt = plot(layout = (1,3), size = (800, 300), legend=:false)
 #!jl tsnap = 0.5:0.5:1.5
 #!jl for (i, t) in enumerate(tsnap)
-#!jl     plot!(plt[i],vorticity(sol,sys,t),sys,layers=false,title="t = $(round(t,digits=2))",clim=(-5,5),levels=range(-5,5,length=30),color = :RdBu)
-#!jl     plot!(plt[i],surfaces(sol,sys,t))
+#!jl     update_system!(sys_t,sol(t),sys,t)
+#!jl     plot!(plt[i],vorticity(sol,sys_t,t),sys_t,layers=false,title="t = $(round(t,digits=2))",clim=(-5,5),levels=range(-5,5,length=30),color = :RdBu)
+#!jl     plot!(plt[i],surfaces(sol,sys_t,t))
 #!jl end
 #!jl plt
 # and the forces and moments
